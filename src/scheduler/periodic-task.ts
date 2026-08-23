@@ -67,35 +67,22 @@ export class PeriodicTask {
   }
 
   /**
-   * Advances this task by the specified amount of elapsed time.
+   * Advances the task by the specified amount of elapsed time.
    *
-   * @param elapsedNanoseconds - Elapsed time since the previous scheduler
-   * tick.
-   *
-   * @returns The number of times the callback was executed.
+   * @param elapsedNanoseconds - Elapsed time since the previous scheduler tick.
    */
-  public advance(elapsedNanoseconds: bigint): number {
+  public advance(elapsedNanoseconds: bigint): void {
     if (this.suspended) {
-      return 0;
+      return;
     }
 
     this.accumulatedTicks += elapsedNanoseconds * this.frequency.numerator;
 
-    const dueExecutions = this.accumulatedTicks /
-      (
-        PeriodicTask.NANOS_PER_SECOND *
-        this.frequency.denominator
-      );
+    const threshold = PeriodicTask.NANOS_PER_SECOND * this.frequency.denominator;
 
-    this.accumulatedTicks %= PeriodicTask.NANOS_PER_SECOND *
-      this.frequency.denominator;
-
-    const executionCount = Number(dueExecutions);
-
-    for (let index = 0; index < executionCount; index++) {
+    while (this.accumulatedTicks >= threshold) {
+      this.accumulatedTicks -= threshold;
       this.callback();
     }
-
-    return executionCount;
   }
 }

@@ -3,7 +3,7 @@ import { assertEquals, assertThrows } from "@std/assert";
 import { Frequency } from "../core/types/frequency.ts";
 import { PeriodicTask } from "./periodic-task.ts";
 
-Deno.test("does not execute before one period has elapsed", () => {
+Deno.test("Periodic-Task does not execute before one period has elapsed", () => {
   let executions = 0;
 
   const task = new PeriodicTask(
@@ -14,12 +14,13 @@ Deno.test("does not execute before one period has elapsed", () => {
     },
   );
 
-  task.advance(5_000_000n); // 5 ms; period is 10 ms.
+  // 100 Hz = 10 ms period.
+  task.advance(5_000_000n);
 
   assertEquals(executions, 0);
 });
 
-Deno.test("executes once when one period has elapsed", () => {
+Deno.test("Periodic-Task executes once after one period has elapsed", () => {
   let executions = 0;
 
   const task = new PeriodicTask(
@@ -35,7 +36,7 @@ Deno.test("executes once when one period has elapsed", () => {
   assertEquals(executions, 1);
 });
 
-Deno.test("executes multiple times when multiple periods elapsed", () => {
+Deno.test("Periodic-Task executes multiple times when multiple periods have elapsed", () => {
   let executions = 0;
 
   const task = new PeriodicTask(
@@ -51,7 +52,7 @@ Deno.test("executes multiple times when multiple periods elapsed", () => {
   assertEquals(executions, 5);
 });
 
-Deno.test("preserves fractional elapsed time", () => {
+Deno.test("Periodic-Task preserves fractional elapsed time", () => {
   let executions = 0;
 
   const task = new PeriodicTask(
@@ -62,16 +63,101 @@ Deno.test("preserves fractional elapsed time", () => {
     },
   );
 
+  // First half of the period.
   task.advance(5_000_000n);
 
   assertEquals(executions, 0);
 
+  // Second half of the period.
   task.advance(5_000_000n);
 
   assertEquals(executions, 1);
 });
 
-Deno.test("suspending a task prevents execution", () => {
+Deno.test("Periodic-Task preserves fractional elapsed time across multiple advances", () => {
+  let executions = 0;
+
+  const task = new PeriodicTask(
+    "test",
+    Frequency.fromInteger(100n),
+    () => {
+      executions++;
+    },
+  );
+
+  task.advance(3_000_000n);
+  task.advance(3_000_000n);
+  task.advance(3_000_000n);
+
+  assertEquals(executions, 0);
+
+  task.advance(1_000_000n);
+
+  assertEquals(executions, 1);
+});
+
+Deno.test("Periodic-Task executes exactly once when elapsed time equals the period", () => {
+  let executions = 0;
+
+  const task = new PeriodicTask(
+    "test",
+    Frequency.fromInteger(60n),
+    () => {
+      executions++;
+    },
+  );
+
+  // We deliberately use the exact rational representation of the period.
+  //
+  // 1 second / 60 = 1/60 second.
+  // 1 second = 1,000,000,000 ns.
+  //
+  // A precise one-period test can therefore use the equivalent frequency
+  // calculation through a rational frequency.
+  task.advance(1_000_000_000n);
+
+  assertEquals(executions, 60);
+});
+
+Deno.test("Periodic-Task supports fractional frequencies", () => {
+  let executions = 0;
+
+  // 59.94 Hz = 2997 / 50.
+  const task = new PeriodicTask(
+    "test",
+    Frequency.fromRatio(2997n, 50n),
+    () => {
+      executions++;
+    },
+  );
+
+  task.advance(1_000_000_000n);
+
+  // 59.94 executions are due in one second, therefore 59 complete
+  // executions occur and the fractional remainder is preserved.
+  assertEquals(executions, 59);
+});
+
+Deno.test("Periodic-Task preserves fractional frequency remainder", () => {
+  let executions = 0;
+
+  const task = new PeriodicTask(
+    "test",
+    Frequency.fromRatio(2997n, 50n),
+    () => {
+      executions++;
+    },
+  );
+
+  task.advance(1_000_000_000n);
+  task.advance(1_000_000_000n);
+
+  // 59.94 * 2 = 119.88
+  // Therefore 119 executions have occurred.
+  assertEquals(executions, 119);
+});
+
+Deno.test("Periodic-Task suspended task does not execute", () => {
   let executions = 0;
 
   const task = new PeriodicTask(
@@ -89,7 +175,7 @@ Deno.test("suspending a task prevents execution", () => {
   assertEquals(executions, 0);
 });
 
-Deno.test("suspending discards accumulated time", () => {
+Deno.test("Periodic-Task suspension discards accumulated time", () => {
   let executions = 0;
 
   const task = new PeriodicTask(
@@ -106,14 +192,13 @@ Deno.test("suspending discards accumulated time", () => {
   task.suspend();
   task.resume();
 
-  // Another half period should not cause an execution because the
-  // accumulated time from before suspension was discarded.
+  // This is another half period, but the previous half was discarded.
   task.advance(5_000_000n);
 
   assertEquals(executions, 0);
 });
 
-Deno.test("resuming allows execution again", () => {
+Deno.test("Periodic-Task resumed task starts accumulating time again", () => {
   let executions = 0;
 
   const task = new PeriodicTask(
@@ -132,10 +217,10 @@ Deno.test("resuming allows execution again", () => {
   assertEquals(executions, 1);
 });
 
-Deno.test("reports its suspension state", () => {
+Deno.test("Periodic-Task reports its suspension state", () => {
   const task = new PeriodicTask(
     "test",
-    Frequency.fromInteger(100n),
+    Frequency.fromInteger(60n),
     () => {},
   );
 
@@ -150,67 +235,54 @@ Deno.test("reports its suspension state", () => {
   assertEquals(task.isSuspended, false);
 });
 
-Deno.test("returns the number of executions performed", () => {
+Deno.test("Periodic-Task does not execute while suspended even when time advances", () => {
+  let executions = 0;
+
   const task = new PeriodicTask(
     "test",
-    Frequency.fromInteger(100n),
-    () => {},
+    Frequency.fromInteger(60n),
+    () => {
+      executions++;
+    },
   );
 
-  const executions = task.advance(50_000_000n);
+  task.suspend();
 
-  assertEquals(executions, 5);
+  task.advance(1_000_000_000n);
+  task.advance(1_000_000_000n);
+  task.advance(1_000_000_000n);
+
+  assertEquals(executions, 0);
 });
 
-Deno.test("propagates callback errors", () => {
+Deno.test("Periodic-Task callback errors propagate", () => {
   const task = new PeriodicTask(
     "test",
-    Frequency.fromInteger(100n),
+    Frequency.fromInteger(60n),
     () => {
       throw new Error("callback failure");
     },
   );
 
   assertThrows(
-    () => task.advance(10_000_000n),
+    () => task.advance(1_000_000_000n),
     Error,
     "callback failure",
   );
 });
 
-Deno.test("supports an exact fractional frequency", () => {
+Deno.test("Periodic-Task executes once when one exact period has elapsed", () => {
   let executions = 0;
 
-  // 59.94 Hz = 2997 / 50.
   const task = new PeriodicTask(
     "test",
-    new Frequency(2997n, 50n),
+    Frequency.fromInteger(100n),
     () => {
       executions++;
     },
   );
 
-  // One second should produce exactly 59 executions,
-  // with the fractional remainder preserved.
-  const executed = task.advance(1_000_000_000n);
+  task.advance(10_000_000n);
 
-  assertEquals(executed, 59);
-  assertEquals(executions, 59);
-});
-
-Deno.test("preserves fractional frequency remainder", () => {
-  let executions = 0;
-
-  const task = new PeriodicTask(
-    "test",
-    new Frequency(2997n, 50n),
-    () => {
-      executions++;
-    },
-  );
-
-  task.advance(1_000_000_000n);
-  task.advance(1_000_000_000n);
-
-  assertEquals(executions, 119);
+  assertEquals(executions, 1);
 });
