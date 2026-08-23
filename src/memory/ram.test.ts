@@ -22,7 +22,7 @@ Deno.test("Ram can write and read a byte", () => {
   );
 });
 
-Deno.test("writes to different addresses are independent", () => {
+Deno.test("Ram writes to different addresses are independent", () => {
   const memory = new Ram(0x1000);
 
   memory.write(address(0x200), byte(0x42));
@@ -48,7 +48,7 @@ Deno.test("Ram can access the last address", () => {
   assertEquals(memory.read(address(0xfff)), byte(0xbb));
 });
 
-Deno.test("read throws when address is outside the address space", () => {
+Deno.test("Ram read throws when address is outside the address space", () => {
   const memory = new Ram(0x1000);
 
   assertThrows(
@@ -57,7 +57,7 @@ Deno.test("read throws when address is outside the address space", () => {
   );
 });
 
-Deno.test("write throws when address is outside the address space", () => {
+Deno.test("Ram write throws when address is outside the address space", () => {
   const memory = new Ram(0x1000);
 
   assertThrows(
