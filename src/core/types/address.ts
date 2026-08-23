@@ -13,9 +13,7 @@
  * The runtime representation is still a JavaScript `number`. The brand is
  * purely a TypeScript compile-time mechanism.
  */
-export type Address = number & {
-  readonly __brand: "Address";
-};
+export type Address = number & { __brand: "Address" };
 
 /**
  * Creates an {@link Address} from a number.

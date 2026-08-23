@@ -11,9 +11,7 @@
  * The runtime representation is still a JavaScript `number`. The brand is
  * purely a TypeScript compile-time mechanism.
  */
-export type Byte = number & {
-  readonly __brand: "Byte";
-};
+export type Byte = number & { readonly __brand: "Byte" };
 
 /**
  * Creates a {@link Byte} from a number.

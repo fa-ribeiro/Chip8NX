@@ -11,9 +11,7 @@
  * The runtime representation is a JavaScript `number`. The brand exists only
  * at the TypeScript type level.
  */
-export type Key = number & {
-  readonly __brand: "Key";
-};
+export type Key = number & { readonly __brand: "Key" };
 
 /**
  * Creates a {@link Key} from a number.

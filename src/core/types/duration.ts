@@ -9,9 +9,7 @@
  * exact. Using an explicit domain type also prevents accidentally confusing
  * durations with timestamps or unrelated numeric values.
  */
-export type Duration = bigint & {
-  readonly __brand: "Duration";
-};
+export type Duration = bigint & { readonly __brand: "Duration" };
 
 /**
  * Creates a Duration from a number of nanoseconds.
