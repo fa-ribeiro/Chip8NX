@@ -1,4 +1,4 @@
-import { assertEquals } from "@std/assert";
+import { assertEquals, assertThrows } from "@std/assert";
 import { byte } from "../core/types/byte.ts";
 import { TestRandomNumberGenerator } from "./test-random-number-generator.ts";
 
@@ -15,16 +15,10 @@ Deno.test("TestRandomNumberGenerator constructor accepts an array of bytes", () 
 });
 
 Deno.test("TestRandomNumberGenerator constructor rejects an empty array", () => {
-  try {
-    new TestRandomNumberGenerator([]);
-    throw new Error("Expected constructor to throw an error");
-  } catch (error) {
-    if (!(error instanceof RangeError)) {
-      throw new Error(
-        `Expected RangeError, but got ${error.constructor.name}`,
-      );
-    }
-  }
+  assertThrows(
+    () => new TestRandomNumberGenerator([]),
+    RangeError,
+  );
 });
 
 Deno.test("TestRandomNumberGenerator returns values in order", () => {
