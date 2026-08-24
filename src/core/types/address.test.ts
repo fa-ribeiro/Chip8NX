@@ -1,4 +1,5 @@
 import { assertEquals, assertThrows } from "@std/assert";
+
 import { address } from "./address.ts";
 
 Deno.test("address() accepts zero", () => {

@@ -1,5 +1,5 @@
-import type { Timestamp } from "../core/types/timestamp.ts";
 import type { Clock } from "./clock.ts";
+import type { Timestamp } from "../core/types/timestamp.ts";
 
 /**
  * Clock implementation backed by the platform's monotonic Performance API.

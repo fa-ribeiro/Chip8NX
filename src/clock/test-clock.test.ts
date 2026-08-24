@@ -1,4 +1,5 @@
 import { assertEquals, assertThrows } from "@std/assert";
+
 import { Duration, duration } from "../core/types/duration.ts";
 import { TestClock } from "./test-clock.ts";
 

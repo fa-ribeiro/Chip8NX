@@ -1,6 +1,6 @@
+import type { Clock } from "./clock.ts";
 import type { Duration } from "../core/types/duration.ts";
 import type { Timestamp } from "../core/types/timestamp.ts";
-import type { Clock } from "./clock.ts";
 
 /**
  * Deterministic Clock implementation intended for tests.

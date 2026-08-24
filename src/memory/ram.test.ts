@@ -1,4 +1,5 @@
 import { assertEquals, assertThrows } from "@std/assert";
+
 import { address } from "../core/types/address.ts";
 import { byte } from "../core/types/byte.ts";
 import { Ram } from "./ram.ts";

@@ -1,4 +1,5 @@
 import { assertEquals } from "@std/assert";
+
 import { key } from "../core/types/key.ts";
 import { TestKeyboard } from "./test-keyboard.ts";
 

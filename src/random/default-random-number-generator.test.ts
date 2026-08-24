@@ -1,4 +1,5 @@
 import { assert } from "@std/assert";
+
 import { DefaultRandomNumberGenerator } from "./default-random-number-generator.ts";
 
 Deno.test("DefaultRandomNumberGenerator produces bytes", () => {

@@ -1,4 +1,5 @@
 import { assertEquals, assertThrows } from "@std/assert";
+
 import { byte } from "../core/types/byte.ts";
 import { TestRandomNumberGenerator } from "./test-random-number-generator.ts";
 

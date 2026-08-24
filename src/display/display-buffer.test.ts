@@ -1,4 +1,5 @@
 import { assertEquals, assertThrows } from "@std/assert";
+
 import { DisplayBuffer } from "./display-buffer.ts";
 
 Deno.test("DisplayBuffer initializes all pixels as off", () => {

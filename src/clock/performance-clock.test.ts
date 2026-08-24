@@ -1,4 +1,5 @@
 import { assert } from "@std/assert";
+
 import { PerformanceClock } from "./performance-clock.ts";
 
 Deno.test("PerformanceClock returns an integer timestamp", () => {

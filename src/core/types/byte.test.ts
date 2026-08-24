@@ -1,4 +1,5 @@
 import { assertEquals, assertThrows } from "@std/assert";
+
 import { byte } from "./byte.ts";
 
 Deno.test("byte() accepts the minimum value", () => {

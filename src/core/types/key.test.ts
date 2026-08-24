@@ -1,4 +1,5 @@
 import { assertEquals, assertThrows } from "@std/assert";
+
 import { key } from "./key.ts";
 
 Deno.test("key() accepts 0x0", () => {

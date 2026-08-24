@@ -1,9 +1,8 @@
 import { assertEquals, assertThrows } from "@std/assert";
 
 import { TestClock } from "../clock/test-clock.ts";
-import { Frequency } from "../core/types/frequency.ts";
 import { type Duration, duration } from "../core/types/duration.ts";
-
+import { Frequency } from "../core/types/frequency.ts";
 import { Scheduler } from "./scheduler.ts";
 
 Deno.test("does not execute tasks before they are due", () => {
