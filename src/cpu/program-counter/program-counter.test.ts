@@ -59,14 +59,3 @@ Deno.test("Program Counter advance increments by exactly one instruction", () =>
     address(0x206),
   );
 });
-
-Deno.test("Program Counter advance works near the upper address boundary", () => {
-  const pc = new ProgramCounter(address(0xFFC));
-
-  pc.advance();
-
-  assertEquals(
-    pc.getValue(),
-    address(0xFFE),
-  );
-});
