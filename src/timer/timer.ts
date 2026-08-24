@@ -1,4 +1,4 @@
-import type { Byte } from "../core/types/byte.ts";
+import { type Byte, byte } from "../core/types/byte.ts";
 
 /**
  * Represents an unsigned 8-bit countdown timer.
@@ -38,7 +38,7 @@ export class Timer {
    */
   public tick(): void {
     if (this.value > 0) {
-      this.value--;
+      this.value = byte(this.value - 1);
     }
   }
 }

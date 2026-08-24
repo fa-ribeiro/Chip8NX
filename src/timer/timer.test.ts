@@ -6,7 +6,7 @@ import { Timer } from "./timer.ts";
 Deno.test("starts at zero", () => {
   const timer = new Timer();
 
-  assertEquals(timer.getValue(), 0);
+  assertEquals(timer.getValue(), byte(0));
 });
 
 Deno.test("can be set to a value", () => {
@@ -61,7 +61,7 @@ Deno.test("zero timer does not underflow", () => {
 
   timer.tick();
 
-  assertEquals(timer.getValue(), 0);
+  assertEquals(timer.getValue(), byte(0));
 });
 
 Deno.test("can be reset after ticking", () => {
