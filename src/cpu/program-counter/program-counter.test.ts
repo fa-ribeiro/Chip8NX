@@ -1,7 +1,7 @@
-import { assertEquals, assertThrows } from "@std/assert";
+import { assertEquals } from "@std/assert";
 
 import { address } from "../../core/types/address.ts";
-import { DEFAULT_PROGRAM_START_ADDRESS, INSTRUCTION_SIZE, ProgramCounter } from "./program-counter.ts";
+import { DEFAULT_PROGRAM_START_ADDRESS, ProgramCounter } from "./program-counter.ts";
 
 Deno.test("Program Counter starts at the default program address", () => {
   const pc = new ProgramCounter();
