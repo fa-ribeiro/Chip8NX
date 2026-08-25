@@ -20,7 +20,7 @@ export type Byte = number & { readonly __brand: "Byte" };
  * @returns The value represented as a {@link Byte}.
  *
  * @throws {@link RangeError}
- * Thrown when `value` is not an integer in the range `0x00` through `0xFF`.
+ * If `value` is not an integer in the range 0x00 through 0xFF.
  */
 export function byte(value: number): Byte {
   if (!Number.isInteger(value) || value < 0 || value > 0xff) {

@@ -13,7 +13,7 @@
  * The runtime representation is still a JavaScript `number`. The brand is
  * purely a TypeScript compile-time mechanism.
  */
-export type Address = number & { __brand: "Address" };
+export type Address = number & { readonly __brand: "Address" };
 
 /**
  * Creates an {@link Address} from a number.
@@ -22,7 +22,7 @@ export type Address = number & { __brand: "Address" };
  * @returns The value represented as an {@link Address}.
  *
  * @throws {@link RangeError}
- * Thrown when `value` is not a non-negative integer.
+ * If `value` is not a non-negative integer.
  */
 export function address(value: number): Address {
   if (!Number.isInteger(value) || value < 0) {

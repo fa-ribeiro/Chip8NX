@@ -33,9 +33,7 @@ export class ProgramCounter {
    *
    * @default {@link DEFAULT_PROGRAM_START_ADDRESS}
    */
-  public constructor(
-    initialValue: Address = DEFAULT_PROGRAM_START_ADDRESS,
-  ) {
+  public constructor(initialValue: Address = DEFAULT_PROGRAM_START_ADDRESS) {
     this.value = initialValue;
   }
 
@@ -49,7 +47,7 @@ export class ProgramCounter {
   /**
    * Sets the program counter to an explicit address.
    *
-   * @param value - New program counter address.
+   * @param value - The new program counter address.
    */
   public setValue(value: Address): void {
     this.value = value;
