@@ -1,7 +1,7 @@
 import { type Byte, byte } from "../core/types/byte.ts";
 
 /**
- * Represents an unsigned 8-bit countdown timer.
+ * Represents a timer in the CHIP-8 CPU.
  *
  * @remarks
  * CHIP-8 has two timers, the delay timer and sound timer. Both share the
@@ -12,10 +12,24 @@ import { type Byte, byte } from "../core/types/byte.ts";
  * the appropriate frequency.
  */
 export class Timer {
-  private value: Byte = 0 as Byte;
+  private value: Byte;
 
   /**
-   * Returns the current timer value.
+   *  Creates a new timer with the specified initial value.
+   *
+   * @param initialValue - The initial value of the timer. Defaults to 0.
+   *
+   * @throws {RangeError}
+   * If `initialValue` is not a valid Byte (0-255).
+   */
+  public constructor(initialValue: Byte = byte(0)) {
+    this.value = initialValue;
+  }
+
+  /**
+   * Gets the current timer value.
+   *
+   * @returns The current timer value as a Byte.
    */
   public getValue(): Byte {
     return this.value;
@@ -24,14 +38,17 @@ export class Timer {
   /**
    * Sets the timer value.
    *
-   * @param value - New timer value.
+   * @param value - The new timer value.
+   *
+   * @throws {RangeError}
+   * If `value` is not a valid Byte (0-255).
    */
   public setValue(value: Byte): void {
     this.value = value;
   }
 
   /**
-   * Advances the timer by one CHIP-8 timer tick.
+   * Decrements the timer by 1 if it is greater than 0.
    *
    * @remarks
    * The timer stops at zero. It never wraps from zero to 255.
