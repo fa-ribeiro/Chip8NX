@@ -1,4 +1,5 @@
 import type { Byte } from "../../core/types/byte.ts";
+import { byte } from "../../core/types/byte.ts";
 import type { RegisterIndex } from "./register-index.ts";
 
 /**
@@ -22,7 +23,7 @@ export class Registers {
    * Creates a register bank with all registers initialized to zero.
    */
   public constructor() {
-    this.values = new Array<Byte>(REGISTER_COUNT).fill(0 as Byte);
+    this.values = new Array<Byte>(REGISTER_COUNT).fill(byte(0));
   }
 
   /**
