@@ -11,7 +11,7 @@ Deno.test("does not execute tasks before they are due", () => {
 
   let executions = 0;
 
-  scheduler.addPeriodicTask(
+  scheduler.addTask(
     "test",
     Frequency.fromInteger(100n),
     () => {
@@ -31,7 +31,7 @@ Deno.test("executes a task when it becomes due", () => {
 
   let executions = 0;
 
-  scheduler.addPeriodicTask(
+  scheduler.addTask(
     "test",
     Frequency.fromInteger(100n),
     () => {
@@ -51,7 +51,7 @@ Deno.test("passes elapsed time to tasks through the scheduler clock", () => {
 
   let executions = 0;
 
-  scheduler.addPeriodicTask(
+  scheduler.addTask(
     "test",
     Frequency.fromInteger(100n),
     () => {
@@ -72,7 +72,7 @@ Deno.test("supports multiple tasks with different frequencies", () => {
   let fastExecutions = 0;
   let slowExecutions = 0;
 
-  scheduler.addPeriodicTask(
+  scheduler.addTask(
     "fast",
     Frequency.fromInteger(100n),
     () => {
@@ -80,7 +80,7 @@ Deno.test("supports multiple tasks with different frequencies", () => {
     },
   );
 
-  scheduler.addPeriodicTask(
+  scheduler.addTask(
     "slow",
     Frequency.fromInteger(20n),
     () => {
@@ -101,7 +101,7 @@ Deno.test("executes tasks in registration order", () => {
 
   const executionOrder: string[] = [];
 
-  scheduler.addPeriodicTask(
+  scheduler.addTask(
     "first",
     Frequency.fromInteger(1n),
     () => {
@@ -109,7 +109,7 @@ Deno.test("executes tasks in registration order", () => {
     },
   );
 
-  scheduler.addPeriodicTask(
+  scheduler.addTask(
     "second",
     Frequency.fromInteger(1n),
     () => {
@@ -130,7 +130,7 @@ Deno.test("rejects duplicate task IDs", () => {
   const clock = new TestClock();
   const scheduler = new Scheduler(clock);
 
-  scheduler.addPeriodicTask(
+  scheduler.addTask(
     "test",
     Frequency.fromInteger(60n),
     () => {},
@@ -138,7 +138,7 @@ Deno.test("rejects duplicate task IDs", () => {
 
   assertThrows(
     () => {
-      scheduler.addPeriodicTask(
+      scheduler.addTask(
         "test",
         Frequency.fromInteger(60n),
         () => {},
@@ -155,7 +155,7 @@ Deno.test("removes an existing task", () => {
 
   let executions = 0;
 
-  scheduler.addPeriodicTask(
+  scheduler.addTask(
     "test",
     Frequency.fromInteger(60n),
     () => {
@@ -164,7 +164,7 @@ Deno.test("removes an existing task", () => {
   );
 
   assertEquals(
-    scheduler.removePeriodicTask("test"),
+    scheduler.removeTask("test"),
     true,
   );
 
@@ -179,7 +179,7 @@ Deno.test("removing a missing task returns false", () => {
   const scheduler = new Scheduler(clock);
 
   assertEquals(
-    scheduler.removePeriodicTask("missing"),
+    scheduler.removeTask("missing"),
     false,
   );
 });
@@ -191,7 +191,7 @@ Deno.test("suspends an individual task", () => {
   let cpuExecutions = 0;
   let renderExecutions = 0;
 
-  scheduler.addPeriodicTask(
+  scheduler.addTask(
     "cpu",
     Frequency.fromInteger(100n),
     () => {
@@ -199,7 +199,7 @@ Deno.test("suspends an individual task", () => {
     },
   );
 
-  scheduler.addPeriodicTask(
+  scheduler.addTask(
     "render",
     Frequency.fromInteger(100n),
     () => {
@@ -222,7 +222,7 @@ Deno.test("resumes an individual task", () => {
 
   let executions = 0;
 
-  scheduler.addPeriodicTask(
+  scheduler.addTask(
     "cpu",
     Frequency.fromInteger(100n),
     () => {
@@ -249,7 +249,7 @@ Deno.test("suspended tasks do not accumulate execution debt", () => {
 
   let executions = 0;
 
-  scheduler.addPeriodicTask(
+  scheduler.addTask(
     "cpu",
     Frequency.fromInteger(500n),
     () => {
@@ -297,7 +297,7 @@ Deno.test("propagates callback errors", () => {
   const clock = new TestClock();
   const scheduler = new Scheduler(clock);
 
-  scheduler.addPeriodicTask(
+  scheduler.addTask(
     "failing",
     Frequency.fromInteger(1n),
     () => {
@@ -320,7 +320,7 @@ Deno.test("does not execute later tasks after an earlier task fails", () => {
 
   let secondExecuted = false;
 
-  scheduler.addPeriodicTask(
+  scheduler.addTask(
     "failing",
     Frequency.fromInteger(1n),
     () => {
@@ -328,7 +328,7 @@ Deno.test("does not execute later tasks after an earlier task fails", () => {
     },
   );
 
-  scheduler.addPeriodicTask(
+  scheduler.addTask(
     "second",
     Frequency.fromInteger(1n),
     () => {

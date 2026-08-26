@@ -40,7 +40,7 @@ export class Scheduler {
    * @throws {@link Error}
    * Thrown when a task with the same ID already exists.
    */
-  public addPeriodicTask(
+  public addTask(
     id: string,
     frequency: Frequency,
     callback: PeriodicTaskCallback,
@@ -62,7 +62,7 @@ export class Scheduler {
    *
    * @returns `true` when a task was removed, otherwise `false`.
    */
-  public removePeriodicTask(id: string): boolean {
+  public removeTask(id: string): boolean {
     return this.tasks.delete(id);
   }
 
