@@ -1,4 +1,4 @@
-import type { Byte } from "../core/types/byte.ts";
+import { type Byte, byte } from "../core/types/byte.ts";
 import type { RandomNumberGenerator } from "./random-number-generator.ts";
 /**
  * RandomNumberGenerator implementation backed by JavaScript's
@@ -17,6 +17,6 @@ export class DefaultRandomNumberGenerator implements RandomNumberGenerator {
    * {@inheritDoc RandomNumberGenerator.nextByte}
    */
   public nextByte(): Byte {
-    return Math.floor(Math.random() * 0x100) as Byte;
+    return byte(Math.floor(Math.random() * 0x100));
   }
 }
