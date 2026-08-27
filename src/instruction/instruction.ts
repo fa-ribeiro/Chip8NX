@@ -112,7 +112,7 @@ export interface RandomAndInstruction {
 }
 
 export interface DrawInstruction {
-  readonly kind: "draw";
+  readonly kind: "draw-sprite";
   readonly opcode: Opcode;
   readonly x: RegisterIndex;
   readonly y: RegisterIndex;

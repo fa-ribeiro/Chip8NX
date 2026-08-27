@@ -217,7 +217,7 @@ Deno.test("decodes CXNN", () => {
 
 Deno.test("decodes DXYN", () => {
   assertEquals(decoder.decode(opcode(0xdab5)), {
-    kind: "draw",
+    kind: "draw-sprite",
     opcode: opcode(0xdab5),
     x: registerIndex(0xa),
     y: registerIndex(0xb),

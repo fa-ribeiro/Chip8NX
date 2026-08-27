@@ -87,7 +87,7 @@ export class Decoder {
 
       case 0xd:
         return {
-          kind: "draw",
+          kind: "draw-sprite",
           opcode,
           x: getX(opcode),
           y: getY(opcode),
