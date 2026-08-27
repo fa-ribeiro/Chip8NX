@@ -22,8 +22,8 @@ export function add8(a: Byte, b: Byte): ArithmeticResult {
   const result = a + b;
 
   return {
-    value: byte(result & 0xFF),
-    flag: result > 0xFF,
+    value: byte(result & 0xff),
+    flag: result > 0xff,
   };
 }
 
@@ -34,7 +34,7 @@ export function add8(a: Byte, b: Byte): ArithmeticResult {
  */
 export function subtract8(a: Byte, b: Byte): ArithmeticResult {
   return {
-    value: byte((a - b) & 0xFF),
+    value: byte((a - b) & 0xff),
     flag: a >= b,
   };
 }
@@ -59,7 +59,7 @@ export function shiftRight8(value: Byte): ArithmeticResult {
  */
 export function shiftLeft8(value: Byte): ArithmeticResult {
   return {
-    value: byte((value << 1) & 0xFF),
+    value: byte((value << 1) & 0xff),
     flag: (value & 0x80) !== 0,
   };
 }

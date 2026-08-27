@@ -15,43 +15,25 @@ Deno.test("key() accepts 0xF", () => {
 });
 
 Deno.test("key() rejects negative values", () => {
-  assertThrows(
-    () => key(-1),
-    RangeError,
-  );
+  assertThrows(() => key(-1), RangeError);
 });
 
 Deno.test("key() rejects values greater than 0xF", () => {
-  assertThrows(
-    () => key(0x10),
-    RangeError,
-  );
+  assertThrows(() => key(0x10), RangeError);
 });
 
 Deno.test("key() rejects fractional values", () => {
-  assertThrows(
-    () => key(1.5),
-    RangeError,
-  );
+  assertThrows(() => key(1.5), RangeError);
 });
 
 Deno.test("key() rejects NaN", () => {
-  assertThrows(
-    () => key(Number.NaN),
-    RangeError,
-  );
+  assertThrows(() => key(Number.NaN), RangeError);
 });
 
 Deno.test("key() rejects positive infinity", () => {
-  assertThrows(
-    () => key(Number.POSITIVE_INFINITY),
-    RangeError,
-  );
+  assertThrows(() => key(Number.POSITIVE_INFINITY), RangeError);
 });
 
 Deno.test("key() rejects negative infinity", () => {
-  assertThrows(
-    () => key(Number.NEGATIVE_INFINITY),
-    RangeError,
-  );
+  assertThrows(() => key(Number.NEGATIVE_INFINITY), RangeError);
 });

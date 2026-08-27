@@ -63,21 +63,21 @@ export class Decoder {
       case 0x9:
         return this.decode9Family(opcode);
 
-      case 0xA:
+      case 0xa:
         return {
           kind: "set-index",
           opcode,
           address: getNNN(opcode),
         };
 
-      case 0xB:
+      case 0xb:
         return {
           kind: "jump-with-offset",
           opcode,
           address: getNNN(opcode),
         };
 
-      case 0xC:
+      case 0xc:
         return {
           kind: "random-and",
           opcode,
@@ -85,7 +85,7 @@ export class Decoder {
           mask: getNN(opcode),
         };
 
-      case 0xD:
+      case 0xd:
         return {
           kind: "draw",
           opcode,
@@ -94,10 +94,10 @@ export class Decoder {
           height: getN(opcode),
         };
 
-      case 0xE:
+      case 0xe:
         return this.decodeEFamily(opcode);
 
-      case 0xF:
+      case 0xf:
         return this.decodeFFamily(opcode);
 
       default:
@@ -107,13 +107,13 @@ export class Decoder {
 
   private decodeZeroFamily(opcode: Opcode): Instruction {
     switch (opcode) {
-      case 0x00E0:
+      case 0x00e0:
         return {
           kind: "clear-screen",
           opcode,
         };
 
-      case 0x00EE:
+      case 0x00ee:
         return {
           kind: "return",
           opcode,
@@ -217,7 +217,7 @@ export class Decoder {
           y: getY(opcode),
         };
 
-      case 0xE:
+      case 0xe:
         return {
           kind: "register-operation",
           opcode,
@@ -246,14 +246,14 @@ export class Decoder {
 
   private decodeEFamily(opcode: Opcode): Instruction {
     switch (getNN(opcode)) {
-      case 0x9E:
+      case 0x9e:
         return {
           kind: "skip-key-pressed",
           opcode,
           register: getX(opcode),
         };
 
-      case 0xA1:
+      case 0xa1:
         return {
           kind: "skip-key-not-pressed",
           opcode,
@@ -274,7 +274,7 @@ export class Decoder {
           register: getX(opcode),
         };
 
-      case 0x0A:
+      case 0x0a:
         return {
           kind: "wait-for-key",
           opcode,
@@ -295,7 +295,7 @@ export class Decoder {
           register: getX(opcode),
         };
 
-      case 0x1E:
+      case 0x1e:
         return {
           kind: "add-to-index",
           opcode,
@@ -338,9 +338,7 @@ export class Decoder {
 
 export class InvalidOpcodeError extends Error {
   public constructor(public readonly opcode: Opcode) {
-    super(
-      `Invalid CHIP-8 opcode: 0x${opcode.toString(16).padStart(4, "0")}`,
-    );
+    super(`Invalid CHIP-8 opcode: 0x${opcode.toString(16).padStart(4, "0")}`);
 
     this.name = "InvalidOpcodeError";
   }

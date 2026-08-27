@@ -26,9 +26,7 @@ export type Address = number & { readonly __brand: "Address" };
  */
 export function address(value: number): Address {
   if (!Number.isInteger(value) || value < 0) {
-    throw new RangeError(
-      `Invalid address value: ${value}. Expected a non-negative integer.`,
-    );
+    throw new RangeError(`Invalid address value: ${value}. Expected a non-negative integer.`);
   }
 
   return value as Address;

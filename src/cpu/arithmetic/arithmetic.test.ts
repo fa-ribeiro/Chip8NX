@@ -11,14 +11,14 @@ Deno.test("add8 adds bytes without carry", () => {
 });
 
 Deno.test("add8 returns 0xFF without setting carry", () => {
-  const result = add8(byte(0xFE), byte(0x01));
+  const result = add8(byte(0xfe), byte(0x01));
 
-  assertEquals(result.value, byte(0xFF));
+  assertEquals(result.value, byte(0xff));
   assertEquals(result.flag, false);
 });
 
 Deno.test("add8 wraps and sets carry on overflow", () => {
-  const result = add8(byte(0xFF), byte(0x01));
+  const result = add8(byte(0xff), byte(0x01));
 
   assertEquals(result.value, byte(0x00));
   assertEquals(result.flag, true);
@@ -48,7 +48,7 @@ Deno.test("subtract8 treats equal operands as no borrow", () => {
 Deno.test("subtract8 wraps and reports borrow", () => {
   const result = subtract8(byte(0x03), byte(0x05));
 
-  assertEquals(result.value, byte(0xFE));
+  assertEquals(result.value, byte(0xfe));
   assertEquals(result.flag, false);
 });
 

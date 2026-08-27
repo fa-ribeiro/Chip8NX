@@ -10,11 +10,11 @@ import type { ClearScreenInstruction, JumpInstruction, LoadImmediateInstruction 
 Deno.test("ClearScreenInstruction represents 00E0", () => {
   const instruction: ClearScreenInstruction = {
     kind: "clear-screen",
-    opcode: opcode(0x00E0),
+    opcode: opcode(0x00e0),
   };
 
   assertEquals(instruction.kind, "clear-screen");
-  assertEquals(instruction.opcode, opcode(0x00E0));
+  assertEquals(instruction.opcode, opcode(0x00e0));
 });
 
 Deno.test("JumpInstruction contains its target address", () => {
@@ -32,14 +32,14 @@ Deno.test("JumpInstruction contains its target address", () => {
 Deno.test("LoadImmediateInstruction contains register and value", () => {
   const instruction: LoadImmediateInstruction = {
     kind: "load-immediate",
-    opcode: opcode(0x6A42),
-    register: registerIndex(0xA),
+    opcode: opcode(0x6a42),
+    register: registerIndex(0xa),
     value: byte(0x42),
   };
 
   assertEquals(instruction.kind, "load-immediate");
-  assertEquals(instruction.opcode, opcode(0x6A42));
-  assertEquals(instruction.register, registerIndex(0xA));
+  assertEquals(instruction.opcode, opcode(0x6a42));
+  assertEquals(instruction.register, registerIndex(0xa));
   assertEquals(instruction.value, byte(0x42));
 });
 
@@ -47,7 +47,7 @@ Deno.test("Instruction discriminated union can be narrowed by kind", () => {
   const instructions = [
     {
       kind: "clear-screen",
-      opcode: opcode(0x00E0),
+      opcode: opcode(0x00e0),
     } satisfies ClearScreenInstruction,
 
     {
@@ -58,8 +58,8 @@ Deno.test("Instruction discriminated union can be narrowed by kind", () => {
 
     {
       kind: "load-immediate",
-      opcode: opcode(0x6A42),
-      register: registerIndex(0xA),
+      opcode: opcode(0x6a42),
+      register: registerIndex(0xa),
       value: byte(0x42),
     } satisfies LoadImmediateInstruction,
   ];
@@ -67,7 +67,7 @@ Deno.test("Instruction discriminated union can be narrowed by kind", () => {
   for (const instruction of instructions) {
     switch (instruction.kind) {
       case "clear-screen":
-        assertEquals(instruction.opcode, opcode(0x00E0));
+        assertEquals(instruction.opcode, opcode(0x00e0));
         break;
 
       case "jump":
@@ -75,7 +75,7 @@ Deno.test("Instruction discriminated union can be narrowed by kind", () => {
         break;
 
       case "load-immediate":
-        assertEquals(instruction.register, registerIndex(0xA));
+        assertEquals(instruction.register, registerIndex(0xa));
         assertEquals(instruction.value, byte(0x42));
         break;
     }

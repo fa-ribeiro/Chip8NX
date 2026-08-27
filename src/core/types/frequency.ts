@@ -26,20 +26,13 @@ export class Frequency {
    * @throws {@link RangeError}
    * Thrown when either value is not positive.
    */
-  public constructor(
-    numerator: bigint,
-    denominator: bigint = 1n,
-  ) {
+  public constructor(numerator: bigint, denominator: bigint = 1n) {
     if (numerator <= 0n) {
-      throw new RangeError(
-        "Frequency numerator must be positive.",
-      );
+      throw new RangeError("Frequency numerator must be positive.");
     }
 
     if (denominator <= 0n) {
-      throw new RangeError(
-        "Frequency denominator must be positive.",
-      );
+      throw new RangeError("Frequency denominator must be positive.");
     }
 
     const divisor = gcd(numerator, denominator);
@@ -64,10 +57,7 @@ export class Frequency {
    * @param numerator - Positive numerator.
    * @param denominator - Positive denominator.
    */
-  public static fromRatio(
-    numerator: bigint,
-    denominator: bigint,
-  ): Frequency {
+  public static fromRatio(numerator: bigint, denominator: bigint): Frequency {
     return new Frequency(numerator, denominator);
   }
 }

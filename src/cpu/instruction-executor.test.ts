@@ -15,9 +15,7 @@ import { registerIndex } from "./registers/register-index.ts";
 import { Registers } from "./registers/registers.ts";
 import { Stack } from "./stack/stack.ts";
 
-function createContext(
-  overrides: Partial<ExecutionContext> = {},
-): ExecutionContext {
+function createContext(overrides: Partial<ExecutionContext> = {}): ExecutionContext {
   return {
     registers: new Registers(),
     memory: new Ram(0x1000),
@@ -56,7 +54,7 @@ Deno.test("CLS clears the display buffer", () => {
   executor.execute(
     {
       kind: "clear-screen",
-      opcode: opcode(0x00E0),
+      opcode: opcode(0x00e0),
     },
     context,
   );
@@ -111,7 +109,7 @@ Deno.test("RET pops the return address into the program counter", () => {
   executor.execute(
     {
       kind: "return",
-      opcode: opcode(0x00EE),
+      opcode: opcode(0x00ee),
     },
     context,
   );
@@ -123,7 +121,7 @@ Deno.test("RET pops the return address into the program counter", () => {
 Deno.test("SE Vx, NN skips when the values are equal", () => {
   const registers = new Registers();
   const programCounter = new ProgramCounter(address(0x202));
-  registers.set(registerIndex(0xA), byte(0x42));
+  registers.set(registerIndex(0xa), byte(0x42));
 
   const context = createContext({ registers, programCounter });
   const executor = new InstructionExecutor();
@@ -131,8 +129,8 @@ Deno.test("SE Vx, NN skips when the values are equal", () => {
   executor.execute(
     {
       kind: "skip-equal-immediate",
-      opcode: opcode(0x3A42),
-      register: registerIndex(0xA),
+      opcode: opcode(0x3a42),
+      register: registerIndex(0xa),
       value: byte(0x42),
     },
     context,
@@ -144,7 +142,7 @@ Deno.test("SE Vx, NN skips when the values are equal", () => {
 Deno.test("SE Vx, NN does not skip when the values differ", () => {
   const registers = new Registers();
   const programCounter = new ProgramCounter(address(0x202));
-  registers.set(registerIndex(0xA), byte(0x41));
+  registers.set(registerIndex(0xa), byte(0x41));
 
   const context = createContext({ registers, programCounter });
   const executor = new InstructionExecutor();
@@ -152,8 +150,8 @@ Deno.test("SE Vx, NN does not skip when the values differ", () => {
   executor.execute(
     {
       kind: "skip-equal-immediate",
-      opcode: opcode(0x3A42),
-      register: registerIndex(0xA),
+      opcode: opcode(0x3a42),
+      register: registerIndex(0xa),
       value: byte(0x42),
     },
     context,
@@ -165,7 +163,7 @@ Deno.test("SE Vx, NN does not skip when the values differ", () => {
 Deno.test("SNE Vx, NN skips when the values differ", () => {
   const registers = new Registers();
   const programCounter = new ProgramCounter(address(0x202));
-  registers.set(registerIndex(0xA), byte(0x41));
+  registers.set(registerIndex(0xa), byte(0x41));
 
   const context = createContext({ registers, programCounter });
   const executor = new InstructionExecutor();
@@ -173,8 +171,8 @@ Deno.test("SNE Vx, NN skips when the values differ", () => {
   executor.execute(
     {
       kind: "skip-not-equal-immediate",
-      opcode: opcode(0x4A42),
-      register: registerIndex(0xA),
+      opcode: opcode(0x4a42),
+      register: registerIndex(0xa),
       value: byte(0x42),
     },
     context,
@@ -186,8 +184,8 @@ Deno.test("SNE Vx, NN skips when the values differ", () => {
 Deno.test("SE Vx, Vy skips when the registers are equal", () => {
   const registers = new Registers();
   const programCounter = new ProgramCounter(address(0x202));
-  registers.set(registerIndex(0xA), byte(0x42));
-  registers.set(registerIndex(0xB), byte(0x42));
+  registers.set(registerIndex(0xa), byte(0x42));
+  registers.set(registerIndex(0xb), byte(0x42));
 
   const context = createContext({ registers, programCounter });
   const executor = new InstructionExecutor();
@@ -195,9 +193,9 @@ Deno.test("SE Vx, Vy skips when the registers are equal", () => {
   executor.execute(
     {
       kind: "skip-equal-register",
-      opcode: opcode(0x5AB0),
-      x: registerIndex(0xA),
-      y: registerIndex(0xB),
+      opcode: opcode(0x5ab0),
+      x: registerIndex(0xa),
+      y: registerIndex(0xb),
     },
     context,
   );
@@ -208,8 +206,8 @@ Deno.test("SE Vx, Vy skips when the registers are equal", () => {
 Deno.test("SNE Vx, Vy skips when the registers differ", () => {
   const registers = new Registers();
   const programCounter = new ProgramCounter(address(0x202));
-  registers.set(registerIndex(0xA), byte(0x42));
-  registers.set(registerIndex(0xB), byte(0x43));
+  registers.set(registerIndex(0xa), byte(0x42));
+  registers.set(registerIndex(0xb), byte(0x43));
 
   const context = createContext({ registers, programCounter });
   const executor = new InstructionExecutor();
@@ -217,9 +215,9 @@ Deno.test("SNE Vx, Vy skips when the registers differ", () => {
   executor.execute(
     {
       kind: "skip-not-equal-register",
-      opcode: opcode(0x9AB0),
-      x: registerIndex(0xA),
-      y: registerIndex(0xB),
+      opcode: opcode(0x9ab0),
+      x: registerIndex(0xa),
+      y: registerIndex(0xb),
     },
     context,
   );
@@ -235,20 +233,20 @@ Deno.test("LD Vx, NN stores the immediate value", () => {
   executor.execute(
     {
       kind: "load-immediate",
-      opcode: opcode(0x6A42),
-      register: registerIndex(0xA),
+      opcode: opcode(0x6a42),
+      register: registerIndex(0xa),
       value: byte(0x42),
     },
     context,
   );
 
-  assertEquals(registers.get(registerIndex(0xA)), byte(0x42));
+  assertEquals(registers.get(registerIndex(0xa)), byte(0x42));
 });
 
 Deno.test("ADD Vx, NN wraps at 0xFF without changing VF", () => {
   const registers = new Registers();
-  registers.set(registerIndex(0xA), byte(0xFF));
-  registers.set(FLAG_REGISTER, byte(0x7F));
+  registers.set(registerIndex(0xa), byte(0xff));
+  registers.set(FLAG_REGISTER, byte(0x7f));
 
   const context = createContext({ registers });
   const executor = new InstructionExecutor();
@@ -256,212 +254,176 @@ Deno.test("ADD Vx, NN wraps at 0xFF without changing VF", () => {
   executor.execute(
     {
       kind: "add-immediate",
-      opcode: opcode(0x7AFF),
-      register: registerIndex(0xA),
-      value: byte(0xFF),
+      opcode: opcode(0x7aff),
+      register: registerIndex(0xa),
+      value: byte(0xff),
     },
     context,
   );
 
-  assertEquals(registers.get(registerIndex(0xA)), byte(0xFE));
-  assertEquals(registers.get(FLAG_REGISTER), byte(0x7F));
+  assertEquals(registers.get(registerIndex(0xa)), byte(0xfe));
+  assertEquals(registers.get(FLAG_REGISTER), byte(0x7f));
 });
 
 Deno.test("LD Vx, Vy copies the source register", () => {
   const registers = new Registers();
-  registers.set(registerIndex(0xA), byte(0x12));
-  registers.set(registerIndex(0xB), byte(0xAB));
+  registers.set(registerIndex(0xa), byte(0x12));
+  registers.set(registerIndex(0xb), byte(0xab));
 
   const context = createContext({ registers });
   const executor = new InstructionExecutor();
 
-  executor.execute(
-    registerOperation("assign", 0xA, 0xB, 0x8AB0),
-    context,
-  );
+  executor.execute(registerOperation("assign", 0xa, 0xb, 0x8ab0), context);
 
-  assertEquals(registers.get(registerIndex(0xA)), byte(0xAB));
+  assertEquals(registers.get(registerIndex(0xa)), byte(0xab));
 });
 
 Deno.test("OR Vx, Vy performs a bitwise OR", () => {
   const registers = new Registers();
-  registers.set(registerIndex(0xA), byte(0b1010_0000));
-  registers.set(registerIndex(0xB), byte(0b0000_1111));
+  registers.set(registerIndex(0xa), byte(0b1010_0000));
+  registers.set(registerIndex(0xb), byte(0b0000_1111));
 
   const context = createContext({ registers });
   const executor = new InstructionExecutor();
 
-  executor.execute(
-    registerOperation("or", 0xA, 0xB, 0x8AB1),
-    context,
-  );
+  executor.execute(registerOperation("or", 0xa, 0xb, 0x8ab1), context);
 
-  assertEquals(registers.get(registerIndex(0xA)), byte(0b1010_1111));
+  assertEquals(registers.get(registerIndex(0xa)), byte(0b1010_1111));
 });
 
 Deno.test("AND Vx, Vy performs a bitwise AND", () => {
   const registers = new Registers();
-  registers.set(registerIndex(0xA), byte(0b1010_1010));
-  registers.set(registerIndex(0xB), byte(0b1111_0000));
+  registers.set(registerIndex(0xa), byte(0b1010_1010));
+  registers.set(registerIndex(0xb), byte(0b1111_0000));
 
   const context = createContext({ registers });
   const executor = new InstructionExecutor();
 
-  executor.execute(
-    registerOperation("and", 0xA, 0xB, 0x8AB2),
-    context,
-  );
+  executor.execute(registerOperation("and", 0xa, 0xb, 0x8ab2), context);
 
-  assertEquals(registers.get(registerIndex(0xA)), byte(0b1010_0000));
+  assertEquals(registers.get(registerIndex(0xa)), byte(0b1010_0000));
 });
 
 Deno.test("XOR Vx, Vy performs a bitwise XOR", () => {
   const registers = new Registers();
-  registers.set(registerIndex(0xA), byte(0b1010_1010));
-  registers.set(registerIndex(0xB), byte(0b1111_0000));
+  registers.set(registerIndex(0xa), byte(0b1010_1010));
+  registers.set(registerIndex(0xb), byte(0b1111_0000));
 
   const context = createContext({ registers });
   const executor = new InstructionExecutor();
 
-  executor.execute(
-    registerOperation("xor", 0xA, 0xB, 0x8AB3),
-    context,
-  );
+  executor.execute(registerOperation("xor", 0xa, 0xb, 0x8ab3), context);
 
-  assertEquals(registers.get(registerIndex(0xA)), byte(0b0101_1010));
+  assertEquals(registers.get(registerIndex(0xa)), byte(0b0101_1010));
 });
 
 Deno.test("ADD Vx, Vy stores the wrapped result and carry in VF", () => {
   const registers = new Registers();
-  registers.set(registerIndex(0xA), byte(0xFF));
-  registers.set(registerIndex(0xB), byte(0x01));
+  registers.set(registerIndex(0xa), byte(0xff));
+  registers.set(registerIndex(0xb), byte(0x01));
 
   const context = createContext({ registers });
   const executor = new InstructionExecutor();
 
-  executor.execute(
-    registerOperation("add", 0xA, 0xB, 0x8AB4),
-    context,
-  );
+  executor.execute(registerOperation("add", 0xa, 0xb, 0x8ab4), context);
 
-  assertEquals(registers.get(registerIndex(0xA)), byte(0x00));
+  assertEquals(registers.get(registerIndex(0xa)), byte(0x00));
   assertEquals(registers.get(FLAG_REGISTER), byte(0x01));
 });
 
 Deno.test("ADD Vx, Vy clears VF when there is no carry", () => {
   const registers = new Registers();
-  registers.set(registerIndex(0xA), byte(0x12));
-  registers.set(registerIndex(0xB), byte(0x34));
-  registers.set(FLAG_REGISTER, byte(0xFF));
+  registers.set(registerIndex(0xa), byte(0x12));
+  registers.set(registerIndex(0xb), byte(0x34));
+  registers.set(FLAG_REGISTER, byte(0xff));
 
   const context = createContext({ registers });
   const executor = new InstructionExecutor();
 
-  executor.execute(
-    registerOperation("add", 0xA, 0xB, 0x8AB4),
-    context,
-  );
+  executor.execute(registerOperation("add", 0xa, 0xb, 0x8ab4), context);
 
-  assertEquals(registers.get(registerIndex(0xA)), byte(0x46));
+  assertEquals(registers.get(registerIndex(0xa)), byte(0x46));
   assertEquals(registers.get(FLAG_REGISTER), byte(0x00));
 });
 
 Deno.test("SUB Vx, Vy stores the result and sets VF when no borrow occurs", () => {
   const registers = new Registers();
-  registers.set(registerIndex(0xA), byte(0x05));
-  registers.set(registerIndex(0xB), byte(0x03));
+  registers.set(registerIndex(0xa), byte(0x05));
+  registers.set(registerIndex(0xb), byte(0x03));
 
   const context = createContext({ registers });
   const executor = new InstructionExecutor();
 
-  executor.execute(
-    registerOperation("subtract", 0xA, 0xB, 0x8AB5),
-    context,
-  );
+  executor.execute(registerOperation("subtract", 0xa, 0xb, 0x8ab5), context);
 
-  assertEquals(registers.get(registerIndex(0xA)), byte(0x02));
+  assertEquals(registers.get(registerIndex(0xa)), byte(0x02));
   assertEquals(registers.get(FLAG_REGISTER), byte(0x01));
 });
 
 Deno.test("SUB Vx, Vy wraps and clears VF when a borrow occurs", () => {
   const registers = new Registers();
-  registers.set(registerIndex(0xA), byte(0x03));
-  registers.set(registerIndex(0xB), byte(0x05));
+  registers.set(registerIndex(0xa), byte(0x03));
+  registers.set(registerIndex(0xb), byte(0x05));
 
   const context = createContext({ registers });
   const executor = new InstructionExecutor();
 
-  executor.execute(
-    registerOperation("subtract", 0xA, 0xB, 0x8AB5),
-    context,
-  );
+  executor.execute(registerOperation("subtract", 0xa, 0xb, 0x8ab5), context);
 
-  assertEquals(registers.get(registerIndex(0xA)), byte(0xFE));
+  assertEquals(registers.get(registerIndex(0xa)), byte(0xfe));
   assertEquals(registers.get(FLAG_REGISTER), byte(0x00));
 });
 
 Deno.test("SHR Vx shifts right and stores the old LSB in VF", () => {
   const registers = new Registers();
-  registers.set(registerIndex(0xA), byte(0b0000_0011));
+  registers.set(registerIndex(0xa), byte(0b0000_0011));
 
   const context = createContext({ registers });
   const executor = new InstructionExecutor();
 
-  executor.execute(
-    registerOperation("shift-right", 0xA, 0xB, 0x8AB6),
-    context,
-  );
+  executor.execute(registerOperation("shift-right", 0xa, 0xb, 0x8ab6), context);
 
-  assertEquals(registers.get(registerIndex(0xA)), byte(0b0000_0001));
+  assertEquals(registers.get(registerIndex(0xa)), byte(0b0000_0001));
   assertEquals(registers.get(FLAG_REGISTER), byte(0x01));
 });
 
 Deno.test("SUBN Vx, Vy computes Vy minus Vx", () => {
   const registers = new Registers();
-  registers.set(registerIndex(0xA), byte(0x03));
-  registers.set(registerIndex(0xB), byte(0x05));
+  registers.set(registerIndex(0xa), byte(0x03));
+  registers.set(registerIndex(0xb), byte(0x05));
 
   const context = createContext({ registers });
   const executor = new InstructionExecutor();
 
-  executor.execute(
-    registerOperation("reverse-subtract", 0xA, 0xB, 0x8AB7),
-    context,
-  );
+  executor.execute(registerOperation("reverse-subtract", 0xa, 0xb, 0x8ab7), context);
 
-  assertEquals(registers.get(registerIndex(0xA)), byte(0x02));
+  assertEquals(registers.get(registerIndex(0xa)), byte(0x02));
   assertEquals(registers.get(FLAG_REGISTER), byte(0x01));
 });
 
 Deno.test("SHL Vx shifts left and stores the old MSB in VF", () => {
   const registers = new Registers();
-  registers.set(registerIndex(0xA), byte(0b1000_0001));
+  registers.set(registerIndex(0xa), byte(0b1000_0001));
 
   const context = createContext({ registers });
   const executor = new InstructionExecutor();
 
-  executor.execute(
-    registerOperation("shift-left", 0xA, 0xB, 0x8ABE),
-    context,
-  );
+  executor.execute(registerOperation("shift-left", 0xa, 0xb, 0x8abe), context);
 
-  assertEquals(registers.get(registerIndex(0xA)), byte(0b0000_0010));
+  assertEquals(registers.get(registerIndex(0xa)), byte(0b0000_0010));
   assertEquals(registers.get(FLAG_REGISTER), byte(0x01));
 });
 
 Deno.test("logical register operations do not modify VF", () => {
   const registers = new Registers();
-  registers.set(registerIndex(0xA), byte(0xF0));
-  registers.set(registerIndex(0xB), byte(0x0F));
+  registers.set(registerIndex(0xa), byte(0xf0));
+  registers.set(registerIndex(0xb), byte(0x0f));
   registers.set(FLAG_REGISTER, byte(0x01));
 
   const context = createContext({ registers });
   const executor = new InstructionExecutor();
 
-  executor.execute(
-    registerOperation("xor", 0xA, 0xB, 0x8AB3),
-    context,
-  );
+  executor.execute(registerOperation("xor", 0xa, 0xb, 0x8ab3), context);
 
   assertEquals(registers.get(FLAG_REGISTER), byte(0x01));
 });
@@ -475,10 +437,7 @@ Deno.test("unsupported instructions throw UnsupportedInstructionError", () => {
     address: address(0x123),
   };
 
-  const error = assertThrows(
-    () => executor.execute(instruction, context),
-    UnsupportedInstructionError,
-  );
+  const error = assertThrows(() => executor.execute(instruction, context), UnsupportedInstructionError);
 
   assertEquals(error.instruction, instruction);
 });

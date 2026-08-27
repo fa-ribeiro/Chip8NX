@@ -23,36 +23,21 @@ Deno.test("address() accepts large non-negative addresses", () => {
 });
 
 Deno.test("address() rejects negative values", () => {
-  assertThrows(
-    () => address(-1),
-    RangeError,
-  );
+  assertThrows(() => address(-1), RangeError);
 });
 
 Deno.test("address() rejects fractional values", () => {
-  assertThrows(
-    () => address(1.5),
-    RangeError,
-  );
+  assertThrows(() => address(1.5), RangeError);
 });
 
 Deno.test("address() rejects NaN", () => {
-  assertThrows(
-    () => address(Number.NaN),
-    RangeError,
-  );
+  assertThrows(() => address(Number.NaN), RangeError);
 });
 
 Deno.test("address() rejects positive infinity", () => {
-  assertThrows(
-    () => address(Number.POSITIVE_INFINITY),
-    RangeError,
-  );
+  assertThrows(() => address(Number.POSITIVE_INFINITY), RangeError);
 });
 
 Deno.test("address() rejects negative infinity", () => {
-  assertThrows(
-    () => address(Number.NEGATIVE_INFINITY),
-    RangeError,
-  );
+  assertThrows(() => address(Number.NEGATIVE_INFINITY), RangeError);
 });

@@ -33,7 +33,7 @@ import type { Opcode } from "../core/types/opcode.ts";
  * N0 occupies bits 15..12.
  */
 export function getN0(opcode: Opcode): number {
-  return (opcode >> 12) & 0x0F;
+  return (opcode >> 12) & 0x0f;
 }
 
 /**
@@ -42,7 +42,7 @@ export function getN0(opcode: Opcode): number {
  * X occupies bits 11..8.
  */
 export function getX(opcode: Opcode): RegisterIndex {
-  return registerIndex((opcode >> 8) & 0x0F);
+  return registerIndex((opcode >> 8) & 0x0f);
 }
 
 /**
@@ -51,7 +51,7 @@ export function getX(opcode: Opcode): RegisterIndex {
  * Y occupies bits 7..4.
  */
 export function getY(opcode: Opcode): RegisterIndex {
-  return registerIndex((opcode >> 4) & 0x0F);
+  return registerIndex((opcode >> 4) & 0x0f);
 }
 
 /**
@@ -60,7 +60,7 @@ export function getY(opcode: Opcode): RegisterIndex {
  * N occupies bits 3..0.
  */
 export function getN(opcode: Opcode): number {
-  return opcode & 0x0F;
+  return opcode & 0x0f;
 }
 
 /**
@@ -69,7 +69,7 @@ export function getN(opcode: Opcode): number {
  * NN occupies bits 7..0.
  */
 export function getNN(opcode: Opcode): Byte {
-  return byte(opcode & 0x00FF);
+  return byte(opcode & 0x00ff);
 }
 
 /**
@@ -78,5 +78,5 @@ export function getNN(opcode: Opcode): Byte {
  * NNN occupies bits 11..0 and represents a memory address.
  */
 export function getNNN(opcode: Opcode): Address {
-  return address(opcode & 0x0FFF);
+  return address(opcode & 0x0fff);
 }

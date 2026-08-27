@@ -28,9 +28,7 @@ export class TestClock implements Clock {
    */
   public advance(amount: Duration): void {
     if (amount < 0n) {
-      throw new RangeError(
-        "TestClock cannot be advanced by a negative duration.",
-      );
+      throw new RangeError("TestClock cannot be advanced by a negative duration.");
     }
 
     this.currentTime = (this.currentTime + amount) as Timestamp;

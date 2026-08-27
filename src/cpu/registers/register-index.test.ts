@@ -11,28 +11,19 @@ Deno.test("RegisterIndex accepts register index 15", () => {
 });
 
 Deno.test("RegisterIndex accepts all valid register indices", () => {
-  for (let index = 0; index <= 0x0F; index++) {
+  for (let index = 0; index <= 0x0f; index++) {
     assertEquals(registerIndex(index), index);
   }
 });
 
 Deno.test("RegisterIndex rejects negative register indices", () => {
-  assertThrows(
-    () => registerIndex(-1),
-    RangeError,
-  );
+  assertThrows(() => registerIndex(-1), RangeError);
 });
 
 Deno.test("RegisterIndex rejects register index 16", () => {
-  assertThrows(
-    () => registerIndex(16),
-    RangeError,
-  );
+  assertThrows(() => registerIndex(16), RangeError);
 });
 
 Deno.test("RegisterIndex rejects fractional register indices", () => {
-  assertThrows(
-    () => registerIndex(1.5),
-    RangeError,
-  );
+  assertThrows(() => registerIndex(1.5), RangeError);
 });

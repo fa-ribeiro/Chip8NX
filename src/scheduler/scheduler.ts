@@ -24,9 +24,7 @@ export class Scheduler {
    *
    * @param clock - Monotonic clock used to measure elapsed time.
    */
-  public constructor(
-    private readonly clock: Clock,
-  ) {
+  public constructor(private readonly clock: Clock) {
     this.previousTimestamp = clock.now();
   }
 
@@ -40,19 +38,12 @@ export class Scheduler {
    * @throws {@link Error}
    * Thrown when a task with the same ID already exists.
    */
-  public addTask(
-    id: string,
-    frequency: Frequency,
-    callback: PeriodicTaskCallback,
-  ): void {
+  public addTask(id: string, frequency: Frequency, callback: PeriodicTaskCallback): void {
     if (this.tasks.has(id)) {
       throw new Error(`Task already exists: ${id}`);
     }
 
-    this.tasks.set(
-      id,
-      new PeriodicTask(id, frequency, callback),
-    );
+    this.tasks.set(id, new PeriodicTask(id, frequency, callback));
   }
 
   /**

@@ -86,19 +86,13 @@ Deno.test("Stack pop removes the top address", () => {
 Deno.test("Stack cannot pop an empty stack", () => {
   const stack = new Stack();
 
-  assertThrows(
-    () => stack.pop(),
-    RangeError,
-  );
+  assertThrows(() => stack.pop(), RangeError);
 });
 
 Deno.test("Stack cannot peek at an empty stack", () => {
   const stack = new Stack();
 
-  assertThrows(
-    () => stack.peek(),
-    RangeError,
-  );
+  assertThrows(() => stack.peek(), RangeError);
 });
 
 Deno.test("Stack cannot push beyond capacity", () => {
@@ -107,10 +101,7 @@ Deno.test("Stack cannot push beyond capacity", () => {
   stack.push(address(0x100));
   stack.push(address(0x200));
 
-  assertThrows(
-    () => stack.push(address(0x300)),
-    RangeError,
-  );
+  assertThrows(() => stack.push(address(0x300)), RangeError);
 });
 
 Deno.test("Stack is full at capacity", () => {
@@ -135,20 +126,11 @@ Deno.test("Stack can be reused after pop", () => {
 });
 
 Deno.test("Stack invalid capacity is rejected", () => {
-  assertThrows(
-    () => new Stack(0),
-    RangeError,
-  );
+  assertThrows(() => new Stack(0), RangeError);
 
-  assertThrows(
-    () => new Stack(-1),
-    RangeError,
-  );
+  assertThrows(() => new Stack(-1), RangeError);
 
-  assertThrows(
-    () => new Stack(1.5),
-    RangeError,
-  );
+  assertThrows(() => new Stack(1.5), RangeError);
 });
 
 Deno.test("Stack snapshot is independent from live stack", () => {
@@ -161,9 +143,6 @@ Deno.test("Stack snapshot is independent from live stack", () => {
 
   stack.pop();
 
-  assertEquals(snapshot, [
-    address(0x200),
-    address(0x300),
-  ]);
+  assertEquals(snapshot, [address(0x200), address(0x300)]);
   assertEquals(stack.getSize(), 1);
 });

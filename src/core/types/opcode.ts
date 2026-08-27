@@ -15,10 +15,8 @@ export type Opcode = number & { readonly __brand: "Opcode" };
  * If `value` is not an integer in the range 0x0000..0xFFFF.
  */
 export function opcode(value: number): Opcode {
-  if (!Number.isInteger(value) || value < 0x0000 || value > 0xFFFF) {
-    throw new RangeError(
-      `Invalid opcode value: ${value}. Expected an integer between 0x0000 and 0xFFFF.`,
-    );
+  if (!Number.isInteger(value) || value < 0x0000 || value > 0xffff) {
+    throw new RangeError(`Invalid opcode value: ${value}. Expected an integer between 0x0000 and 0xFFFF.`);
   }
 
   return value as Opcode;

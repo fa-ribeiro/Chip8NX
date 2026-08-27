@@ -6,10 +6,7 @@ import { DEFAULT_PROGRAM_START_ADDRESS, ProgramCounter } from "./program-counter
 Deno.test("Program Counter starts at the default program address", () => {
   const pc = new ProgramCounter();
 
-  assertEquals(
-    pc.getValue(),
-    DEFAULT_PROGRAM_START_ADDRESS,
-  );
+  assertEquals(pc.getValue(), DEFAULT_PROGRAM_START_ADDRESS);
 });
 
 Deno.test("Program Counter can start at a custom address", () => {
@@ -17,10 +14,7 @@ Deno.test("Program Counter can start at a custom address", () => {
 
   const pc = new ProgramCounter(initialAddress);
 
-  assertEquals(
-    pc.getValue(),
-    initialAddress,
-  );
+  assertEquals(pc.getValue(), initialAddress);
 });
 
 Deno.test("Program Counter setValue changes the program counter", () => {
@@ -30,10 +24,7 @@ Deno.test("Program Counter setValue changes the program counter", () => {
 
   pc.setValue(newAddress);
 
-  assertEquals(
-    pc.getValue(),
-    newAddress,
-  );
+  assertEquals(pc.getValue(), newAddress);
 });
 
 Deno.test("Program Counter advance moves to the next instruction", () => {
@@ -41,10 +32,7 @@ Deno.test("Program Counter advance moves to the next instruction", () => {
 
   pc.advance();
 
-  assertEquals(
-    pc.getValue(),
-    address(0x202),
-  );
+  assertEquals(pc.getValue(), address(0x202));
 });
 
 Deno.test("Program Counter advance increments by exactly one instruction", () => {
@@ -54,8 +42,5 @@ Deno.test("Program Counter advance increments by exactly one instruction", () =>
   pc.advance();
   pc.advance();
 
-  assertEquals(
-    pc.getValue(),
-    address(0x206),
-  );
+  assertEquals(pc.getValue(), address(0x206));
 });

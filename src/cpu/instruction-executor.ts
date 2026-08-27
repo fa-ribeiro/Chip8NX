@@ -1,4 +1,5 @@
-import { byte } from "../core/types/byte.ts";
+import { address } from "../core/types/address.ts";
+import { Byte, byte } from "../core/types/byte.ts";
 import type { Instruction } from "../instruction/instruction.ts";
 import { add8, shiftLeft8, shiftRight8, subtract8 } from "./arithmetic/arithmetic.ts";
 import type { ExecutionContext } from "./execution-context.ts";
@@ -7,7 +8,7 @@ import { registerIndex } from "./registers/register-index.ts";
 /**
  * Index of the CHIP-8 VF flag register.
  */
-export const FLAG_REGISTER = registerIndex(0xF);
+export const FLAG_REGISTER = registerIndex(0xf);
 
 /**
  * Executes decoded CHIP-8 instructions against an execution context.
@@ -24,10 +25,7 @@ export class InstructionExecutor {
    * method only performs program-counter changes that are explicit effects
    * of the instruction itself, such as jumps, calls, returns, and skips.
    */
-  public execute(
-    instruction: Instruction,
-    context: ExecutionContext,
-  ): void {
+  public execute(instruction: Instruction, context: ExecutionContext): void {
     switch (instruction.kind) {
       case "clear-screen":
         context.displayBuffer.clear();
@@ -47,35 +45,25 @@ export class InstructionExecutor {
         return;
 
       case "skip-equal-immediate":
-        if (
-          context.registers.get(instruction.register) === instruction.value
-        ) {
+        if (context.registers.get(instruction.register) === instruction.value) {
           context.programCounter.advance();
         }
         return;
 
       case "skip-not-equal-immediate":
-        if (
-          context.registers.get(instruction.register) !== instruction.value
-        ) {
+        if (context.registers.get(instruction.register) !== instruction.value) {
           context.programCounter.advance();
         }
         return;
 
       case "skip-equal-register":
-        if (
-          context.registers.get(instruction.x) ===
-            context.registers.get(instruction.y)
-        ) {
+        if (context.registers.get(instruction.x) === context.registers.get(instruction.y)) {
           context.programCounter.advance();
         }
         return;
 
       case "skip-not-equal-register":
-        if (
-          context.registers.get(instruction.x) !==
-            context.registers.get(instruction.y)
-        ) {
+        if (context.registers.get(instruction.x) !== context.registers.get(instruction.y)) {
           context.programCounter.advance();
         }
         return;
@@ -85,10 +73,7 @@ export class InstructionExecutor {
         return;
 
       case "add-immediate": {
-        const result = add8(
-          context.registers.get(instruction.register),
-          instruction.value,
-        );
+        const result = add8(context.registers.get(instruction.register), instruction.value);
 
         context.registers.set(instruction.register, result.value);
         return;
@@ -97,6 +82,24 @@ export class InstructionExecutor {
       case "register-operation":
         this.executeRegisterOperation(instruction, context);
         return;
+
+      case "draw-sprite": {
+        const x = context.registers.get(instruction.x);
+        const y = context.registers.get(instruction.y);
+        const startAddress = context.indexRegister.getValue();
+
+        const sprite: Byte[] = [];
+
+        for (let row = 0; row < instruction.height; row++) {
+          sprite.push(context.memory.read(address(startAddress + row)));
+        }
+
+        const collision = context.displayBuffer.drawSprite(x, y, sprite);
+
+        context.registers.set(FLAG_REGISTER, byte(collision ? 1 : 0));
+
+        return;
+      }
 
       default:
         throw new UnsupportedInstructionError(instruction);
@@ -131,10 +134,7 @@ export class InstructionExecutor {
         const result = add8(x, y);
 
         context.registers.set(instruction.x, result.value);
-        context.registers.set(
-          FLAG_REGISTER,
-          byte(result.flag ? 1 : 0),
-        );
+        context.registers.set(FLAG_REGISTER, byte(result.flag ? 1 : 0));
         return;
       }
 
@@ -142,10 +142,7 @@ export class InstructionExecutor {
         const result = subtract8(x, y);
 
         context.registers.set(instruction.x, result.value);
-        context.registers.set(
-          FLAG_REGISTER,
-          byte(result.flag ? 1 : 0),
-        );
+        context.registers.set(FLAG_REGISTER, byte(result.flag ? 1 : 0));
         return;
       }
 
@@ -153,10 +150,7 @@ export class InstructionExecutor {
         const result = shiftRight8(x);
 
         context.registers.set(instruction.x, result.value);
-        context.registers.set(
-          FLAG_REGISTER,
-          byte(result.flag ? 1 : 0),
-        );
+        context.registers.set(FLAG_REGISTER, byte(result.flag ? 1 : 0));
         return;
       }
 
@@ -164,10 +158,7 @@ export class InstructionExecutor {
         const result = subtract8(y, x);
 
         context.registers.set(instruction.x, result.value);
-        context.registers.set(
-          FLAG_REGISTER,
-          byte(result.flag ? 1 : 0),
-        );
+        context.registers.set(FLAG_REGISTER, byte(result.flag ? 1 : 0));
         return;
       }
 
@@ -175,10 +166,7 @@ export class InstructionExecutor {
         const result = shiftLeft8(x);
 
         context.registers.set(instruction.x, result.value);
-        context.registers.set(
-          FLAG_REGISTER,
-          byte(result.flag ? 1 : 0),
-        );
+        context.registers.set(FLAG_REGISTER, byte(result.flag ? 1 : 0));
         return;
       }
     }

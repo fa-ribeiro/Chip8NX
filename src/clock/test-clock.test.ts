@@ -37,10 +37,7 @@ Deno.test("TestClock accepts a zero duration", () => {
 Deno.test("TestClock rejects a negative duration", () => {
   const clock = new TestClock();
 
-  assertThrows(
-    () => clock.advance(duration(-1n as Duration)),
-    RangeError,
-  );
+  assertThrows(() => clock.advance(duration(-1n as Duration)), RangeError);
 });
 
 Deno.test("TestClock remains unchanged when advance throws", () => {
@@ -48,10 +45,7 @@ Deno.test("TestClock remains unchanged when advance throws", () => {
 
   clock.advance(duration(1_000_000_000n as Duration));
 
-  assertThrows(
-    () => clock.advance(duration(-1n as Duration)),
-    RangeError,
-  );
+  assertThrows(() => clock.advance(duration(-1n as Duration)), RangeError);
 
   assertEquals(clock.now(), 1_000_000_000n);
 });

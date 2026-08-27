@@ -1,3 +1,5 @@
+import { Byte } from "../core/types/byte.ts";
+
 /**
  * Represents the graphical state of a CHIP-8 display.
  *
@@ -56,17 +58,11 @@ export class DisplayBuffer {
    */
   constructor(width: number, height: number) {
     if (!Number.isInteger(width) || width <= 0) {
-      throw new RangeError(
-        `Invalid display width: ${width}. ` +
-          `Expected a positive integer.`,
-      );
+      throw new RangeError(`Invalid display width: ${width}. ` + `Expected a positive integer.`);
     }
 
     if (!Number.isInteger(height) || height <= 0) {
-      throw new RangeError(
-        `Invalid display height: ${height}. ` +
-          `Expected a positive integer.`,
-      );
+      throw new RangeError(`Invalid display height: ${height}. ` + `Expected a positive integer.`);
     }
 
     this.width = width;
@@ -129,20 +125,57 @@ export class DisplayBuffer {
   private getIndex(x: number, y: number): number {
     if (!Number.isInteger(x) || x < 0 || x >= this.width) {
       throw new RangeError(
-        `Invalid display X coordinate: ${x}. ` +
-          `Expected an integer between 0 and ${this.width - 1}.`,
+        `Invalid display X coordinate: ${x}. ` + `Expected an integer between 0 and ${this.width - 1}.`,
       );
     }
 
-    if (
-      !Number.isInteger(y) || y < 0 || y >= this.height
-    ) {
+    if (!Number.isInteger(y) || y < 0 || y >= this.height) {
       throw new RangeError(
-        `Invalid display Y coordinate: ${y}. ` +
-          `Expected an integer between 0 and ${this.height - 1}.`,
+        `Invalid display Y coordinate: ${y}. ` + `Expected an integer between 0 and ${this.height - 1}.`,
       );
     }
 
     return y * this.width + x;
+  }
+
+  public drawSprite(x: number, y: number, sprite: readonly Byte[]): boolean {
+    const originX = x % this.width;
+    const originY = y % this.height;
+
+    let collision = false;
+
+    for (let row = 0; row < sprite.length; row++) {
+      const targetY = originY + row;
+
+      if (targetY >= this.height) {
+        break;
+      }
+
+      const spriteByte = sprite[row];
+
+      for (let bit = 0; bit < 8; bit++) {
+        const targetX = originX + bit;
+
+        if (targetX >= this.width) {
+          break;
+        }
+
+        const spritePixel = (spriteByte & (0x80 >> bit)) !== 0;
+
+        if (!spritePixel) {
+          continue;
+        }
+
+        const currentPixel = this.getPixel(targetX, targetY);
+
+        if (currentPixel) {
+          collision = true;
+        }
+
+        this.setPixel(targetX, targetY, !currentPixel);
+      }
+    }
+
+    return collision;
   }
 }

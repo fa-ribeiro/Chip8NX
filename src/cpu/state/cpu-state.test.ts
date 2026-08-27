@@ -16,27 +16,24 @@ Deno.test("CpuState represents a CPU snapshot", () => {
       byte(0x70),
       byte(0x80),
       byte(0x90),
-      byte(0xA0),
-      byte(0xB0),
-      byte(0xC0),
-      byte(0xD0),
-      byte(0xE0),
-      byte(0xF0),
-      byte(0xFF),
+      byte(0xa0),
+      byte(0xb0),
+      byte(0xc0),
+      byte(0xd0),
+      byte(0xe0),
+      byte(0xf0),
+      byte(0xff),
     ],
     index: address(0x300),
     programCounter: address(0x200),
-    stack: [
-      address(0x220),
-      address(0x240),
-    ],
+    stack: [address(0x220), address(0x240)],
     delayTimer: byte(10),
     soundTimer: byte(20),
   };
 
   assertEquals(state.registers.length, 16);
   assertEquals(state.registers[0], byte(0x10));
-  assertEquals(state.registers[15], byte(0xFF));
+  assertEquals(state.registers[15], byte(0xff));
 
   assertEquals(state.index, address(0x300));
   assertEquals(state.programCounter, address(0x200));

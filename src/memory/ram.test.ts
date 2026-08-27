@@ -17,10 +17,7 @@ Deno.test("Ram can write and read a byte", () => {
 
   memory.write(address(0x200), byte(0x42));
 
-  assertEquals(
-    memory.read(address(0x200)),
-    byte(0x42),
-  );
+  assertEquals(memory.read(address(0x200)), byte(0x42));
 });
 
 Deno.test("Ram writes to different addresses are independent", () => {
@@ -52,38 +49,23 @@ Deno.test("Ram can access the last address", () => {
 Deno.test("Ram read throws when address is outside the address space", () => {
   const memory = new Ram(0x1000);
 
-  assertThrows(
-    () => memory.read(address(0x1000)),
-    RangeError,
-  );
+  assertThrows(() => memory.read(address(0x1000)), RangeError);
 });
 
 Deno.test("Ram write throws when address is outside the address space", () => {
   const memory = new Ram(0x1000);
 
-  assertThrows(
-    () => memory.write(address(0x1000), byte(0x42)),
-    RangeError,
-  );
+  assertThrows(() => memory.write(address(0x1000), byte(0x42)), RangeError);
 });
 
 Deno.test("Ram rejects a zero-sized memory", () => {
-  assertThrows(
-    () => new Ram(0),
-    RangeError,
-  );
+  assertThrows(() => new Ram(0), RangeError);
 });
 
 Deno.test("Ram rejects a negative size", () => {
-  assertThrows(
-    () => new Ram(-1),
-    RangeError,
-  );
+  assertThrows(() => new Ram(-1), RangeError);
 });
 
 Deno.test("Ram rejects a fractional size", () => {
-  assertThrows(
-    () => new Ram(1.5),
-    RangeError,
-  );
+  assertThrows(() => new Ram(1.5), RangeError);
 });

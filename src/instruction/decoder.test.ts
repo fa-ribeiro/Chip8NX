@@ -9,16 +9,16 @@ import { Decoder, InvalidOpcodeError } from "./decoder.ts";
 const decoder = new Decoder();
 
 Deno.test("decodes 00E0 as clear screen", () => {
-  assertEquals(decoder.decode(opcode(0x00E0)), {
+  assertEquals(decoder.decode(opcode(0x00e0)), {
     kind: "clear-screen",
-    opcode: opcode(0x00E0),
+    opcode: opcode(0x00e0),
   });
 });
 
 Deno.test("decodes 00EE as return", () => {
-  assertEquals(decoder.decode(opcode(0x00EE)), {
+  assertEquals(decoder.decode(opcode(0x00ee)), {
     kind: "return",
-    opcode: opcode(0x00EE),
+    opcode: opcode(0x00ee),
   });
 });
 
@@ -31,319 +31,304 @@ Deno.test("decodes 0NNN as system call", () => {
 });
 
 Deno.test("decodes 1NNN as jump", () => {
-  assertEquals(decoder.decode(opcode(0x1ABC)), {
+  assertEquals(decoder.decode(opcode(0x1abc)), {
     kind: "jump",
-    opcode: opcode(0x1ABC),
-    address: address(0xABC),
+    opcode: opcode(0x1abc),
+    address: address(0xabc),
   });
 });
 
 Deno.test("decodes 2NNN as call", () => {
-  assertEquals(decoder.decode(opcode(0x2ABC)), {
+  assertEquals(decoder.decode(opcode(0x2abc)), {
     kind: "call",
-    opcode: opcode(0x2ABC),
-    address: address(0xABC),
+    opcode: opcode(0x2abc),
+    address: address(0xabc),
   });
 });
 
 Deno.test("decodes 3XNN", () => {
-  assertEquals(decoder.decode(opcode(0x3A42)), {
+  assertEquals(decoder.decode(opcode(0x3a42)), {
     kind: "skip-equal-immediate",
-    opcode: opcode(0x3A42),
-    register: registerIndex(0xA),
+    opcode: opcode(0x3a42),
+    register: registerIndex(0xa),
     value: byte(0x42),
   });
 });
 
 Deno.test("decodes 4XNN", () => {
-  assertEquals(decoder.decode(opcode(0x4A42)), {
+  assertEquals(decoder.decode(opcode(0x4a42)), {
     kind: "skip-not-equal-immediate",
-    opcode: opcode(0x4A42),
-    register: registerIndex(0xA),
+    opcode: opcode(0x4a42),
+    register: registerIndex(0xa),
     value: byte(0x42),
   });
 });
 
 Deno.test("decodes 5XY0", () => {
-  assertEquals(decoder.decode(opcode(0x5AB0)), {
+  assertEquals(decoder.decode(opcode(0x5ab0)), {
     kind: "skip-equal-register",
-    opcode: opcode(0x5AB0),
-    x: registerIndex(0xA),
-    y: registerIndex(0xB),
+    opcode: opcode(0x5ab0),
+    x: registerIndex(0xa),
+    y: registerIndex(0xb),
   });
 });
 
 Deno.test("decodes 6XNN", () => {
-  assertEquals(decoder.decode(opcode(0x6A42)), {
+  assertEquals(decoder.decode(opcode(0x6a42)), {
     kind: "load-immediate",
-    opcode: opcode(0x6A42),
-    register: registerIndex(0xA),
+    opcode: opcode(0x6a42),
+    register: registerIndex(0xa),
     value: byte(0x42),
   });
 });
 
 Deno.test("decodes 7XNN", () => {
-  assertEquals(decoder.decode(opcode(0x7A42)), {
+  assertEquals(decoder.decode(opcode(0x7a42)), {
     kind: "add-immediate",
-    opcode: opcode(0x7A42),
-    register: registerIndex(0xA),
+    opcode: opcode(0x7a42),
+    register: registerIndex(0xa),
     value: byte(0x42),
   });
 });
 
 Deno.test("decodes 8XY0", () => {
-  assertEquals(decoder.decode(opcode(0x8AB0)), {
+  assertEquals(decoder.decode(opcode(0x8ab0)), {
     kind: "register-operation",
-    opcode: opcode(0x8AB0),
+    opcode: opcode(0x8ab0),
     operation: "assign",
-    x: registerIndex(0xA),
-    y: registerIndex(0xB),
+    x: registerIndex(0xa),
+    y: registerIndex(0xb),
   });
 });
 
 Deno.test("decodes 8XY1", () => {
-  assertEquals(decoder.decode(opcode(0x8AB1)), {
+  assertEquals(decoder.decode(opcode(0x8ab1)), {
     kind: "register-operation",
-    opcode: opcode(0x8AB1),
+    opcode: opcode(0x8ab1),
     operation: "or",
-    x: registerIndex(0xA),
-    y: registerIndex(0xB),
+    x: registerIndex(0xa),
+    y: registerIndex(0xb),
   });
 });
 
 Deno.test("decodes 8XY2", () => {
-  assertEquals(decoder.decode(opcode(0x8AB2)), {
+  assertEquals(decoder.decode(opcode(0x8ab2)), {
     kind: "register-operation",
-    opcode: opcode(0x8AB2),
+    opcode: opcode(0x8ab2),
     operation: "and",
-    x: registerIndex(0xA),
-    y: registerIndex(0xB),
+    x: registerIndex(0xa),
+    y: registerIndex(0xb),
   });
 });
 
 Deno.test("decodes 8XY3", () => {
-  assertEquals(decoder.decode(opcode(0x8AB3)), {
+  assertEquals(decoder.decode(opcode(0x8ab3)), {
     kind: "register-operation",
-    opcode: opcode(0x8AB3),
+    opcode: opcode(0x8ab3),
     operation: "xor",
-    x: registerIndex(0xA),
-    y: registerIndex(0xB),
+    x: registerIndex(0xa),
+    y: registerIndex(0xb),
   });
 });
 
 Deno.test("decodes 8XY4", () => {
-  assertEquals(decoder.decode(opcode(0x8AB4)), {
+  assertEquals(decoder.decode(opcode(0x8ab4)), {
     kind: "register-operation",
-    opcode: opcode(0x8AB4),
+    opcode: opcode(0x8ab4),
     operation: "add",
-    x: registerIndex(0xA),
-    y: registerIndex(0xB),
+    x: registerIndex(0xa),
+    y: registerIndex(0xb),
   });
 });
 
 Deno.test("decodes 8XY5", () => {
-  assertEquals(decoder.decode(opcode(0x8AB5)), {
+  assertEquals(decoder.decode(opcode(0x8ab5)), {
     kind: "register-operation",
-    opcode: opcode(0x8AB5),
+    opcode: opcode(0x8ab5),
     operation: "subtract",
-    x: registerIndex(0xA),
-    y: registerIndex(0xB),
+    x: registerIndex(0xa),
+    y: registerIndex(0xb),
   });
 });
 
 Deno.test("decodes 8XY6", () => {
-  assertEquals(decoder.decode(opcode(0x8AB6)), {
+  assertEquals(decoder.decode(opcode(0x8ab6)), {
     kind: "register-operation",
-    opcode: opcode(0x8AB6),
+    opcode: opcode(0x8ab6),
     operation: "shift-right",
-    x: registerIndex(0xA),
-    y: registerIndex(0xB),
+    x: registerIndex(0xa),
+    y: registerIndex(0xb),
   });
 });
 
 Deno.test("decodes 8XY7", () => {
-  assertEquals(decoder.decode(opcode(0x8AB7)), {
+  assertEquals(decoder.decode(opcode(0x8ab7)), {
     kind: "register-operation",
-    opcode: opcode(0x8AB7),
+    opcode: opcode(0x8ab7),
     operation: "reverse-subtract",
-    x: registerIndex(0xA),
-    y: registerIndex(0xB),
+    x: registerIndex(0xa),
+    y: registerIndex(0xb),
   });
 });
 
 Deno.test("decodes 8XYE", () => {
-  assertEquals(decoder.decode(opcode(0x8ABE)), {
+  assertEquals(decoder.decode(opcode(0x8abe)), {
     kind: "register-operation",
-    opcode: opcode(0x8ABE),
+    opcode: opcode(0x8abe),
     operation: "shift-left",
-    x: registerIndex(0xA),
-    y: registerIndex(0xB),
+    x: registerIndex(0xa),
+    y: registerIndex(0xb),
   });
 });
 
 Deno.test("decodes 9XY0", () => {
-  assertEquals(decoder.decode(opcode(0x9AB0)), {
+  assertEquals(decoder.decode(opcode(0x9ab0)), {
     kind: "skip-not-equal-register",
-    opcode: opcode(0x9AB0),
-    x: registerIndex(0xA),
-    y: registerIndex(0xB),
+    opcode: opcode(0x9ab0),
+    x: registerIndex(0xa),
+    y: registerIndex(0xb),
   });
 });
 
 Deno.test("decodes ANNN", () => {
-  assertEquals(decoder.decode(opcode(0xAABC)), {
+  assertEquals(decoder.decode(opcode(0xaabc)), {
     kind: "set-index",
-    opcode: opcode(0xAABC),
-    address: address(0xABC),
+    opcode: opcode(0xaabc),
+    address: address(0xabc),
   });
 });
 
 Deno.test("decodes BNNN", () => {
-  assertEquals(decoder.decode(opcode(0xBABC)), {
+  assertEquals(decoder.decode(opcode(0xbabc)), {
     kind: "jump-with-offset",
-    opcode: opcode(0xBABC),
-    address: address(0xABC),
+    opcode: opcode(0xbabc),
+    address: address(0xabc),
   });
 });
 
 Deno.test("decodes CXNN", () => {
-  assertEquals(decoder.decode(opcode(0xCA42)), {
+  assertEquals(decoder.decode(opcode(0xca42)), {
     kind: "random-and",
-    opcode: opcode(0xCA42),
-    register: registerIndex(0xA),
+    opcode: opcode(0xca42),
+    register: registerIndex(0xa),
     mask: byte(0x42),
   });
 });
 
 Deno.test("decodes DXYN", () => {
-  assertEquals(decoder.decode(opcode(0xDAB5)), {
+  assertEquals(decoder.decode(opcode(0xdab5)), {
     kind: "draw",
-    opcode: opcode(0xDAB5),
-    x: registerIndex(0xA),
-    y: registerIndex(0xB),
+    opcode: opcode(0xdab5),
+    x: registerIndex(0xa),
+    y: registerIndex(0xb),
     height: 5,
   });
 });
 
 Deno.test("decodes EX9E", () => {
-  assertEquals(decoder.decode(opcode(0xEA9E)), {
+  assertEquals(decoder.decode(opcode(0xea9e)), {
     kind: "skip-key-pressed",
-    opcode: opcode(0xEA9E),
-    register: registerIndex(0xA),
+    opcode: opcode(0xea9e),
+    register: registerIndex(0xa),
   });
 });
 
 Deno.test("decodes EXA1", () => {
-  assertEquals(decoder.decode(opcode(0xEAA1)), {
+  assertEquals(decoder.decode(opcode(0xeaa1)), {
     kind: "skip-key-not-pressed",
-    opcode: opcode(0xEAA1),
-    register: registerIndex(0xA),
+    opcode: opcode(0xeaa1),
+    register: registerIndex(0xa),
   });
 });
 
 Deno.test("decodes FX07", () => {
-  assertEquals(decoder.decode(opcode(0xFA07)), {
+  assertEquals(decoder.decode(opcode(0xfa07)), {
     kind: "get-delay-timer",
-    opcode: opcode(0xFA07),
-    register: registerIndex(0xA),
+    opcode: opcode(0xfa07),
+    register: registerIndex(0xa),
   });
 });
 
 Deno.test("decodes FX0A", () => {
-  assertEquals(decoder.decode(opcode(0xFA0A)), {
+  assertEquals(decoder.decode(opcode(0xfa0a)), {
     kind: "wait-for-key",
-    opcode: opcode(0xFA0A),
-    register: registerIndex(0xA),
+    opcode: opcode(0xfa0a),
+    register: registerIndex(0xa),
   });
 });
 
 Deno.test("decodes FX15", () => {
-  assertEquals(decoder.decode(opcode(0xFA15)), {
+  assertEquals(decoder.decode(opcode(0xfa15)), {
     kind: "set-delay-timer",
-    opcode: opcode(0xFA15),
-    register: registerIndex(0xA),
+    opcode: opcode(0xfa15),
+    register: registerIndex(0xa),
   });
 });
 
 Deno.test("decodes FX18", () => {
-  assertEquals(decoder.decode(opcode(0xFA18)), {
+  assertEquals(decoder.decode(opcode(0xfa18)), {
     kind: "set-sound-timer",
-    opcode: opcode(0xFA18),
-    register: registerIndex(0xA),
+    opcode: opcode(0xfa18),
+    register: registerIndex(0xa),
   });
 });
 
 Deno.test("decodes FX1E", () => {
-  assertEquals(decoder.decode(opcode(0xFA1E)), {
+  assertEquals(decoder.decode(opcode(0xfa1e)), {
     kind: "add-to-index",
-    opcode: opcode(0xFA1E),
-    register: registerIndex(0xA),
+    opcode: opcode(0xfa1e),
+    register: registerIndex(0xa),
   });
 });
 
 Deno.test("decodes FX29", () => {
-  assertEquals(decoder.decode(opcode(0xFA29)), {
+  assertEquals(decoder.decode(opcode(0xfa29)), {
     kind: "set-index-to-sprite",
-    opcode: opcode(0xFA29),
-    register: registerIndex(0xA),
+    opcode: opcode(0xfa29),
+    register: registerIndex(0xa),
   });
 });
 
 Deno.test("decodes FX33", () => {
-  assertEquals(decoder.decode(opcode(0xFA33)), {
+  assertEquals(decoder.decode(opcode(0xfa33)), {
     kind: "store-bcd",
-    opcode: opcode(0xFA33),
-    register: registerIndex(0xA),
+    opcode: opcode(0xfa33),
+    register: registerIndex(0xa),
   });
 });
 
 Deno.test("decodes FX55", () => {
-  assertEquals(decoder.decode(opcode(0xFA55)), {
+  assertEquals(decoder.decode(opcode(0xfa55)), {
     kind: "store-registers",
-    opcode: opcode(0xFA55),
-    register: registerIndex(0xA),
+    opcode: opcode(0xfa55),
+    register: registerIndex(0xa),
   });
 });
 
 Deno.test("decodes FX65", () => {
-  assertEquals(decoder.decode(opcode(0xFA65)), {
+  assertEquals(decoder.decode(opcode(0xfa65)), {
     kind: "load-registers",
-    opcode: opcode(0xFA65),
-    register: registerIndex(0xA),
+    opcode: opcode(0xfa65),
+    register: registerIndex(0xa),
   });
 });
 
 Deno.test("rejects invalid 5XYN opcode", () => {
-  assertThrows(
-    () => decoder.decode(opcode(0x5AB1)),
-    InvalidOpcodeError,
-  );
+  assertThrows(() => decoder.decode(opcode(0x5ab1)), InvalidOpcodeError);
 });
 
 Deno.test("rejects invalid 8XYN opcode", () => {
-  assertThrows(
-    () => decoder.decode(opcode(0x8AB8)),
-    InvalidOpcodeError,
-  );
+  assertThrows(() => decoder.decode(opcode(0x8ab8)), InvalidOpcodeError);
 });
 
 Deno.test("rejects invalid 9XYN opcode", () => {
-  assertThrows(
-    () => decoder.decode(opcode(0x9AB1)),
-    InvalidOpcodeError,
-  );
+  assertThrows(() => decoder.decode(opcode(0x9ab1)), InvalidOpcodeError);
 });
 
 Deno.test("rejects invalid EXNN opcode", () => {
-  assertThrows(
-    () => decoder.decode(opcode(0xEAFF)),
-    InvalidOpcodeError,
-  );
+  assertThrows(() => decoder.decode(opcode(0xeaff)), InvalidOpcodeError);
 });
 
 Deno.test("rejects invalid FXNN opcode", () => {
-  assertThrows(
-    () => decoder.decode(opcode(0xFAFF)),
-    InvalidOpcodeError,
-  );
+  assertThrows(() => decoder.decode(opcode(0xfaff)), InvalidOpcodeError);
 });

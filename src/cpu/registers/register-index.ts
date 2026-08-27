@@ -16,9 +16,7 @@ export type RegisterIndex = number & { readonly __brand: "RegisterIndex" };
  */
 export function registerIndex(value: number): RegisterIndex {
   if (!Number.isInteger(value) || value < 0 || value > 0x0f) {
-    throw new RangeError(
-      `Invalid CHIP-8 register index: ${value}`,
-    );
+    throw new RangeError(`Invalid CHIP-8 register index: ${value}`);
   }
 
   return value as RegisterIndex;

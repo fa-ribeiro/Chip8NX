@@ -15,43 +15,25 @@ Deno.test("byte() accepts the maximum value", () => {
 });
 
 Deno.test("byte() rejects negative values", () => {
-  assertThrows(
-    () => byte(-1),
-    RangeError,
-  );
+  assertThrows(() => byte(-1), RangeError);
 });
 
 Deno.test("byte() rejects values greater than 0xFF", () => {
-  assertThrows(
-    () => byte(0x100),
-    RangeError,
-  );
+  assertThrows(() => byte(0x100), RangeError);
 });
 
 Deno.test("byte() rejects fractional values", () => {
-  assertThrows(
-    () => byte(1.5),
-    RangeError,
-  );
+  assertThrows(() => byte(1.5), RangeError);
 });
 
 Deno.test("byte() rejects NaN", () => {
-  assertThrows(
-    () => byte(Number.NaN),
-    RangeError,
-  );
+  assertThrows(() => byte(Number.NaN), RangeError);
 });
 
 Deno.test("byte() rejects positive infinity", () => {
-  assertThrows(
-    () => byte(Number.POSITIVE_INFINITY),
-    RangeError,
-  );
+  assertThrows(() => byte(Number.POSITIVE_INFINITY), RangeError);
 });
 
 Deno.test("byte() rejects negative infinity", () => {
-  assertThrows(
-    () => byte(Number.NEGATIVE_INFINITY),
-    RangeError,
-  );
+  assertThrows(() => byte(Number.NEGATIVE_INFINITY), RangeError);
 });

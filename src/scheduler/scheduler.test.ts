@@ -11,13 +11,9 @@ Deno.test("does not execute tasks before they are due", () => {
 
   let executions = 0;
 
-  scheduler.addTask(
-    "test",
-    Frequency.fromInteger(100n),
-    () => {
-      executions++;
-    },
-  );
+  scheduler.addTask("test", Frequency.fromInteger(100n), () => {
+    executions++;
+  });
 
   clock.advance(duration(5_000_000n as Duration));
   scheduler.tick();
@@ -31,13 +27,9 @@ Deno.test("executes a task when it becomes due", () => {
 
   let executions = 0;
 
-  scheduler.addTask(
-    "test",
-    Frequency.fromInteger(100n),
-    () => {
-      executions++;
-    },
-  );
+  scheduler.addTask("test", Frequency.fromInteger(100n), () => {
+    executions++;
+  });
 
   clock.advance(duration(10_000_000n as Duration));
   scheduler.tick();
@@ -51,13 +43,9 @@ Deno.test("passes elapsed time to tasks through the scheduler clock", () => {
 
   let executions = 0;
 
-  scheduler.addTask(
-    "test",
-    Frequency.fromInteger(100n),
-    () => {
-      executions++;
-    },
-  );
+  scheduler.addTask("test", Frequency.fromInteger(100n), () => {
+    executions++;
+  });
 
   clock.advance(duration(50_000_000n as Duration));
   scheduler.tick();
@@ -72,21 +60,13 @@ Deno.test("supports multiple tasks with different frequencies", () => {
   let fastExecutions = 0;
   let slowExecutions = 0;
 
-  scheduler.addTask(
-    "fast",
-    Frequency.fromInteger(100n),
-    () => {
-      fastExecutions++;
-    },
-  );
+  scheduler.addTask("fast", Frequency.fromInteger(100n), () => {
+    fastExecutions++;
+  });
 
-  scheduler.addTask(
-    "slow",
-    Frequency.fromInteger(20n),
-    () => {
-      slowExecutions++;
-    },
-  );
+  scheduler.addTask("slow", Frequency.fromInteger(20n), () => {
+    slowExecutions++;
+  });
 
   clock.advance(duration(100_000_000n as Duration));
   scheduler.tick();
@@ -101,48 +81,29 @@ Deno.test("executes tasks in registration order", () => {
 
   const executionOrder: string[] = [];
 
-  scheduler.addTask(
-    "first",
-    Frequency.fromInteger(1n),
-    () => {
-      executionOrder.push("first");
-    },
-  );
+  scheduler.addTask("first", Frequency.fromInteger(1n), () => {
+    executionOrder.push("first");
+  });
 
-  scheduler.addTask(
-    "second",
-    Frequency.fromInteger(1n),
-    () => {
-      executionOrder.push("second");
-    },
-  );
+  scheduler.addTask("second", Frequency.fromInteger(1n), () => {
+    executionOrder.push("second");
+  });
 
   clock.advance(duration(1_000_000_000n as Duration));
   scheduler.tick();
 
-  assertEquals(
-    executionOrder,
-    ["first", "second"],
-  );
+  assertEquals(executionOrder, ["first", "second"]);
 });
 
 Deno.test("rejects duplicate task IDs", () => {
   const clock = new TestClock();
   const scheduler = new Scheduler(clock);
 
-  scheduler.addTask(
-    "test",
-    Frequency.fromInteger(60n),
-    () => {},
-  );
+  scheduler.addTask("test", Frequency.fromInteger(60n), () => {});
 
   assertThrows(
     () => {
-      scheduler.addTask(
-        "test",
-        Frequency.fromInteger(60n),
-        () => {},
-      );
+      scheduler.addTask("test", Frequency.fromInteger(60n), () => {});
     },
     Error,
     "Task already exists: test",
@@ -155,18 +116,11 @@ Deno.test("removes an existing task", () => {
 
   let executions = 0;
 
-  scheduler.addTask(
-    "test",
-    Frequency.fromInteger(60n),
-    () => {
-      executions++;
-    },
-  );
+  scheduler.addTask("test", Frequency.fromInteger(60n), () => {
+    executions++;
+  });
 
-  assertEquals(
-    scheduler.removeTask("test"),
-    true,
-  );
+  assertEquals(scheduler.removeTask("test"), true);
 
   clock.advance(duration(1_000_000_000n as Duration));
   scheduler.tick();
@@ -178,10 +132,7 @@ Deno.test("removing a missing task returns false", () => {
   const clock = new TestClock();
   const scheduler = new Scheduler(clock);
 
-  assertEquals(
-    scheduler.removeTask("missing"),
-    false,
-  );
+  assertEquals(scheduler.removeTask("missing"), false);
 });
 
 Deno.test("suspends an individual task", () => {
@@ -191,21 +142,13 @@ Deno.test("suspends an individual task", () => {
   let cpuExecutions = 0;
   let renderExecutions = 0;
 
-  scheduler.addTask(
-    "cpu",
-    Frequency.fromInteger(100n),
-    () => {
-      cpuExecutions++;
-    },
-  );
+  scheduler.addTask("cpu", Frequency.fromInteger(100n), () => {
+    cpuExecutions++;
+  });
 
-  scheduler.addTask(
-    "render",
-    Frequency.fromInteger(100n),
-    () => {
-      renderExecutions++;
-    },
-  );
+  scheduler.addTask("render", Frequency.fromInteger(100n), () => {
+    renderExecutions++;
+  });
 
   scheduler.suspendTask("cpu");
 
@@ -222,13 +165,9 @@ Deno.test("resumes an individual task", () => {
 
   let executions = 0;
 
-  scheduler.addTask(
-    "cpu",
-    Frequency.fromInteger(100n),
-    () => {
-      executions++;
-    },
-  );
+  scheduler.addTask("cpu", Frequency.fromInteger(100n), () => {
+    executions++;
+  });
 
   scheduler.suspendTask("cpu");
 
@@ -249,13 +188,9 @@ Deno.test("suspended tasks do not accumulate execution debt", () => {
 
   let executions = 0;
 
-  scheduler.addTask(
-    "cpu",
-    Frequency.fromInteger(500n),
-    () => {
-      executions++;
-    },
-  );
+  scheduler.addTask("cpu", Frequency.fromInteger(500n), () => {
+    executions++;
+  });
 
   scheduler.suspendTask("cpu");
 
@@ -275,43 +210,27 @@ Deno.test("throws when suspending an unknown task", () => {
   const clock = new TestClock();
   const scheduler = new Scheduler(clock);
 
-  assertThrows(
-    () => scheduler.suspendTask("missing"),
-    Error,
-    "Unknown task: missing",
-  );
+  assertThrows(() => scheduler.suspendTask("missing"), Error, "Unknown task: missing");
 });
 
 Deno.test("throws when resuming an unknown task", () => {
   const clock = new TestClock();
   const scheduler = new Scheduler(clock);
 
-  assertThrows(
-    () => scheduler.resumeTask("missing"),
-    Error,
-    "Unknown task: missing",
-  );
+  assertThrows(() => scheduler.resumeTask("missing"), Error, "Unknown task: missing");
 });
 
 Deno.test("propagates callback errors", () => {
   const clock = new TestClock();
   const scheduler = new Scheduler(clock);
 
-  scheduler.addTask(
-    "failing",
-    Frequency.fromInteger(1n),
-    () => {
-      throw new Error("callback failure");
-    },
-  );
+  scheduler.addTask("failing", Frequency.fromInteger(1n), () => {
+    throw new Error("callback failure");
+  });
 
   clock.advance(duration(1_000_000_000n as Duration));
 
-  assertThrows(
-    () => scheduler.tick(),
-    Error,
-    "callback failure",
-  );
+  assertThrows(() => scheduler.tick(), Error, "callback failure");
 });
 
 Deno.test("does not execute later tasks after an earlier task fails", () => {
@@ -320,29 +239,17 @@ Deno.test("does not execute later tasks after an earlier task fails", () => {
 
   let secondExecuted = false;
 
-  scheduler.addTask(
-    "failing",
-    Frequency.fromInteger(1n),
-    () => {
-      throw new Error("failure");
-    },
-  );
+  scheduler.addTask("failing", Frequency.fromInteger(1n), () => {
+    throw new Error("failure");
+  });
 
-  scheduler.addTask(
-    "second",
-    Frequency.fromInteger(1n),
-    () => {
-      secondExecuted = true;
-    },
-  );
+  scheduler.addTask("second", Frequency.fromInteger(1n), () => {
+    secondExecuted = true;
+  });
 
   clock.advance(duration(1_000_000_000n as Duration));
 
-  assertThrows(
-    () => scheduler.tick(),
-    Error,
-    "failure",
-  );
+  assertThrows(() => scheduler.tick(), Error, "failure");
 
   assertEquals(secondExecuted, false);
 });

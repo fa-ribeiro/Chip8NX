@@ -29,13 +29,9 @@ export class Stack {
    * @throws {RangeError}
    * If `capacity` is not a positive integer.
    */
-  public constructor(
-    capacity: number = DEFAULT_STACK_CAPACITY,
-  ) {
+  public constructor(capacity: number = DEFAULT_STACK_CAPACITY) {
     if (!Number.isInteger(capacity) || capacity <= 0) {
-      throw new RangeError(
-        `Stack capacity must be a positive integer: ${capacity}`,
-      );
+      throw new RangeError(`Stack capacity must be a positive integer: ${capacity}`);
     }
 
     this.capacity = capacity;

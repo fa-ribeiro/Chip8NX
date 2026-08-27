@@ -20,9 +20,7 @@ export class TestRandomNumberGenerator implements RandomNumberGenerator {
    */
   constructor(values: readonly Byte[]) {
     if (values.length === 0) {
-      throw new RangeError(
-        "TestRandomNumberGenerator requires at least one value.",
-      );
+      throw new RangeError("TestRandomNumberGenerator requires at least one value.");
     }
 
     this.values = values;

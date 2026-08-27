@@ -10,7 +10,7 @@ Deno.test("IndexRegister initializes to address 0 by default", () => {
 });
 
 Deno.test("IndexRegister initializes with the provided address", () => {
-  const initialValue = address(0xABC);
+  const initialValue = address(0xabc);
   const register = new IndexRegister(initialValue);
 
   assertEquals(register.getValue(), initialValue);
