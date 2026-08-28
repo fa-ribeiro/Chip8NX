@@ -112,6 +112,18 @@ export class InstructionExecutor {
         return;
       }
 
+      case "get-delay-timer":
+        context.registers.set(instruction.register, context.delayTimer.getValue());
+        return;
+
+      case "set-delay-timer":
+        context.delayTimer.setValue(context.registers.get(instruction.register));
+        return;
+
+      case "set-sound-timer":
+        context.soundTimer.setValue(context.registers.get(instruction.register));
+        return;
+
       case "load-immediate":
         context.registers.set(instruction.register, instruction.value);
         return;

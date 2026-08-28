@@ -824,3 +824,76 @@ Deno.test("SKNP Vx does not skip when the corresponding key is pressed", () => {
 
   assertEquals(programCounter.getValue(), address(0x200));
 });
+
+Deno.test("LD Vx, DT copies the delay timer value into Vx", () => {
+  const registers = new Registers();
+  const delayTimer = new Timer(byte(0x42));
+
+  const context = createContext({
+    registers,
+    delayTimer,
+  });
+
+  const executor = new InstructionExecutor();
+
+  executor.execute(
+    {
+      kind: "get-delay-timer",
+      opcode: opcode(0xfa07),
+      register: registerIndex(0xa),
+    },
+    context,
+  );
+
+  assertEquals(registers.get(registerIndex(0xa)), byte(0x42));
+});
+
+Deno.test("LD DT, Vx copies Vx into the delay timer", () => {
+  const registers = new Registers();
+  const delayTimer = new Timer();
+
+  registers.set(registerIndex(0xa), byte(0x42));
+
+  const context = createContext({
+    registers,
+    delayTimer,
+  });
+
+  const executor = new InstructionExecutor();
+
+  executor.execute(
+    {
+      kind: "set-delay-timer",
+      opcode: opcode(0xfa15),
+      register: registerIndex(0xa),
+    },
+    context,
+  );
+
+  assertEquals(delayTimer.getValue(), byte(0x42));
+});
+
+Deno.test("LD ST, Vx copies Vx into the sound timer", () => {
+  const registers = new Registers();
+  const soundTimer = new Timer();
+
+  registers.set(registerIndex(0xa), byte(0x42));
+
+  const context = createContext({
+    registers,
+    soundTimer,
+  });
+
+  const executor = new InstructionExecutor();
+
+  executor.execute(
+    {
+      kind: "set-sound-timer",
+      opcode: opcode(0xfa18),
+      register: registerIndex(0xa),
+    },
+    context,
+  );
+
+  assertEquals(soundTimer.getValue(), byte(0x42));
+});
