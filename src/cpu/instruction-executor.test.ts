@@ -3,6 +3,7 @@ import { assertEquals, assertThrows } from "@std/assert";
 import { address } from "../core/types/address.ts";
 import { byte } from "../core/types/byte.ts";
 import { opcode } from "../core/types/opcode.ts";
+import { key } from "../core/types/key.ts";
 import { DisplayBuffer } from "../display/display-buffer.ts";
 import type { Instruction } from "../instruction/instruction.ts";
 import { Ram } from "../memory/ram.ts";
@@ -15,6 +16,7 @@ import { registerIndex } from "./registers/register-index.ts";
 import { Registers } from "./registers/registers.ts";
 import { Stack } from "./stack/stack.ts";
 import { TestRandomNumberGenerator } from "../random/test-random-number-generator.ts";
+import { TestKeyboard } from "../keyboard/test-keyboard.ts";
 
 function createContext(overrides: Partial<ExecutionContext> = {}): ExecutionContext {
   return {
@@ -26,6 +28,7 @@ function createContext(overrides: Partial<ExecutionContext> = {}): ExecutionCont
     soundTimer: new Timer(),
     delayTimer: new Timer(),
     displayBuffer: new DisplayBuffer(64, 32),
+    keyboard: new TestKeyboard(),
     ...overrides,
   };
 }
@@ -710,4 +713,114 @@ Deno.test("RND Vx, byte requests a new random byte for each execution", () => {
   );
 
   assertEquals(registers.get(registerIndex(0xa)), byte(0xab));
+});
+
+Deno.test("SKP Vx skips when the corresponding key is pressed", () => {
+  const registers = new Registers();
+  const programCounter = new ProgramCounter(address(0x200));
+  const keyboard = new TestKeyboard();
+
+  registers.set(registerIndex(0xa), byte(0x5));
+  keyboard.press(key(0x5));
+
+  const context = createContext({
+    registers,
+    programCounter,
+    keyboard,
+  });
+
+  const executor = new InstructionExecutor();
+
+  executor.execute(
+    {
+      kind: "skip-key-pressed",
+      opcode: opcode(0xea9e),
+      register: registerIndex(0xa),
+    },
+    context,
+  );
+
+  assertEquals(programCounter.getValue(), address(0x202));
+});
+
+Deno.test("SKP Vx does not skip when the corresponding key is not pressed", () => {
+  const registers = new Registers();
+  const programCounter = new ProgramCounter(address(0x200));
+  const keyboard = new TestKeyboard();
+
+  registers.set(registerIndex(0xa), byte(0x5));
+
+  const context = createContext({
+    registers,
+    programCounter,
+    keyboard,
+  });
+
+  const executor = new InstructionExecutor();
+
+  executor.execute(
+    {
+      kind: "skip-key-pressed",
+      opcode: opcode(0xea9e),
+      register: registerIndex(0xa),
+    },
+    context,
+  );
+
+  assertEquals(programCounter.getValue(), address(0x200));
+});
+
+Deno.test("SKNP Vx skips when the corresponding key is not pressed", () => {
+  const registers = new Registers();
+  const programCounter = new ProgramCounter(address(0x200));
+  const keyboard = new TestKeyboard();
+
+  registers.set(registerIndex(0xa), byte(0x5));
+
+  const context = createContext({
+    registers,
+    programCounter,
+    keyboard,
+  });
+
+  const executor = new InstructionExecutor();
+
+  executor.execute(
+    {
+      kind: "skip-key-not-pressed",
+      opcode: opcode(0xeaa1),
+      register: registerIndex(0xa),
+    },
+    context,
+  );
+
+  assertEquals(programCounter.getValue(), address(0x202));
+});
+
+Deno.test("SKNP Vx does not skip when the corresponding key is pressed", () => {
+  const registers = new Registers();
+  const programCounter = new ProgramCounter(address(0x200));
+  const keyboard = new TestKeyboard();
+
+  registers.set(registerIndex(0xa), byte(0x5));
+  keyboard.press(key(0x5));
+
+  const context = createContext({
+    registers,
+    programCounter,
+    keyboard,
+  });
+
+  const executor = new InstructionExecutor();
+
+  executor.execute(
+    {
+      kind: "skip-key-not-pressed",
+      opcode: opcode(0xeaa1),
+      register: registerIndex(0xa),
+    },
+    context,
+  );
+
+  assertEquals(programCounter.getValue(), address(0x200));
 });

@@ -1,10 +1,11 @@
-import type { IndexRegister } from "../cpu/index-register/index-register.ts";
+import type { IndexRegister } from "./index-register/index-register.ts";
 import type { Memory } from "../memory/memory.ts";
-import type { ProgramCounter } from "../cpu/program-counter/program-counter.ts";
-import type { Registers } from "../cpu/registers/registers.ts";
-import type { Stack } from "../cpu/stack/stack.ts";
+import type { ProgramCounter } from "./program-counter/program-counter.ts";
+import type { Registers } from "./registers/registers.ts";
+import type { Stack } from "./stack/stack.ts";
 import type { Timer } from "../timer/timer.ts";
-import { DisplayBuffer } from "../display/display-buffer.ts";
+import type { DisplayBuffer } from "../display/display-buffer.ts";
+import type { Keyboard } from "../keyboard/keyboard.ts";
 
 export interface ExecutionContext {
   readonly registers: Registers;
@@ -15,4 +16,5 @@ export interface ExecutionContext {
   readonly soundTimer: Timer;
   readonly delayTimer: Timer;
   readonly displayBuffer: DisplayBuffer;
+  readonly keyboard: Keyboard;
 }

@@ -1,5 +1,6 @@
 import { address } from "../core/types/address.ts";
 import { type Byte, byte } from "../core/types/byte.ts";
+import { key } from "../core/types/key.ts";
 import type { Instruction } from "../instruction/instruction.ts";
 import { DefaultRandomNumberGenerator } from "../random/default-random-number-generator.ts";
 import type { RandomNumberGenerator } from "../random/random-number-generator.ts";
@@ -90,6 +91,26 @@ export class InstructionExecutor {
           context.programCounter.advance();
         }
         return;
+
+      case "skip-key-pressed": {
+        const keyValue = key(context.registers.get(instruction.register));
+
+        if (context.keyboard.isPressed(keyValue)) {
+          context.programCounter.advance();
+        }
+
+        return;
+      }
+
+      case "skip-key-not-pressed": {
+        const keyValue = key(context.registers.get(instruction.register));
+
+        if (!context.keyboard.isPressed(keyValue)) {
+          context.programCounter.advance();
+        }
+
+        return;
+      }
 
       case "load-immediate":
         context.registers.set(instruction.register, instruction.value);
