@@ -1,6 +1,8 @@
 import { address } from "../core/types/address.ts";
-import { Byte, byte } from "../core/types/byte.ts";
+import { type Byte, byte } from "../core/types/byte.ts";
 import type { Instruction } from "../instruction/instruction.ts";
+import { DefaultRandomNumberGenerator } from "../random/default-random-number-generator.ts";
+import type { RandomNumberGenerator } from "../random/random-number-generator.ts";
 import { add8, shiftLeft8, shiftRight8, subtract8 } from "./arithmetic/arithmetic.ts";
 import type { ExecutionContext } from "./execution-context.ts";
 import { registerIndex } from "./registers/register-index.ts";
@@ -18,6 +20,10 @@ export const FLAG_REGISTER = registerIndex(0xf);
  * responsible only for applying instruction semantics to the machine state.
  */
 export class InstructionExecutor {
+  public constructor(
+    private readonly randomNumberGenerator: RandomNumberGenerator = new DefaultRandomNumberGenerator(),
+  ) {}
+
   /**
    * Executes one decoded instruction.
    *
@@ -43,6 +49,23 @@ export class InstructionExecutor {
         context.stack.push(context.programCounter.getValue());
         context.programCounter.setValue(instruction.address);
         return;
+
+      case "set-index":
+        context.indexRegister.setValue(instruction.address);
+        return;
+
+      case "jump-with-offset": {
+        const offset = context.registers.get(registerIndex(0));
+        context.programCounter.setValue(address(instruction.address + offset));
+        return;
+      }
+
+      case "random-and": {
+        const randomValue = this.randomNumberGenerator.nextByte();
+
+        context.registers.set(instruction.register, byte(randomValue & instruction.mask));
+        return;
+      }
 
       case "skip-equal-immediate":
         if (context.registers.get(instruction.register) === instruction.value) {

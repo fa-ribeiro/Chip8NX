@@ -14,6 +14,7 @@ import { ProgramCounter } from "./program-counter/program-counter.ts";
 import { registerIndex } from "./registers/register-index.ts";
 import { Registers } from "./registers/registers.ts";
 import { Stack } from "./stack/stack.ts";
+import { TestRandomNumberGenerator } from "../random/test-random-number-generator.ts";
 
 function createContext(overrides: Partial<ExecutionContext> = {}): ExecutionContext {
   return {
@@ -440,4 +441,273 @@ Deno.test("unsupported instructions throw UnsupportedInstructionError", () => {
   const error = assertThrows(() => executor.execute(instruction, context), UnsupportedInstructionError);
 
   assertEquals(error.instruction, instruction);
+});
+
+Deno.test("DRW draws the sprite stored at I", () => {
+  const registers = new Registers();
+  registers.set(registerIndex(0xa), byte(0x02));
+  registers.set(registerIndex(0xb), byte(0x03));
+
+  const memory = new Ram(0x1000);
+  memory.write(address(0x300), byte(0b1010_0000));
+
+  const indexRegister = new IndexRegister(address(0x300));
+  const displayBuffer = new DisplayBuffer(8, 8);
+
+  const context = createContext({
+    registers,
+    memory,
+    indexRegister,
+    displayBuffer,
+  });
+
+  const executor = new InstructionExecutor();
+
+  executor.execute(
+    {
+      kind: "draw-sprite",
+      opcode: opcode(0xdab1),
+      x: registerIndex(0xa),
+      y: registerIndex(0xb),
+      height: 1,
+    },
+    context,
+  );
+
+  assertEquals(displayBuffer.getPixel(2, 3), true);
+  assertEquals(displayBuffer.getPixel(3, 3), false);
+  assertEquals(displayBuffer.getPixel(4, 3), true);
+  assertEquals(registers.get(FLAG_REGISTER), byte(0));
+});
+
+Deno.test("DRW sets VF when a sprite pixel collides", () => {
+  const registers = new Registers();
+  registers.set(registerIndex(0xa), byte(0x00));
+  registers.set(registerIndex(0xb), byte(0x00));
+
+  const memory = new Ram(0x1000);
+  memory.write(address(0x300), byte(0b1000_0000));
+
+  const indexRegister = new IndexRegister(address(0x300));
+  const displayBuffer = new DisplayBuffer(8, 8);
+
+  displayBuffer.setPixel(0, 0, true);
+
+  const context = createContext({
+    registers,
+    memory,
+    indexRegister,
+    displayBuffer,
+  });
+
+  const executor = new InstructionExecutor();
+
+  executor.execute(
+    {
+      kind: "draw-sprite",
+      opcode: opcode(0xdab1),
+      x: registerIndex(0xa),
+      y: registerIndex(0xb),
+      height: 1,
+    },
+    context,
+  );
+
+  assertEquals(displayBuffer.getPixel(0, 0), false);
+  assertEquals(registers.get(FLAG_REGISTER), byte(1));
+});
+
+Deno.test("DRW clears VF when no collision occurs", () => {
+  const registers = new Registers();
+  registers.set(registerIndex(0xa), byte(0x00));
+  registers.set(registerIndex(0xb), byte(0x00));
+  registers.set(FLAG_REGISTER, byte(1));
+
+  const memory = new Ram(0x1000);
+  memory.write(address(0x300), byte(0b1000_0000));
+
+  const indexRegister = new IndexRegister(address(0x300));
+  const displayBuffer = new DisplayBuffer(8, 8);
+
+  const context = createContext({
+    registers,
+    memory,
+    indexRegister,
+    displayBuffer,
+  });
+
+  const executor = new InstructionExecutor();
+
+  executor.execute(
+    {
+      kind: "draw-sprite",
+      opcode: opcode(0xdab1),
+      x: registerIndex(0xa),
+      y: registerIndex(0xb),
+      height: 1,
+    },
+    context,
+  );
+
+  assertEquals(registers.get(FLAG_REGISTER), byte(0));
+});
+
+Deno.test("LD I, addr stores the address in the index register", () => {
+  const indexRegister = new IndexRegister();
+  const context = createContext({ indexRegister });
+  const executor = new InstructionExecutor();
+
+  executor.execute(
+    {
+      kind: "set-index",
+      opcode: opcode(0xa345),
+      address: address(0x345),
+    },
+    context,
+  );
+
+  assertEquals(indexRegister.getValue(), address(0x345));
+});
+
+Deno.test("LD I, addr replaces the previous index register value", () => {
+  const indexRegister = new IndexRegister(address(0x200));
+  const context = createContext({ indexRegister });
+  const executor = new InstructionExecutor();
+
+  executor.execute(
+    {
+      kind: "set-index",
+      opcode: opcode(0xaabc),
+      address: address(0xabc),
+    },
+    context,
+  );
+
+  assertEquals(indexRegister.getValue(), address(0xabc));
+});
+
+Deno.test("JP V0, addr jumps to address plus V0", () => {
+  const registers = new Registers();
+  const programCounter = new ProgramCounter(address(0x200));
+
+  registers.set(registerIndex(0), byte(0x05));
+
+  const context = createContext({
+    registers,
+    programCounter,
+  });
+
+  const executor = new InstructionExecutor();
+
+  executor.execute(
+    {
+      kind: "jump-with-offset",
+      opcode: opcode(0xb300),
+      address: address(0x300),
+    },
+    context,
+  );
+
+  assertEquals(programCounter.getValue(), address(0x305));
+});
+
+Deno.test("JP V0, addr uses V0 regardless of other register values", () => {
+  const registers = new Registers();
+  const programCounter = new ProgramCounter(address(0x200));
+
+  registers.set(registerIndex(0), byte(0x07));
+  registers.set(registerIndex(0xa), byte(0x55));
+
+  const context = createContext({
+    registers,
+    programCounter,
+  });
+
+  const executor = new InstructionExecutor();
+
+  executor.execute(
+    {
+      kind: "jump-with-offset",
+      opcode: opcode(0xba00),
+      address: address(0xa00),
+    },
+    context,
+  );
+
+  assertEquals(programCounter.getValue(), address(0xa07));
+});
+
+Deno.test("RND Vx, byte stores random byte AND mask", () => {
+  const registers = new Registers();
+
+  const random = new TestRandomNumberGenerator([byte(0b1010_1010)]);
+
+  const context = createContext({ registers });
+  const executor = new InstructionExecutor(random);
+
+  executor.execute(
+    {
+      kind: "random-and",
+      opcode: opcode(0xca0f),
+      register: registerIndex(0xa),
+      mask: byte(0x0f),
+    },
+    context,
+  );
+
+  assertEquals(registers.get(registerIndex(0xa)), byte(0x0a));
+});
+
+Deno.test("RND Vx, byte performs a bitwise AND", () => {
+  const registers = new Registers();
+
+  const random = new TestRandomNumberGenerator([byte(0b1100_1010)]);
+
+  const context = createContext({ registers });
+  const executor = new InstructionExecutor(random);
+
+  executor.execute(
+    {
+      kind: "random-and",
+      opcode: opcode(0xca55),
+      register: registerIndex(0xa),
+      mask: byte(0x55),
+    },
+    context,
+  );
+
+  assertEquals(registers.get(registerIndex(0xa)), byte(0b0100_0000));
+});
+
+Deno.test("RND Vx, byte requests a new random byte for each execution", () => {
+  const registers = new Registers();
+
+  const random = new TestRandomNumberGenerator([byte(0x12), byte(0xab)]);
+
+  const context = createContext({ registers });
+  const executor = new InstructionExecutor(random);
+
+  executor.execute(
+    {
+      kind: "random-and",
+      opcode: opcode(0xcaff),
+      register: registerIndex(0xa),
+      mask: byte(0xff),
+    },
+    context,
+  );
+
+  assertEquals(registers.get(registerIndex(0xa)), byte(0x12));
+
+  executor.execute(
+    {
+      kind: "random-and",
+      opcode: opcode(0xcaff),
+      register: registerIndex(0xa),
+      mask: byte(0xff),
+    },
+    context,
+  );
+
+  assertEquals(registers.get(registerIndex(0xa)), byte(0xab));
 });
