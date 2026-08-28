@@ -16,9 +16,12 @@ import { Byte } from "../core/types/byte.ts";
  * Coordinates are zero-based. The valid horizontal range is
  * `0 <= x < width`, and the valid vertical range is `0 <= y < height`.
  *
- * Coordinate wrapping, when required by a particular CHIP-8 instruction or
- * variant, belongs to the machine semantics above this class. The buffer
- * itself intentionally rejects out-of-bounds coordinates.
+ * Coordinates supplied to {@link getPixel} and {@link setPixel} must be
+ * within the buffer bounds.
+ *
+ * Sprite drawing through {@link drawSprite} has its own semantics: the
+ * initial sprite coordinates are wrapped to the display dimensions, while
+ * sprite pixels extending beyond the right or bottom edges are clipped.
  */
 export class DisplayBuffer {
   /**
