@@ -3,6 +3,7 @@ import { opcode } from "../core/types/opcode.ts";
 import { Decoder } from "../instruction/decoder.ts";
 import type { ExecutionContext } from "./execution-context.ts";
 import { InstructionExecutor } from "./instruction-executor.ts";
+import type { CpuState } from "./state/cpu-state.ts";
 
 /**
  * Executes the CHIP-8 fetch-decode-execute cycle.
@@ -50,5 +51,26 @@ export class Cpu {
     const instruction = this.decoder.decode(fetchedOpcode);
 
     this.executor.execute(instruction, this.context);
+  }
+
+  /**
+   * Returns a snapshot of the current CPU state.
+   *
+   * @remarks
+   * Mutable collections such as the register bank and stack are copied by
+   * their respective components. Consequently, subsequent CPU execution
+   * cannot modify the returned snapshot.
+   *
+   * @returns The CPU state at the time this method is called.
+   */
+  public snapshot(): CpuState {
+    return {
+      registers: this.context.registers.snapshot(),
+      index: this.context.indexRegister.getValue(),
+      programCounter: this.context.programCounter.getValue(),
+      stack: this.context.stack.snapshot(),
+      delayTimer: this.context.delayTimer.getValue(),
+      soundTimer: this.context.soundTimer.getValue(),
+    };
   }
 }

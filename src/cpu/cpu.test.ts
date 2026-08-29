@@ -150,3 +150,88 @@ Deno.test("CPU repeats LD Vx, K until a key press and release completes", () => 
 
   assertEquals(context.programCounter.getValue(), address(0x202));
 });
+
+Deno.test("CPU snapshot captures the current CPU state", () => {
+  const registers = new Registers();
+  const stack = new Stack();
+  const indexRegister = new IndexRegister(address(0x345));
+  const programCounter = new ProgramCounter(address(0x678));
+  const delayTimer = new Timer(byte(0x12));
+  const soundTimer = new Timer(byte(0x34));
+
+  registers.set(registerIndex(0x0), byte(0x10));
+  registers.set(registerIndex(0xa), byte(0xaa));
+  registers.set(registerIndex(0xf), byte(0xff));
+
+  stack.push(address(0x220));
+  stack.push(address(0x240));
+
+  const context = createContext({
+    registers,
+    stack,
+    indexRegister,
+    programCounter,
+    delayTimer,
+    soundTimer,
+  });
+
+  const cpu = createCpu(context);
+
+  const state = cpu.snapshot();
+
+  assertEquals(state.registers, registers.snapshot());
+
+  assertEquals(state.index, address(0x345));
+
+  assertEquals(state.programCounter, address(0x678));
+
+  assertEquals(state.stack, [address(0x220), address(0x240)]);
+
+  assertEquals(state.delayTimer, byte(0x12));
+
+  assertEquals(state.soundTimer, byte(0x34));
+});
+
+Deno.test("CPU snapshot is unaffected by subsequent CPU state changes", () => {
+  const registers = new Registers();
+  const stack = new Stack();
+  const indexRegister = new IndexRegister(address(0x300));
+  const programCounter = new ProgramCounter(address(0x200));
+  const delayTimer = new Timer(byte(10));
+  const soundTimer = new Timer(byte(20));
+
+  registers.set(registerIndex(0xa), byte(0x42));
+  stack.push(address(0x220));
+
+  const context = createContext({
+    registers,
+    stack,
+    indexRegister,
+    programCounter,
+    delayTimer,
+    soundTimer,
+  });
+
+  const cpu = createCpu(context);
+
+  const state = cpu.snapshot();
+
+  registers.set(registerIndex(0xa), byte(0xff));
+  stack.push(address(0x240));
+  indexRegister.setValue(address(0x400));
+  programCounter.setValue(address(0x500));
+  delayTimer.setValue(byte(30));
+  soundTimer.setValue(byte(40));
+
+  assertEquals(state.registers[0xa], byte(0x42));
+
+  assertEquals(state.stack, [address(0x220)]);
+
+  assertEquals(state.index, address(0x300));
+
+  assertEquals(state.programCounter, address(0x200));
+
+  assertEquals(state.delayTimer, byte(10));
+
+  assertEquals(state.soundTimer, byte(20));
+});
