@@ -6,6 +6,7 @@ import type { Stack } from "./stack/stack.ts";
 import type { Timer } from "../timer/timer.ts";
 import type { DisplayBuffer } from "../display/display-buffer.ts";
 import type { Keyboard } from "../keyboard/keyboard.ts";
+import type { Font } from "../font/font.ts";
 
 export interface ExecutionContext {
   readonly registers: Registers;
@@ -17,4 +18,5 @@ export interface ExecutionContext {
   readonly delayTimer: Timer;
   readonly displayBuffer: DisplayBuffer;
   readonly keyboard: Keyboard;
+  readonly font: Font;
 }

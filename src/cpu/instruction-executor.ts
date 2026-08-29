@@ -132,6 +132,13 @@ export class InstructionExecutor {
         return;
       }
 
+      case "set-index-to-sprite": {
+        const value = context.registers.get(instruction.register);
+
+        context.indexRegister.setValue(context.font.getSpriteAddress(value));
+        return;
+      }
+
       case "load-immediate":
         context.registers.set(instruction.register, instruction.value);
         return;

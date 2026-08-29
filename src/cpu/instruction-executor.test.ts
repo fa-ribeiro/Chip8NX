@@ -5,6 +5,8 @@ import { type Byte, byte } from "../core/types/byte.ts";
 import { opcode } from "../core/types/opcode.ts";
 import { key } from "../core/types/key.ts";
 import { DisplayBuffer } from "../display/display-buffer.ts";
+import { ClassicFont } from "../font/classic-font.ts";
+import type { Font } from "../font/font.ts";
 import type { Instruction } from "../instruction/instruction.ts";
 import { Ram } from "../memory/ram.ts";
 import { Timer } from "../timer/timer.ts";
@@ -29,6 +31,7 @@ function createContext(overrides: Partial<ExecutionContext> = {}): ExecutionCont
     delayTimer: new Timer(),
     displayBuffer: new DisplayBuffer(64, 32),
     keyboard: new TestKeyboard(),
+    font: new ClassicFont(),
     ...overrides,
   };
 }
@@ -972,4 +975,40 @@ Deno.test("ADD I, VF uses VF as the operand without modifying it", () => {
 
   assertEquals(indexRegister.getValue(), address(0x342));
   assertEquals(registers.get(FLAG_REGISTER), byte(0x42));
+});
+
+Deno.test("LD F, Vx resolves Vx through the configured font and stores the address in I", () => {
+  const registers = new Registers();
+  const indexRegister = new IndexRegister();
+  const spriteAddress = address(0x345);
+  let requestedValue: Byte | undefined;
+
+  const font: Font = {
+    getSpriteAddress(value: Byte) {
+      requestedValue = value;
+      return spriteAddress;
+    },
+  };
+
+  registers.set(registerIndex(0xa), byte(0xab));
+
+  const context = createContext({
+    registers,
+    indexRegister,
+    font,
+  });
+
+  const executor = new InstructionExecutor();
+
+  executor.execute(
+    {
+      kind: "set-index-to-sprite",
+      opcode: opcode(0xfa29),
+      register: registerIndex(0xa),
+    },
+    context,
+  );
+
+  assertEquals(requestedValue, byte(0xab));
+  assertEquals(indexRegister.getValue(), spriteAddress);
 });
