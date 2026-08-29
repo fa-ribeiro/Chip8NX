@@ -139,6 +139,21 @@ export class InstructionExecutor {
         return;
       }
 
+      case "store-bcd": {
+        const value = context.registers.get(instruction.register);
+        const startAddress = context.indexRegister.getValue();
+
+        const hundreds = Math.floor(value / 100);
+        const tens = Math.floor(value / 10) % 10;
+        const ones = value % 10;
+
+        context.memory.write(startAddress, byte(hundreds));
+        context.memory.write(address(startAddress + 1), byte(tens));
+        context.memory.write(address(startAddress + 2), byte(ones));
+
+        return;
+      }
+
       case "load-immediate":
         context.registers.set(instruction.register, instruction.value);
         return;

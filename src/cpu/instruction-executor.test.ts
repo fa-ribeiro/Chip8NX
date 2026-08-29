@@ -1012,3 +1012,90 @@ Deno.test("LD F, Vx resolves Vx through the configured font and stores the addre
   assertEquals(requestedValue, byte(0xab));
   assertEquals(indexRegister.getValue(), spriteAddress);
 });
+
+Deno.test("LD B, Vx stores the BCD representation of Vx in memory", () => {
+  const registers = new Registers();
+  const memory = new Ram(0x1000);
+  const indexRegister = new IndexRegister(address(0x300));
+
+  registers.set(registerIndex(0x3), byte(156));
+
+  const context = createContext({
+    registers,
+    memory,
+    indexRegister,
+  });
+
+  const executor = new InstructionExecutor();
+
+  executor.execute(
+    {
+      kind: "store-bcd",
+      opcode: opcode(0xf333),
+      register: registerIndex(0x3),
+    },
+    context,
+  );
+
+  assertEquals(memory.read(address(0x300)), byte(1));
+  assertEquals(memory.read(address(0x301)), byte(5));
+  assertEquals(memory.read(address(0x302)), byte(6));
+});
+
+Deno.test("LD B, Vx stores 000 when Vx is zero", () => {
+  const registers = new Registers();
+  const memory = new Ram(0x1000);
+  const indexRegister = new IndexRegister(address(0x300));
+
+  registers.set(registerIndex(0x3), byte(0));
+
+  const context = createContext({
+    registers,
+    memory,
+    indexRegister,
+  });
+
+  const executor = new InstructionExecutor();
+
+  executor.execute(
+    {
+      kind: "store-bcd",
+      opcode: opcode(0xf333),
+      register: registerIndex(0x3),
+    },
+    context,
+  );
+
+  assertEquals(memory.read(address(0x300)), byte(0));
+  assertEquals(memory.read(address(0x301)), byte(0));
+  assertEquals(memory.read(address(0x302)), byte(0));
+});
+
+Deno.test("LD B, Vx stores 255 when Vx contains the maximum byte value", () => {
+  const registers = new Registers();
+  const memory = new Ram(0x1000);
+  const indexRegister = new IndexRegister(address(0x300));
+
+  registers.set(registerIndex(0x3), byte(255));
+
+  const context = createContext({
+    registers,
+    memory,
+    indexRegister,
+  });
+
+  const executor = new InstructionExecutor();
+
+  executor.execute(
+    {
+      kind: "store-bcd",
+      opcode: opcode(0xf333),
+      register: registerIndex(0x3),
+    },
+    context,
+  );
+
+  assertEquals(memory.read(address(0x300)), byte(2));
+  assertEquals(memory.read(address(0x301)), byte(5));
+  assertEquals(memory.read(address(0x302)), byte(5));
+});
