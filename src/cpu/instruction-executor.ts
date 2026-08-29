@@ -93,7 +93,8 @@ export class InstructionExecutor {
         return;
 
       case "skip-key-pressed": {
-        const keyValue = key(context.registers.get(instruction.register));
+        const registerValue = context.registers.get(instruction.register);
+        const keyValue = key(registerValue & 0x0f);
 
         if (context.keyboard.isPressed(keyValue)) {
           context.programCounter.advance();
@@ -103,7 +104,8 @@ export class InstructionExecutor {
       }
 
       case "skip-key-not-pressed": {
-        const keyValue = key(context.registers.get(instruction.register));
+        const registerValue = context.registers.get(instruction.register);
+        const keyValue = key(registerValue & 0x0f);
 
         if (!context.keyboard.isPressed(keyValue)) {
           context.programCounter.advance();
@@ -123,6 +125,18 @@ export class InstructionExecutor {
       case "set-sound-timer":
         context.soundTimer.setValue(context.registers.get(instruction.register));
         return;
+
+      case "wait-for-key": {
+        const releasedKey = context.keyboard.pollKeyRelease();
+
+        if (releasedKey === undefined) {
+          context.programCounter.setValue(address(context.programCounter.getValue() - INSTRUCTION_SIZE));
+          return;
+        }
+
+        context.registers.set(instruction.register, byte(releasedKey));
+        return;
+      }
 
       case "add-to-index": {
         const value = context.registers.get(instruction.register);

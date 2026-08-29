@@ -773,6 +773,34 @@ Deno.test("SKP Vx does not skip when the corresponding key is not pressed", () =
   assertEquals(programCounter.getValue(), address(0x200));
 });
 
+Deno.test("SKP Vx uses only the low nibble of Vx as the key", () => {
+  const registers = new Registers();
+  const programCounter = new ProgramCounter(address(0x200));
+  const keyboard = new TestKeyboard();
+
+  registers.set(registerIndex(0xa), byte(0xab));
+  keyboard.press(key(0xb));
+
+  const context = createContext({
+    registers,
+    programCounter,
+    keyboard,
+  });
+
+  const executor = new InstructionExecutor();
+
+  executor.execute(
+    {
+      kind: "skip-key-pressed",
+      opcode: opcode(0xea9e),
+      register: registerIndex(0xa),
+    },
+    context,
+  );
+
+  assertEquals(programCounter.getValue(), address(0x202));
+});
+
 Deno.test("SKNP Vx skips when the corresponding key is not pressed", () => {
   const registers = new Registers();
   const programCounter = new ProgramCounter(address(0x200));
@@ -807,6 +835,34 @@ Deno.test("SKNP Vx does not skip when the corresponding key is pressed", () => {
 
   registers.set(registerIndex(0xa), byte(0x5));
   keyboard.press(key(0x5));
+
+  const context = createContext({
+    registers,
+    programCounter,
+    keyboard,
+  });
+
+  const executor = new InstructionExecutor();
+
+  executor.execute(
+    {
+      kind: "skip-key-not-pressed",
+      opcode: opcode(0xeaa1),
+      register: registerIndex(0xa),
+    },
+    context,
+  );
+
+  assertEquals(programCounter.getValue(), address(0x200));
+});
+
+Deno.test("SKNP Vx uses only the low nibble of Vx as the key", () => {
+  const registers = new Registers();
+  const programCounter = new ProgramCounter(address(0x200));
+  const keyboard = new TestKeyboard();
+
+  registers.set(registerIndex(0xa), byte(0xab));
+  keyboard.press(key(0xb));
 
   const context = createContext({
     registers,
@@ -1296,4 +1352,68 @@ Deno.test("LD VF, [I] loads all sixteen registers and advances I by sixteen", ()
   }
 
   assertEquals(indexRegister.getValue(), address(0x310));
+});
+
+Deno.test("LD Vx, K repeats the instruction while waiting for a key release", () => {
+  const registers = new Registers();
+  const keyboard = new TestKeyboard();
+  const programCounter = new ProgramCounter(address(0x302));
+
+  registers.set(registerIndex(0xa), byte(0x42));
+
+  const context = createContext({
+    registers,
+    keyboard,
+    programCounter,
+  });
+
+  const executor = new InstructionExecutor();
+
+  executor.execute(
+    {
+      kind: "wait-for-key",
+      opcode: opcode(0xfa0a),
+      register: registerIndex(0xa),
+    },
+    context,
+  );
+
+  assertEquals(registers.get(registerIndex(0xa)), byte(0x42));
+  assertEquals(programCounter.getValue(), address(0x300));
+});
+
+Deno.test("LD Vx, K stores the released key and continues execution", () => {
+  const registers = new Registers();
+  const keyboard = new TestKeyboard();
+  const programCounter = new ProgramCounter(address(0x302));
+
+  const context = createContext({
+    registers,
+    keyboard,
+    programCounter,
+  });
+
+  const executor = new InstructionExecutor();
+
+  const instruction: Instruction = {
+    kind: "wait-for-key",
+    opcode: opcode(0xfa0a),
+    register: registerIndex(0xa),
+  };
+
+  executor.execute(instruction, context);
+
+  assertEquals(programCounter.getValue(), address(0x300));
+
+  keyboard.press(key(0xb));
+  keyboard.release(key(0xb));
+
+  // Simulate the next CPU fetch of the same instruction:
+  // 0x300 -> 0x302 before execution.
+  programCounter.setValue(address(0x302));
+
+  executor.execute(instruction, context);
+
+  assertEquals(registers.get(registerIndex(0xa)), byte(0x0b));
+  assertEquals(programCounter.getValue(), address(0x302));
 });
