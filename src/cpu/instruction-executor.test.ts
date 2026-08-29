@@ -384,14 +384,20 @@ Deno.test("SUB Vx, Vy wraps and clears VF when a borrow occurs", () => {
 Deno.test("SHR Vx shifts right and stores the old LSB in VF", () => {
   const registers = new Registers();
   registers.set(registerIndex(0xa), byte(0b0000_0011));
+  registers.set(registerIndex(0xb), byte(0b0000_0010));
 
   const context = createContext({ registers });
   const executor = new InstructionExecutor();
 
-  executor.execute(registerOperation("shift-right", 0xa, 0xb, 0x8ab6), context);
+  executor.execute(registerOperation("shift-right", 0xa, 0x0, 0x8ab6), context);
 
   assertEquals(registers.get(registerIndex(0xa)), byte(0b0000_0001));
   assertEquals(registers.get(FLAG_REGISTER), byte(0x01));
+
+  executor.execute(registerOperation("shift-right", 0xb, 0x0, 0x8ab6), context);
+
+  assertEquals(registers.get(registerIndex(0xb)), byte(0b0000_0001));
+  assertEquals(registers.get(FLAG_REGISTER), byte(0x0));
 });
 
 Deno.test("SUBN Vx, Vy computes Vy minus Vx", () => {
@@ -408,17 +414,36 @@ Deno.test("SUBN Vx, Vy computes Vy minus Vx", () => {
   assertEquals(registers.get(FLAG_REGISTER), byte(0x01));
 });
 
+Deno.test("SUBN Vx, Vy computes Vy minus Vx and wraps when a borrow occurs", () => {
+  const registers = new Registers();
+  registers.set(registerIndex(0xa), byte(0x05));
+  registers.set(registerIndex(0xb), byte(0x03));
+
+  const context = createContext({ registers });
+  const executor = new InstructionExecutor();
+  executor.execute(registerOperation("reverse-subtract", 0xa, 0xb, 0x8ab7), context);
+
+  assertEquals(registers.get(registerIndex(0xa)), byte(0xfe));
+  assertEquals(registers.get(FLAG_REGISTER), byte(0x00));
+});
+
 Deno.test("SHL Vx shifts left and stores the old MSB in VF", () => {
   const registers = new Registers();
   registers.set(registerIndex(0xa), byte(0b1000_0001));
+  registers.set(registerIndex(0xb), byte(0b0100_0001));
 
   const context = createContext({ registers });
   const executor = new InstructionExecutor();
 
-  executor.execute(registerOperation("shift-left", 0xa, 0xb, 0x8abe), context);
+  executor.execute(registerOperation("shift-left", 0xa, 0x0, 0x8abe), context);
 
   assertEquals(registers.get(registerIndex(0xa)), byte(0b0000_0010));
   assertEquals(registers.get(FLAG_REGISTER), byte(0x01));
+
+  executor.execute(registerOperation("shift-left", 0xb, 0x0, 0x8abe), context);
+
+  assertEquals(registers.get(registerIndex(0xb)), byte(0b1000_0010));
+  assertEquals(registers.get(FLAG_REGISTER), byte(0x00));
 });
 
 Deno.test("logical register operations do not modify VF", () => {
