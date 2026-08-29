@@ -32,6 +32,7 @@ function createContext(overrides: Partial<ExecutionContext> = {}): ExecutionCont
     displayBuffer: new DisplayBuffer(64, 32),
     keyboard: new TestKeyboard(),
     font: new ClassicFont(),
+    randomNumberGenerator: new TestRandomNumberGenerator([byte(0x00)]),
     ...overrides,
   };
 }
@@ -671,10 +672,14 @@ Deno.test("JP V0, addr uses V0 regardless of other register values", () => {
 Deno.test("RND Vx, byte stores random byte AND mask", () => {
   const registers = new Registers();
 
-  const random = new TestRandomNumberGenerator([byte(0b1010_1010)]);
+  const randomNumberGenerator = new TestRandomNumberGenerator([byte(0b1010_1010)]);
 
-  const context = createContext({ registers });
-  const executor = new InstructionExecutor(random);
+  const context = createContext({
+    registers,
+    randomNumberGenerator,
+  });
+
+  const executor = new InstructionExecutor();
 
   executor.execute(
     {
@@ -692,10 +697,14 @@ Deno.test("RND Vx, byte stores random byte AND mask", () => {
 Deno.test("RND Vx, byte performs a bitwise AND", () => {
   const registers = new Registers();
 
-  const random = new TestRandomNumberGenerator([byte(0b1100_1010)]);
+  const randomNumberGenerator = new TestRandomNumberGenerator([byte(0b1100_1010)]);
 
-  const context = createContext({ registers });
-  const executor = new InstructionExecutor(random);
+  const context = createContext({
+    registers,
+    randomNumberGenerator,
+  });
+
+  const executor = new InstructionExecutor();
 
   executor.execute(
     {
@@ -713,10 +722,14 @@ Deno.test("RND Vx, byte performs a bitwise AND", () => {
 Deno.test("RND Vx, byte requests a new random byte for each execution", () => {
   const registers = new Registers();
 
-  const random = new TestRandomNumberGenerator([byte(0x12), byte(0xab)]);
+  const randomNumberGenerator = new TestRandomNumberGenerator([byte(0x12), byte(0xab)]);
 
-  const context = createContext({ registers });
-  const executor = new InstructionExecutor(random);
+  const context = createContext({
+    registers,
+    randomNumberGenerator,
+  });
+
+  const executor = new InstructionExecutor();
 
   executor.execute(
     {

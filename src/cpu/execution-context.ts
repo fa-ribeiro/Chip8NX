@@ -7,6 +7,7 @@ import type { Timer } from "../timer/timer.ts";
 import type { DisplayBuffer } from "../display/display-buffer.ts";
 import type { Keyboard } from "../keyboard/keyboard.ts";
 import type { Font } from "../font/font.ts";
+import type { RandomNumberGenerator } from "../random/random-number-generator.ts";
 
 export interface ExecutionContext {
   readonly registers: Registers;
@@ -19,4 +20,5 @@ export interface ExecutionContext {
   readonly displayBuffer: DisplayBuffer;
   readonly keyboard: Keyboard;
   readonly font: Font;
+  readonly randomNumberGenerator: RandomNumberGenerator;
 }
