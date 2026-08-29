@@ -7,6 +7,7 @@ import type { RandomNumberGenerator } from "../random/random-number-generator.ts
 import { add8, shiftLeft8, shiftRight8, subtract8 } from "./arithmetic/arithmetic.ts";
 import type { ExecutionContext } from "./execution-context.ts";
 import { registerIndex } from "./registers/register-index.ts";
+import { INSTRUCTION_SIZE } from "./program-counter/program-counter.ts";
 
 /**
  * Index of the CHIP-8 VF flag register.

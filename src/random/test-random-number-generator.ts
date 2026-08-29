@@ -36,6 +36,6 @@ export class TestRandomNumberGenerator implements RandomNumberGenerator {
 
     this.index = (this.index + 1) % this.values.length;
 
-    return value;
+    return value as Byte;
   }
 }
