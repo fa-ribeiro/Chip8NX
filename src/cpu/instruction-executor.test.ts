@@ -1099,3 +1099,201 @@ Deno.test("LD B, Vx stores 255 when Vx contains the maximum byte value", () => {
   assertEquals(memory.read(address(0x301)), byte(5));
   assertEquals(memory.read(address(0x302)), byte(5));
 });
+
+Deno.test("LD [I], Vx stores V0 through Vx in memory and advances I", () => {
+  const registers = new Registers();
+  const memory = new Ram(0x1000);
+  const indexRegister = new IndexRegister(address(0x300));
+
+  registers.set(registerIndex(0x0), byte(0x10));
+  registers.set(registerIndex(0x1), byte(0x20));
+  registers.set(registerIndex(0x2), byte(0x30));
+  registers.set(registerIndex(0x3), byte(0x40));
+
+  memory.write(address(0x304), byte(0xaa));
+
+  const context = createContext({
+    registers,
+    memory,
+    indexRegister,
+  });
+
+  const executor = new InstructionExecutor();
+
+  executor.execute(
+    {
+      kind: "store-registers",
+      opcode: opcode(0xf355),
+      register: registerIndex(0x3),
+    },
+    context,
+  );
+
+  assertEquals(memory.read(address(0x300)), byte(0x10));
+  assertEquals(memory.read(address(0x301)), byte(0x20));
+  assertEquals(memory.read(address(0x302)), byte(0x30));
+  assertEquals(memory.read(address(0x303)), byte(0x40));
+
+  assertEquals(memory.read(address(0x304)), byte(0xaa));
+  assertEquals(indexRegister.getValue(), address(0x304));
+});
+
+Deno.test("LD [I], V0 stores only V0 and advances I by one", () => {
+  const registers = new Registers();
+  const memory = new Ram(0x1000);
+  const indexRegister = new IndexRegister(address(0x300));
+
+  registers.set(registerIndex(0x0), byte(0x42));
+
+  const context = createContext({
+    registers,
+    memory,
+    indexRegister,
+  });
+
+  const executor = new InstructionExecutor();
+
+  executor.execute(
+    {
+      kind: "store-registers",
+      opcode: opcode(0xf055),
+      register: registerIndex(0x0),
+    },
+    context,
+  );
+
+  assertEquals(memory.read(address(0x300)), byte(0x42));
+  assertEquals(indexRegister.getValue(), address(0x301));
+});
+
+Deno.test("LD [I], VF stores all sixteen registers and advances I by sixteen", () => {
+  const registers = new Registers();
+  const memory = new Ram(0x1000);
+  const indexRegister = new IndexRegister(address(0x300));
+
+  for (let index = 0; index <= 0xf; index++) {
+    registers.set(registerIndex(index), byte(0x10 + index));
+  }
+
+  const context = createContext({
+    registers,
+    memory,
+    indexRegister,
+  });
+
+  const executor = new InstructionExecutor();
+
+  executor.execute(
+    {
+      kind: "store-registers",
+      opcode: opcode(0xff55),
+      register: registerIndex(0xf),
+    },
+    context,
+  );
+
+  for (let index = 0; index <= 0xf; index++) {
+    assertEquals(memory.read(address(0x300 + index)), byte(0x10 + index));
+  }
+
+  assertEquals(indexRegister.getValue(), address(0x310));
+});
+
+Deno.test("LD Vx, [I] loads V0 through Vx from memory and advances I", () => {
+  const registers = new Registers();
+  const memory = new Ram(0x1000);
+  const indexRegister = new IndexRegister(address(0x300));
+
+  memory.write(address(0x300), byte(0x10));
+  memory.write(address(0x301), byte(0x20));
+  memory.write(address(0x302), byte(0x30));
+  memory.write(address(0x303), byte(0x40));
+
+  registers.set(registerIndex(0x4), byte(0xaa));
+
+  const context = createContext({
+    registers,
+    memory,
+    indexRegister,
+  });
+
+  const executor = new InstructionExecutor();
+
+  executor.execute(
+    {
+      kind: "load-registers",
+      opcode: opcode(0xf365),
+      register: registerIndex(0x3),
+    },
+    context,
+  );
+
+  assertEquals(registers.get(registerIndex(0x0)), byte(0x10));
+  assertEquals(registers.get(registerIndex(0x1)), byte(0x20));
+  assertEquals(registers.get(registerIndex(0x2)), byte(0x30));
+  assertEquals(registers.get(registerIndex(0x3)), byte(0x40));
+
+  assertEquals(registers.get(registerIndex(0x4)), byte(0xaa));
+  assertEquals(indexRegister.getValue(), address(0x304));
+});
+
+Deno.test("LD V0, [I] loads only V0 and advances I by one", () => {
+  const registers = new Registers();
+  const memory = new Ram(0x1000);
+  const indexRegister = new IndexRegister(address(0x300));
+
+  memory.write(address(0x300), byte(0x42));
+
+  const context = createContext({
+    registers,
+    memory,
+    indexRegister,
+  });
+
+  const executor = new InstructionExecutor();
+
+  executor.execute(
+    {
+      kind: "load-registers",
+      opcode: opcode(0xf065),
+      register: registerIndex(0x0),
+    },
+    context,
+  );
+
+  assertEquals(registers.get(registerIndex(0x0)), byte(0x42));
+  assertEquals(indexRegister.getValue(), address(0x301));
+});
+
+Deno.test("LD VF, [I] loads all sixteen registers and advances I by sixteen", () => {
+  const registers = new Registers();
+  const memory = new Ram(0x1000);
+  const indexRegister = new IndexRegister(address(0x300));
+
+  for (let index = 0; index <= 0xf; index++) {
+    memory.write(address(0x300 + index), byte(0x10 + index));
+  }
+
+  const context = createContext({
+    registers,
+    memory,
+    indexRegister,
+  });
+
+  const executor = new InstructionExecutor();
+
+  executor.execute(
+    {
+      kind: "load-registers",
+      opcode: opcode(0xff65),
+      register: registerIndex(0xf),
+    },
+    context,
+  );
+
+  for (let index = 0; index <= 0xf; index++) {
+    assertEquals(registers.get(registerIndex(index)), byte(0x10 + index));
+  }
+
+  assertEquals(indexRegister.getValue(), address(0x310));
+});
