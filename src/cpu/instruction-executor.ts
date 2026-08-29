@@ -124,6 +124,18 @@ export class InstructionExecutor {
         context.soundTimer.setValue(context.registers.get(instruction.register));
         return;
 
+      case "wait-for-key": {
+        const releasedKey = context.keyboard.pollKeyRelease();
+
+        if (releasedKey === undefined) {
+          context.programCounter.setValue(address(context.programCounter.getValue() - INSTRUCTION_SIZE));
+          return;
+        }
+
+        context.registers.set(instruction.register, byte(releasedKey));
+        return;
+      }
+
       case "add-to-index": {
         const value = context.registers.get(instruction.register);
         const index = context.indexRegister.getValue();

@@ -1,10 +1,11 @@
 import type { Key } from "../core/types/key.ts";
 
 /**
- * Provides access to the state of the CHIP-8 hexadecimal keypad.
+ * Provides access to the CHIP-8 hexadecimal keypad.
  *
- * The Keyboard abstraction deliberately describes only what the emulator
- * needs to know: whether a particular CHIP-8 key is currently pressed.
+ * The Keyboard abstraction exposes both the current state of individual keys
+ * and the press/release sequence required by instructions that wait for
+ * keyboard input.
  *
  * It does not prescribe how input is obtained.
  *
@@ -25,4 +26,23 @@ export interface Keyboard {
    * @returns `true` when the key is currently pressed; otherwise `false`.
    */
   isPressed(key: Key): boolean;
+
+  /**
+   * Begins or continues waiting for a key press followed by its release.
+   *
+   * @remarks
+   * This operation is non-blocking. The first call starts a wait operation.
+   * It returns `undefined` until a key has been selected and subsequently
+   * released.
+   *
+   * A key that is already pressed when the wait starts may be selected; the
+   * wait completes when that key is released.
+   *
+   * Once a completed key release is returned, the wait operation resets and
+   * the next call starts a new wait.
+   *
+   * @returns The released CHIP-8 key when the wait completes; otherwise
+   * `undefined`.
+   */
+  pollKeyRelease(): Key | undefined;
 }

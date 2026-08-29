@@ -65,3 +65,35 @@ Deno.test("TestKeyboard releaseAll releases every key", () => {
   assertEquals(keyboard.isPressed(key(0x5)), false);
   assertEquals(keyboard.isPressed(key(0xf)), false);
 });
+
+Deno.test("TestKeyboard key-release wait remains pending when no key is pressed", () => {
+  const keyboard = new TestKeyboard();
+
+  assertEquals(keyboard.pollKeyRelease(), undefined);
+  assertEquals(keyboard.pollKeyRelease(), undefined);
+});
+
+Deno.test("TestKeyboard reports a key after it is pressed and released", () => {
+  const keyboard = new TestKeyboard();
+  const testKey = key(0xa);
+
+  assertEquals(keyboard.pollKeyRelease(), undefined);
+
+  keyboard.press(testKey);
+  keyboard.release(testKey);
+
+  assertEquals(keyboard.pollKeyRelease(), testKey);
+});
+
+Deno.test("TestKeyboard waits for release when a key is already pressed", () => {
+  const keyboard = new TestKeyboard();
+  const testKey = key(0xb);
+
+  keyboard.press(testKey);
+
+  assertEquals(keyboard.pollKeyRelease(), undefined);
+
+  keyboard.release(testKey);
+
+  assertEquals(keyboard.pollKeyRelease(), testKey);
+});
