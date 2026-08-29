@@ -124,6 +124,14 @@ export class InstructionExecutor {
         context.soundTimer.setValue(context.registers.get(instruction.register));
         return;
 
+      case "add-to-index": {
+        const value = context.registers.get(instruction.register);
+        const index = context.indexRegister.getValue();
+
+        context.indexRegister.setValue(address(index + value));
+        return;
+      }
+
       case "load-immediate":
         context.registers.set(instruction.register, instruction.value);
         return;

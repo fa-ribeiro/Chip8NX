@@ -897,3 +897,79 @@ Deno.test("LD ST, Vx copies Vx into the sound timer", () => {
 
   assertEquals(soundTimer.getValue(), byte(0x42));
 });
+
+Deno.test("ADD I, Vx adds Vx to the index register", () => {
+  const registers = new Registers();
+  const indexRegister = new IndexRegister(address(0x300));
+
+  registers.set(registerIndex(0x2), byte(0x42));
+
+  const context = createContext({
+    registers,
+    indexRegister,
+  });
+
+  const executor = new InstructionExecutor();
+
+  executor.execute(
+    {
+      kind: "add-to-index",
+      opcode: opcode(0xf21e),
+      register: registerIndex(0x2),
+    },
+    context,
+  );
+
+  assertEquals(indexRegister.getValue(), address(0x342));
+});
+
+Deno.test("ADD I, Vx preserves results above the CHIP-8 memory address range", () => {
+  const registers = new Registers();
+  const indexRegister = new IndexRegister(address(0xfe0));
+
+  registers.set(registerIndex(0x2), byte(0x40));
+
+  const context = createContext({
+    registers,
+    indexRegister,
+  });
+
+  const executor = new InstructionExecutor();
+
+  executor.execute(
+    {
+      kind: "add-to-index",
+      opcode: opcode(0xf21e),
+      register: registerIndex(0x2),
+    },
+    context,
+  );
+
+  assertEquals(indexRegister.getValue(), address(0x1020));
+});
+
+Deno.test("ADD I, VF uses VF as the operand without modifying it", () => {
+  const registers = new Registers();
+  const indexRegister = new IndexRegister(address(0x300));
+
+  registers.set(FLAG_REGISTER, byte(0x42));
+
+  const context = createContext({
+    registers,
+    indexRegister,
+  });
+
+  const executor = new InstructionExecutor();
+
+  executor.execute(
+    {
+      kind: "add-to-index",
+      opcode: opcode(0xff1e),
+      register: FLAG_REGISTER,
+    },
+    context,
+  );
+
+  assertEquals(indexRegister.getValue(), address(0x342));
+  assertEquals(registers.get(FLAG_REGISTER), byte(0x42));
+});
