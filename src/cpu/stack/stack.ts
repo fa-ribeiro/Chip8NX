@@ -82,7 +82,7 @@ export class Stack {
       throw new RangeError("Cannot peek at an empty stack.");
     }
 
-    return this.values[this.values.length - 1];
+    return this.values[this.values.length - 1] as Address;
   }
 
   /**

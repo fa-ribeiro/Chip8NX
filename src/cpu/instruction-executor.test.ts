@@ -1,7 +1,7 @@
 import { assertEquals, assertThrows } from "@std/assert";
 
 import { address } from "../core/types/address.ts";
-import { byte } from "../core/types/byte.ts";
+import { type Byte, byte } from "../core/types/byte.ts";
 import { opcode } from "../core/types/opcode.ts";
 import { key } from "../core/types/key.ts";
 import { DisplayBuffer } from "../display/display-buffer.ts";

@@ -163,7 +163,7 @@ export class DisplayBuffer {
           break;
         }
 
-        const spritePixel = (spriteByte & (0x80 >> bit)) !== 0;
+        const spritePixel = ((spriteByte as Byte) & (0x80 >> bit)) !== 0;
 
         if (!spritePixel) {
           continue;

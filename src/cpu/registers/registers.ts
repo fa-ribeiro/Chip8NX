@@ -32,7 +32,7 @@ export class Registers {
    * @param index - Register to read.
    */
   public get(index: RegisterIndex): Byte {
-    return this.values[index];
+    return this.values[index] as Byte;
   }
 
   /**
