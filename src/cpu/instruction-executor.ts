@@ -154,6 +154,17 @@ export class InstructionExecutor {
         return;
       }
 
+      case "store-registers": {
+        const startAddress = context.indexRegister.getValue();
+
+        for (let index = 0; index <= instruction.register; index++) {
+          context.memory.write(address(startAddress + index), context.registers.get(registerIndex(index)));
+        }
+
+        context.indexRegister.setValue(address(startAddress + instruction.register + 1));
+        return;
+      }
+
       case "load-immediate":
         context.registers.set(instruction.register, instruction.value);
         return;
