@@ -153,14 +153,12 @@ export class DisplayBuffer {
 
     let collision = false;
 
-    for (let row = 0; row < sprite.length; row++) {
+    for (const [row, spriteByte] of sprite.entries()) {
       const targetY = originY + row;
 
       if (targetY >= this.height) {
         break;
       }
-
-      const spriteByte = sprite[row];
 
       for (let bit = 0; bit < 8; bit++) {
         const targetX = originX + bit;

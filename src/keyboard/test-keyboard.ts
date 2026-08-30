@@ -97,4 +97,13 @@ export class TestKeyboard implements Keyboard {
 
     this.pressedKeys.clear();
   }
+
+  /**
+   * {@inheritDoc Keyboard.reset}
+   */
+  public reset(): void {
+    this.keyReleaseWaitActive = false;
+    this.latchedKey = undefined;
+    this.completedKeyRelease = undefined;
+  }
 }

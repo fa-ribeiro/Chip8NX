@@ -62,11 +62,13 @@ export class Stack {
    * If the stack is empty.
    */
   public pop(): Address {
-    if (this.isEmpty()) {
+    const value = this.values.pop();
+
+    if (value === undefined) {
       throw new RangeError("Cannot pop from an empty stack.");
     }
 
-    return this.values.pop()!;
+    return value;
   }
 
   /**
@@ -111,6 +113,15 @@ export class Stack {
    */
   public isFull(): boolean {
     return this.values.length >= this.capacity;
+  }
+
+  /**
+   * Removes all addresses from the stack.
+   *
+   * The configured stack capacity is unchanged.
+   */
+  public clear(): void {
+    this.values.length = 0;
   }
 
   /**

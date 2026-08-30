@@ -51,6 +51,13 @@ export class Ram implements Memory {
   }
 
   /**
+   * {@inheritDoc Memory.clear}
+   */
+  clear(): void {
+    this.data.fill(0);
+  }
+
+  /**
    * Verifies that an address belongs to this memory's address space.
    *
    * Keeping this validation in `Ram`, rather than in {@link Address}, is

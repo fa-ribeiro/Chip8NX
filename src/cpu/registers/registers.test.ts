@@ -67,3 +67,17 @@ Deno.test("Registers snapshot is independent from the register bank", () => {
   assertEquals(snapshot[0], byte(0x12));
   assertEquals(registers.get(registerIndex(0)), byte(0x34));
 });
+
+Deno.test("Registers clear resets all registers to zero", () => {
+  const registers = new Registers();
+
+  for (let index = 0; index < REGISTER_COUNT; index++) {
+    registers.set(registerIndex(index), byte(index + 1));
+  }
+
+  registers.clear();
+
+  for (let index = 0; index < REGISTER_COUNT; index++) {
+    assertEquals(registers.get(registerIndex(index)), byte(0));
+  }
+});

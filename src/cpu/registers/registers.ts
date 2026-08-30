@@ -46,6 +46,15 @@ export class Registers {
   }
 
   /**
+   * Clears all general-purpose registers.
+   *
+   * After this operation every register from V0 through VF contains zero.
+   */
+  public clear(): void {
+    this.values.fill(byte(0));
+  }
+
+  /**
    * Returns a copy of all register values.
    *
    * @remarks

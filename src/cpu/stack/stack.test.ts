@@ -146,3 +146,21 @@ Deno.test("Stack snapshot is independent from live stack", () => {
   assertEquals(snapshot, [address(0x200), address(0x300)]);
   assertEquals(stack.getSize(), 1);
 });
+
+Deno.test("Stack clear removes all addresses while preserving capacity", () => {
+  const stack = new Stack(4);
+
+  stack.push(address(0x100));
+  stack.push(address(0x200));
+  stack.push(address(0x300));
+
+  stack.clear();
+
+  assertEquals(stack.isEmpty(), true);
+  assertEquals(stack.getSize(), 0);
+  assertEquals(stack.getCapacity(), 4);
+
+  stack.push(address(0x400));
+
+  assertEquals(stack.peek(), address(0x400));
+});

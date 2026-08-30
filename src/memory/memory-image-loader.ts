@@ -1,7 +1,6 @@
 import { type Address, address } from "../core/types/address.ts";
 import type { Memory } from "./memory.ts";
 import type { MemoryImage } from "./memory-image.ts";
-import { Byte } from "../core/types/byte.ts";
 
 /**
  * Loads contiguous binary images into memory.
@@ -32,8 +31,8 @@ export class MemoryImageLoader {
    * addresses.
    */
   public load(memory: Memory, startAddress: Address, image: MemoryImage): void {
-    for (let offset = 0; offset < image.bytes.length; offset++) {
-      memory.write(address(startAddress + offset), image.bytes[offset] as Byte);
+    for (const [offset, value] of image.bytes.entries()) {
+      memory.write(address(startAddress + offset), value);
     }
   }
 }

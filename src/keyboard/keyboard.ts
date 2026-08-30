@@ -45,4 +45,16 @@ export interface Keyboard {
    * `undefined`.
    */
   pollKeyRelease(): Key | undefined;
+
+  /**
+   * Resets transient keyboard interpretation state.
+   *
+   * @remarks
+   * Any pending or completed key-release wait is discarded.
+   *
+   * The current pressed state of physical/input keys is preserved. Resetting
+   * the emulated machine must not pretend that a key the user is still holding
+   * has been physically released.
+   */
+  reset(): void;
 }

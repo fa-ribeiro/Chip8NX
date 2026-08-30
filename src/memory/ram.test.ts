@@ -69,3 +69,23 @@ Deno.test("Ram rejects a negative size", () => {
 Deno.test("Ram rejects a fractional size", () => {
   assertThrows(() => new Ram(1.5), RangeError);
 });
+
+Deno.test("Ram reports its configured size", () => {
+  const memory = new Ram(0x1000);
+
+  assertEquals(memory.size, 0x1000);
+});
+
+Deno.test("Ram clear resets all bytes to zero", () => {
+  const memory = new Ram(0x1000);
+
+  memory.write(address(0x000), byte(0x11));
+  memory.write(address(0x200), byte(0x22));
+  memory.write(address(0xfff), byte(0x33));
+
+  memory.clear();
+
+  assertEquals(memory.read(address(0x000)), byte(0));
+  assertEquals(memory.read(address(0x200)), byte(0));
+  assertEquals(memory.read(address(0xfff)), byte(0));
+});

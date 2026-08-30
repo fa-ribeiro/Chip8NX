@@ -13,6 +13,11 @@ import type { Byte } from "../core/types/byte.ts";
  */
 export interface Memory {
   /**
+   * Number of addressable bytes provided by this memory.
+   */
+  readonly size: number;
+
+  /**
    * Reads a byte from memory.
    *
    * @param address - Address from which to read.
@@ -33,4 +38,11 @@ export interface Memory {
    * Thrown when the address is outside this memory's address space.
    */
   write(address: Address, value: Byte): void;
+
+  /**
+   * Clears all memory contents.
+   *
+   * After this operation every address contains zero.
+   */
+  clear(): void;
 }
