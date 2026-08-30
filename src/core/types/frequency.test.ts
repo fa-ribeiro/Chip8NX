@@ -46,11 +46,19 @@ Deno.test("rejects a negative numerator", () => {
 });
 
 Deno.test("rejects a zero denominator", () => {
-  assertThrows(() => new Frequency(1n, 0n), RangeError, "Frequency denominator must be positive.");
+  assertThrows(
+    () => new Frequency(1n, 0n),
+    RangeError,
+    "Frequency denominator must be positive.",
+  );
 });
 
 Deno.test("rejects a negative denominator", () => {
-  assertThrows(() => new Frequency(1n, -1n), RangeError, "Frequency denominator must be positive.");
+  assertThrows(
+    () => new Frequency(1n, -1n),
+    RangeError,
+    "Frequency denominator must be positive.",
+  );
 });
 
 Deno.test("normalization does not change the represented frequency", () => {

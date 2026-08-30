@@ -1,8 +1,23 @@
 {
   "tasks": {
-    "dev": "deno run --watch --allow-net main.ts"
+    "dev": "deno run --watch --allow-net main.ts",
+    "test": "deno test --allow-read src/**/*.test.ts tests/",
+    "test:watch": "deno test --watch --allow-read src/**/*.test.ts tests/",
+    "check": "deno check src/ tests/ && deno fmt --check src/ tests/ && deno lint src/ tests/"
   },
   "imports": {
     "@std/assert": "jsr:@std/assert@1"
+  },
+  "fmt": {
+    "lineWidth": 96
+  },
+  "lint": {
+    "rules": {
+      "tags": ["recommended"]
+    }
+  },
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true
   }
 }

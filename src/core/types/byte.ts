@@ -24,7 +24,9 @@ export type Byte = number & { readonly __brand: "Byte" };
  */
 export function byte(value: number): Byte {
   if (!Number.isInteger(value) || value < 0 || value > 0xff) {
-    throw new RangeError(`Invalid byte value: ${value}. Expected an integer between 0 and 255.`);
+    throw new RangeError(
+      `Invalid byte value: ${value}. Expected an integer between 0 and 255.`,
+    );
   }
 
   return value as Byte;

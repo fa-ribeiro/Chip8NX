@@ -125,7 +125,9 @@ export class InstructionExecutor {
         const releasedKey = context.keyboard.pollKeyRelease();
 
         if (releasedKey === undefined) {
-          context.programCounter.setValue(address(context.programCounter.getValue() - INSTRUCTION_SIZE));
+          context.programCounter.setValue(
+            address(context.programCounter.getValue() - INSTRUCTION_SIZE),
+          );
           return;
         }
 
@@ -167,7 +169,10 @@ export class InstructionExecutor {
         const startAddress = context.indexRegister.getValue();
 
         for (let index = 0; index <= instruction.register; index++) {
-          context.memory.write(address(startAddress + index), context.registers.get(registerIndex(index)));
+          context.memory.write(
+            address(startAddress + index),
+            context.registers.get(registerIndex(index)),
+          );
         }
 
         context.indexRegister.setValue(address(startAddress + instruction.register + 1));
@@ -178,7 +183,10 @@ export class InstructionExecutor {
         const startAddress = context.indexRegister.getValue();
 
         for (let index = 0; index <= instruction.register; index++) {
-          context.registers.set(registerIndex(index), context.memory.read(address(startAddress + index)));
+          context.registers.set(
+            registerIndex(index),
+            context.memory.read(address(startAddress + index)),
+          );
         }
 
         context.indexRegister.setValue(address(startAddress + instruction.register + 1));

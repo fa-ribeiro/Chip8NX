@@ -58,7 +58,11 @@ export class TestKeyboard implements Keyboard {
   public press(key: Key): void {
     this.pressedKeys.add(key);
 
-    if (this.keyReleaseWaitActive && this.latchedKey === undefined && this.completedKeyRelease === undefined) {
+    if (
+      this.keyReleaseWaitActive &&
+      this.latchedKey === undefined &&
+      this.completedKeyRelease === undefined
+    ) {
       this.latchedKey = key;
     }
   }
@@ -82,7 +86,11 @@ export class TestKeyboard implements Keyboard {
    * Releases all currently pressed keys.
    */
   public releaseAll(): void {
-    if (this.keyReleaseWaitActive && this.latchedKey !== undefined && this.pressedKeys.has(this.latchedKey)) {
+    if (
+      this.keyReleaseWaitActive &&
+      this.latchedKey !== undefined &&
+      this.pressedKeys.has(this.latchedKey)
+    ) {
       this.completedKeyRelease = this.latchedKey;
       this.latchedKey = undefined;
     }

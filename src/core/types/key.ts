@@ -24,7 +24,9 @@ export type Key = number & { readonly __brand: "Key" };
  */
 export function key(value: number): Key {
   if (!Number.isInteger(value) || value < 0x0 || value > 0xf) {
-    throw new RangeError(`Invalid CHIP-8 key: ${value}. Expected an integer between 0x0 and 0xF.`);
+    throw new RangeError(
+      `Invalid CHIP-8 key: ${value}. Expected an integer between 0x0 and 0xF.`,
+    );
   }
 
   return value as Key;

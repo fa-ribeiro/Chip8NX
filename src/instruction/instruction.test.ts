@@ -4,8 +4,11 @@ import { address } from "../core/types/address.ts";
 import { byte } from "../core/types/byte.ts";
 import { opcode } from "../core/types/opcode.ts";
 import { registerIndex } from "../cpu/registers/register-index.ts";
-
-import type { ClearScreenInstruction, JumpInstruction, LoadImmediateInstruction } from "./instruction.ts";
+import type {
+  ClearScreenInstruction,
+  JumpInstruction,
+  LoadImmediateInstruction,
+} from "./instruction.ts";
 
 Deno.test("ClearScreenInstruction represents 00E0", () => {
   const instruction: ClearScreenInstruction = {

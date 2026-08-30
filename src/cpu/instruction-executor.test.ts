@@ -12,7 +12,11 @@ import { Ram } from "../memory/ram.ts";
 import { Timer } from "../timer/timer.ts";
 import { IndexRegister } from "./index-register/index-register.ts";
 import type { ExecutionContext } from "./execution-context.ts";
-import { FLAG_REGISTER, InstructionExecutor, UnsupportedInstructionError } from "./instruction-executor.ts";
+import {
+  FLAG_REGISTER,
+  InstructionExecutor,
+  UnsupportedInstructionError,
+} from "./instruction-executor.ts";
 import { ProgramCounter } from "./program-counter/program-counter.ts";
 import { registerIndex } from "./registers/register-index.ts";
 import { Registers } from "./registers/registers.ts";
@@ -470,7 +474,10 @@ Deno.test("unsupported instructions throw UnsupportedInstructionError", () => {
     address: address(0x123),
   };
 
-  const error = assertThrows(() => executor.execute(instruction, context), UnsupportedInstructionError);
+  const error = assertThrows(
+    () => executor.execute(instruction, context),
+    UnsupportedInstructionError,
+  );
 
   assertEquals(error.instruction, instruction);
 });
@@ -1071,41 +1078,44 @@ Deno.test("ADD I, VF uses VF as the operand without modifying it", () => {
   assertEquals(registers.get(FLAG_REGISTER), byte(0x42));
 });
 
-Deno.test("LD F, Vx resolves Vx through the configured font and stores the address in I", () => {
-  const registers = new Registers();
-  const indexRegister = new IndexRegister();
-  const spriteAddress = address(0x345);
-  let requestedValue: Byte | undefined;
+Deno.test(
+  "LD F, Vx resolves Vx through the configured font and stores the address in I",
+  () => {
+    const registers = new Registers();
+    const indexRegister = new IndexRegister();
+    const spriteAddress = address(0x345);
+    let requestedValue: Byte | undefined;
 
-  const font: Font = {
-    getSpriteAddress(value: Byte) {
-      requestedValue = value;
-      return spriteAddress;
-    },
-  };
+    const font: Font = {
+      getSpriteAddress(value: Byte) {
+        requestedValue = value;
+        return spriteAddress;
+      },
+    };
 
-  registers.set(registerIndex(0xa), byte(0xab));
+    registers.set(registerIndex(0xa), byte(0xab));
 
-  const context = createContext({
-    registers,
-    indexRegister,
-    font,
-  });
+    const context = createContext({
+      registers,
+      indexRegister,
+      font,
+    });
 
-  const executor = new InstructionExecutor();
+    const executor = new InstructionExecutor();
 
-  executor.execute(
-    {
-      kind: "set-index-to-sprite",
-      opcode: opcode(0xfa29),
-      register: registerIndex(0xa),
-    },
-    context,
-  );
+    executor.execute(
+      {
+        kind: "set-index-to-sprite",
+        opcode: opcode(0xfa29),
+        register: registerIndex(0xa),
+      },
+      context,
+    );
 
-  assertEquals(requestedValue, byte(0xab));
-  assertEquals(indexRegister.getValue(), spriteAddress);
-});
+    assertEquals(requestedValue, byte(0xab));
+    assertEquals(indexRegister.getValue(), spriteAddress);
+  },
+);
 
 Deno.test("LD B, Vx stores the BCD representation of Vx in memory", () => {
   const registers = new Registers();

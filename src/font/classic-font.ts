@@ -35,7 +35,9 @@ export class ClassicFont implements Font {
    *
    * @default {@link DEFAULT_CLASSIC_FONT_BASE_ADDRESS}
    */
-  public constructor(private readonly baseAddress: Address = DEFAULT_CLASSIC_FONT_BASE_ADDRESS) {}
+  public constructor(
+    private readonly baseAddress: Address = DEFAULT_CLASSIC_FONT_BASE_ADDRESS,
+  ) {}
 
   /**
    * {@inheritDoc Font.getSpriteAddress}

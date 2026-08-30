@@ -61,11 +61,15 @@ export class DisplayBuffer {
    */
   constructor(width: number, height: number) {
     if (!Number.isInteger(width) || width <= 0) {
-      throw new RangeError(`Invalid display width: ${width}. ` + `Expected a positive integer.`);
+      throw new RangeError(
+        `Invalid display width: ${width}. ` + `Expected a positive integer.`,
+      );
     }
 
     if (!Number.isInteger(height) || height <= 0) {
-      throw new RangeError(`Invalid display height: ${height}. ` + `Expected a positive integer.`);
+      throw new RangeError(
+        `Invalid display height: ${height}. ` + `Expected a positive integer.`,
+      );
     }
 
     this.width = width;
@@ -128,13 +132,15 @@ export class DisplayBuffer {
   private getIndex(x: number, y: number): number {
     if (!Number.isInteger(x) || x < 0 || x >= this.width) {
       throw new RangeError(
-        `Invalid display X coordinate: ${x}. ` + `Expected an integer between 0 and ${this.width - 1}.`,
+        `Invalid display X coordinate: ${x}. ` +
+          `Expected an integer between 0 and ${this.width - 1}.`,
       );
     }
 
     if (!Number.isInteger(y) || y < 0 || y >= this.height) {
       throw new RangeError(
-        `Invalid display Y coordinate: ${y}. ` + `Expected an integer between 0 and ${this.height - 1}.`,
+        `Invalid display Y coordinate: ${y}. ` +
+          `Expected an integer between 0 and ${this.height - 1}.`,
       );
     }
 
