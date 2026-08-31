@@ -3,11 +3,6 @@ import type { Byte } from "../core/types/byte.ts";
 import type { Font } from "./font.ts";
 
 /**
- * Conventional start address for the classic CHIP-8 hexadecimal font.
- */
-export const DEFAULT_CLASSIC_FONT_BASE_ADDRESS = address(0x50);
-
-/**
  * Number of glyphs provided by the classic CHIP-8 hexadecimal font.
  */
 export const CLASSIC_FONT_GLYPH_COUNT = 16;
@@ -32,12 +27,8 @@ export class ClassicFont implements Font {
    * Creates a classic CHIP-8 font layout.
    *
    * @param baseAddress - Address at which the first glyph (`0`) begins.
-   *
-   * @default {@link DEFAULT_CLASSIC_FONT_BASE_ADDRESS}
    */
-  public constructor(
-    private readonly baseAddress: Address = DEFAULT_CLASSIC_FONT_BASE_ADDRESS,
-  ) {}
+  public constructor(private readonly baseAddress: Address) {}
 
   /**
    * {@inheritDoc Font.getSpriteAddress}

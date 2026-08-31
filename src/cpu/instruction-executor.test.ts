@@ -24,19 +24,23 @@ import { Stack } from "./stack/stack.ts";
 import { TestRandomNumberGenerator } from "../random/test-random-number-generator.ts";
 import { TestKeyboard } from "../keyboard/test-keyboard.ts";
 
+import { CLASSIC_CHIP8_PROFILE } from "../machine/classic/classic-chip8-profile.ts";
+
 function createContext(overrides: Partial<ExecutionContext> = {}): ExecutionContext {
+  const profile = CLASSIC_CHIP8_PROFILE;
+
   return {
     registers: new Registers(),
-    memory: new Ram(0x1000),
-    stack: new Stack(),
-    programCounter: new ProgramCounter(),
+    memory: new Ram(profile.memorySize),
+    stack: new Stack(profile.stackCapacity),
+    programCounter: new ProgramCounter(profile.programStartAddress),
     indexRegister: new IndexRegister(),
     soundTimer: new Timer(),
     delayTimer: new Timer(),
-    displayBuffer: new DisplayBuffer(64, 32),
+    displayBuffer: new DisplayBuffer(profile.display.width, profile.display.height),
     keyboard: new TestKeyboard(),
-    font: new ClassicFont(),
-    randomNumberGenerator: new TestRandomNumberGenerator([byte(0x00)]),
+    font: new ClassicFont(profile.fontBaseAddress),
+    randomNumberGenerator: new TestRandomNumberGenerator([byte(0)]),
     ...overrides,
   };
 }
@@ -93,7 +97,7 @@ Deno.test("JP sets the program counter to its target address", () => {
 
 Deno.test("CALL pushes the current program counter and jumps", () => {
   const programCounter = new ProgramCounter(address(0x202));
-  const stack = new Stack();
+  const stack = new Stack(CLASSIC_CHIP8_PROFILE.stackCapacity);
   const context = createContext({ programCounter, stack });
   const executor = new InstructionExecutor();
 
@@ -112,7 +116,7 @@ Deno.test("CALL pushes the current program counter and jumps", () => {
 
 Deno.test("RET pops the return address into the program counter", () => {
   const programCounter = new ProgramCounter(address(0x300));
-  const stack = new Stack();
+  const stack = new Stack(CLASSIC_CHIP8_PROFILE.stackCapacity);
   stack.push(address(0x202));
 
   const context = createContext({ programCounter, stack });

@@ -3,18 +3,14 @@ import { assertEquals, assertThrows } from "@std/assert";
 import { address } from "../../core/types/address.ts";
 import { Stack } from "./stack.ts";
 
+const TEST_STACK_CAPACITY = 4;
+
 Deno.test("Stack new stack is empty", () => {
-  const stack = new Stack();
+  const stack = new Stack(TEST_STACK_CAPACITY);
 
   assertEquals(stack.isEmpty(), true);
   assertEquals(stack.isFull(), false);
   assertEquals(stack.getSize(), 0);
-});
-
-Deno.test("Stack default capacity is 16", () => {
-  const stack = new Stack();
-
-  assertEquals(stack.getCapacity(), 16);
 });
 
 Deno.test("Stack custom capacity can be specified", () => {
@@ -24,7 +20,7 @@ Deno.test("Stack custom capacity can be specified", () => {
 });
 
 Deno.test("Stack push adds an address", () => {
-  const stack = new Stack();
+  const stack = new Stack(TEST_STACK_CAPACITY);
   const value = address(0x234);
 
   stack.push(value);
@@ -34,7 +30,7 @@ Deno.test("Stack push adds an address", () => {
 });
 
 Deno.test("Stack pop returns the most recently pushed address", () => {
-  const stack = new Stack();
+  const stack = new Stack(TEST_STACK_CAPACITY);
 
   const first = address(0x200);
   const second = address(0x300);
@@ -47,7 +43,7 @@ Deno.test("Stack pop returns the most recently pushed address", () => {
 });
 
 Deno.test("Stack follows LIFO order", () => {
-  const stack = new Stack();
+  const stack = new Stack(TEST_STACK_CAPACITY);
 
   const first = address(0x100);
   const second = address(0x200);
@@ -63,7 +59,7 @@ Deno.test("Stack follows LIFO order", () => {
 });
 
 Deno.test("Stack peek does not remove the top address", () => {
-  const stack = new Stack();
+  const stack = new Stack(TEST_STACK_CAPACITY);
   const value = address(0x234);
 
   stack.push(value);
@@ -73,7 +69,7 @@ Deno.test("Stack peek does not remove the top address", () => {
 });
 
 Deno.test("Stack pop removes the top address", () => {
-  const stack = new Stack();
+  const stack = new Stack(TEST_STACK_CAPACITY);
   const value = address(0x234);
 
   stack.push(value);
@@ -84,13 +80,13 @@ Deno.test("Stack pop removes the top address", () => {
 });
 
 Deno.test("Stack cannot pop an empty stack", () => {
-  const stack = new Stack();
+  const stack = new Stack(TEST_STACK_CAPACITY);
 
   assertThrows(() => stack.pop(), RangeError);
 });
 
 Deno.test("Stack cannot peek at an empty stack", () => {
-  const stack = new Stack();
+  const stack = new Stack(TEST_STACK_CAPACITY);
 
   assertThrows(() => stack.peek(), RangeError);
 });
@@ -134,7 +130,7 @@ Deno.test("Stack invalid capacity is rejected", () => {
 });
 
 Deno.test("Stack snapshot is independent from live stack", () => {
-  const stack = new Stack();
+  const stack = new Stack(TEST_STACK_CAPACITY);
 
   stack.push(address(0x200));
   stack.push(address(0x300));

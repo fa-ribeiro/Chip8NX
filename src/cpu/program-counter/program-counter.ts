@@ -1,11 +1,6 @@
 import { type Address, address } from "../../core/types/address.ts";
 
 /**
- * The default address at which a CHIP-8 program is loaded.
- */
-export const DEFAULT_PROGRAM_START_ADDRESS = address(0x200);
-
-/**
  * The size, in bytes, of a CHIP-8 instruction.
  *
  * CHIP-8 instructions are always two bytes wide.
@@ -30,10 +25,8 @@ export class ProgramCounter {
    * Creates a program counter.
    *
    * @param initialValue - Initial program counter address.
-   *
-   * @default {@link DEFAULT_PROGRAM_START_ADDRESS}
    */
-  public constructor(initialValue: Address = DEFAULT_PROGRAM_START_ADDRESS) {
+  public constructor(initialValue: Address) {
     this.value = initialValue;
   }
 

@@ -1,15 +1,9 @@
 import { assertEquals } from "@std/assert";
 
 import { address } from "../../core/types/address.ts";
-import { DEFAULT_PROGRAM_START_ADDRESS, ProgramCounter } from "./program-counter.ts";
+import { ProgramCounter } from "./program-counter.ts";
 
-Deno.test("Program Counter starts at the default program address", () => {
-  const pc = new ProgramCounter();
-
-  assertEquals(pc.getValue(), DEFAULT_PROGRAM_START_ADDRESS);
-});
-
-Deno.test("Program Counter can start at a custom address", () => {
+Deno.test("Program Counter starts at the supplied address", () => {
   const initialAddress = address(0x300);
 
   const pc = new ProgramCounter(initialAddress);
@@ -18,7 +12,7 @@ Deno.test("Program Counter can start at a custom address", () => {
 });
 
 Deno.test("Program Counter setValue changes the program counter", () => {
-  const pc = new ProgramCounter();
+  const pc = new ProgramCounter(address(0x200));
 
   const newAddress = address(0x400);
 
