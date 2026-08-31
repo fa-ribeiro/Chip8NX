@@ -8,7 +8,7 @@ import { MemoryImage } from "../memory/memory-image.ts";
  * glyph occupying five consecutive bytes.
  *
  * The image deliberately contains no memory address. Its placement is a
- * machine-configuration decision and is supplied separately when loading it
+ * machine-profile decision and is supplied separately when loading it
  * into memory.
  */
 export const CLASSIC_FONT_IMAGE = new MemoryImage(
