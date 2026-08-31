@@ -140,10 +140,6 @@ export class MachineInitializer {
     secondStart: Address,
     secondLength: number,
   ): boolean {
-    if (firstLength === 0 || secondLength === 0) {
-      return false;
-    }
-
     const firstEndExclusive = firstStart + firstLength;
     const secondEndExclusive = secondStart + secondLength;
 
