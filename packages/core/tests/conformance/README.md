@@ -21,6 +21,7 @@ Individual tests can also be run directly:
 ```bash
 deno test --allow-read packages/core/tests/conformance/ibm-logo.test.ts
 deno test --allow-read packages/core/tests/conformance/corax89.test.ts
+deno test --allow-read packages/core/tests/conformance/timendus-corax-plus.test.ts
 ```
 
 The `roms/` directory is intended for local test fixtures and should not contain redistributed third-party ROMs in the public repository.
@@ -56,7 +57,9 @@ Expected path:
 packages/core/tests/conformance/roms/test_opcode.ch8
 ```
 
-Chip8NX does not redistribute this ROM.
+Obtain the ROM from the upstream repository:
+
+<https://github.com/corax89/chip8-test-rom>
 
 The expected fixture is:
 
@@ -70,6 +73,30 @@ Chip8NX does not redistribute this ROM.
 
 The upstream corax89 project is MIT-licensed. See the repository-level [`THIRD_PARTY_NOTICES.md`](../../../../THIRD_PARTY_NOTICES.md) for provenance information.
 
+### Timendus Corax+ Opcode Test
+
+Expected path:
+
+```text
+packages/core/tests/conformance/roms/3-corax+.ch8
+```
+
+Obtain the ROM from the Timendus CHIP-8 test suite:
+
+<https://github.com/Timendus/chip8-test-suite#corax-opcode-test>
+
+The expected fixture is:
+
+```text
+Filename: 3-corax+.ch8
+Size:     761 bytes
+SHA-256:  1c7e14eae14d6d5e1e47693804110354cbc4081defe4e6e5d9167c25ffc7b4b0
+```
+
+The Timendus CHIP-8 test suite is licensed under GPL-3.0. The external ROM remains subject to its upstream license and is not covered by the Chip8NX MIT license.
+
+The Corax+ test extends the original corax89 opcode test with additional coverage including call/return behavior, `8XY7`, `FX1E`, `FX65`, BCD edge cases, and 8-bit register width.
+
 ## Verifying the downloaded ROM
 
 After downloading the file, calculate its SHA-256 checksum locally.
@@ -77,26 +104,34 @@ After downloading the file, calculate its SHA-256 checksum locally.
 ### Linux
 
 ```bash
+sha256sum packages/core/tests/conformance/ibm-logo.test.ts
 sha256sum packages/core/tests/conformance/roms/test_opcode.ch8
+sha256sum packages/core/tests/conformance/timendus-corax-plus.test.ts
 ```
 
 ### macOS
 
 ```bash
+shasum -a 256 packages/core/tests/conformance/ibm-logo.test.ts
 shasum -a 256 packages/core/tests/conformance/roms/test_opcode.ch8
+shasum -a 256 packages/core/tests/conformance/timendus-corax-plus.test.ts
 ```
 
 ### PowerShell
 
 ```powershell
+Get-FileHash packages/core/tests/conformance/ibm-logo.test.ts -Algorithm SHA256
 Get-FileHash packages/core/tests/conformance/roms/test_opcode.ch8 -Algorithm SHA256
+Get-FileHash packages/core/tests/conformance/timendus-corax-plus.test.ts -Algorithm SHA256
 ```
 
 ## Future Fixtures
 
-After corax89, relevant Classic CHIP-8 tests from the Timendus suite are planned:
+The next planned Classic CHIP-8 conformance target is the Timendus flags test:
 
-<https://github.com/Timendus/chip8-test-suite>
+<https://github.com/Timendus/chip8-test-suite#flags-test>
+
+After that, the Timendus quirks test will be used to validate Classic CHIP-8 variant behavior explicitly.
 
 When a new fixture becomes part of an automated conformance test:
 

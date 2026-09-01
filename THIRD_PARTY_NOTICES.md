@@ -32,9 +32,13 @@ The checksums identify the exact historical fixture used for the Chip8NX `v0.1.0
 
 ## Timendus CHIP-8 Test Suite
 
-The Timendus test suite is not included in this repository.
+The Timendus CHIP-8 test suite is not included in this repository.
 
 - Upstream repository: <https://github.com/Timendus/chip8-test-suite>
 - Upstream license: GPL-3.0
+- Corax+ upstream ROM filename: `3-corax+.ch8`
+- Expected local filename: `packages/core/tests/conformance/roms/3-corax+.ch8`
+- Expected size: `761` bytes
+- Expected SHA-256: `1c7e14eae14d6d5e1e47693804110354cbc4081defe4e6e5d9167c25ffc7b4b0`
 
-Chip8NX intends to use relevant Classic CHIP-8 tests from this suite as a broader conformance target after the corax89 milestone.
+Chip8NX uses relevant Classic CHIP-8 tests from this suite as external conformance fixtures. These ROMs remain subject to the upstream GPL-3.0 license and are not distributed as part of Chip8NX.
