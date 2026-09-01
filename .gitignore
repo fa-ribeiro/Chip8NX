@@ -1,10 +1,16 @@
-# Git ignore file for Chip-8 NX project
+# Git ignore file for the Chip-8 NX project
 
 # Output directories
-dist/
+build/
 
 # Coverage directory
 coverage/
 
 # MacOS system files
 .DS_Store
+
+# VS Code settings folder
+.vscode/
+
+# Test ROMs
+packages/core/tests/conformance/roms/*.ch8
