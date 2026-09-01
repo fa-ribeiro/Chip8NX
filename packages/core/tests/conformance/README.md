@@ -22,6 +22,7 @@ Individual tests can also be run directly:
 deno test --allow-read packages/core/tests/conformance/ibm-logo.test.ts
 deno test --allow-read packages/core/tests/conformance/corax89.test.ts
 deno test --allow-read packages/core/tests/conformance/timendus-corax-plus.test.ts
+deno test --allow-read packages/core/tests/conformance/timendus-flags.test.ts
 ```
 
 The `roms/` directory is intended for local test fixtures and should not contain redistributed third-party ROMs in the public repository.
@@ -97,6 +98,32 @@ The Timendus CHIP-8 test suite is licensed under GPL-3.0. The external ROM remai
 
 The Corax+ test extends the original corax89 opcode test with additional coverage including call/return behavior, `8XY7`, `FX1E`, `FX65`, BCD edge cases, and 8-bit register width.
 
+### Timendus Flags Test
+
+Expected path:
+
+```text
+packages/core/tests/conformance/roms/4-flags.ch8
+```
+
+Obtain the ROM from the Timendus CHIP-8 test suite:
+
+<https://github.com/Timendus/chip8-test-suite#flags-test>
+
+The expected fixture is:
+
+```text
+Filename: 4-flags.ch8
+Size: 1041
+SHA-256: f00ddadd37bc878473de0c8f16faecf9985dea39036a3a796d551bc9fec47cfa
+```
+
+Chip8NX does not redistribute this ROM.
+
+The Timendus CHIP-8 test suite is licensed under GPL-3.0. The external ROM remains subject to its upstream license and is not covered by the Chip8NX MIT license.
+
+The Flags test verifies arithmetic and logical result values, VF flag behavior, carry and borrow cases, shifted-out bits, use of VF as an instruction operand, and Fx1E with both a normal register and VF.
+
 ## Verifying the downloaded ROM
 
 After downloading the file, calculate its SHA-256 checksum locally.
@@ -107,6 +134,8 @@ After downloading the file, calculate its SHA-256 checksum locally.
 sha256sum packages/core/tests/conformance/ibm-logo.test.ts
 sha256sum packages/core/tests/conformance/roms/test_opcode.ch8
 sha256sum packages/core/tests/conformance/timendus-corax-plus.test.ts
+sha256sum packages/core/tests/conformance/roms/4-flags.ch8
+
 ```
 
 ### macOS
@@ -115,6 +144,7 @@ sha256sum packages/core/tests/conformance/timendus-corax-plus.test.ts
 shasum -a 256 packages/core/tests/conformance/ibm-logo.test.ts
 shasum -a 256 packages/core/tests/conformance/roms/test_opcode.ch8
 shasum -a 256 packages/core/tests/conformance/timendus-corax-plus.test.ts
+shasum -a 256 packages/core/tests/conformance/roms/4-flags.ch8
 ```
 
 ### PowerShell
@@ -123,6 +153,7 @@ shasum -a 256 packages/core/tests/conformance/timendus-corax-plus.test.ts
 Get-FileHash packages/core/tests/conformance/ibm-logo.test.ts -Algorithm SHA256
 Get-FileHash packages/core/tests/conformance/roms/test_opcode.ch8 -Algorithm SHA256
 Get-FileHash packages/core/tests/conformance/timendus-corax-plus.test.ts -Algorithm SHA256
+Get-FileHash packages/core/tests/conformance/roms/4-flags.ch8 -Algorithm SHA256
 ```
 
 ## Future Fixtures
