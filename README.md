@@ -1,5 +1,9 @@
 # Chip8NX
 
+```text
+Chip8NX = CHIP-8 + N(ext) / e(X)tensible
+```
+
 **A modular, profile-driven CHIP-8 emulator in TypeScript.**
 
 Chip8NX is a CHIP-8 emulator/interpreter built as a hands-on exercise in TypeScript, object-oriented design, emulator architecture, testing, and software engineering.
@@ -35,7 +39,7 @@ The main goals are to:
 The emulator separates machine definition, application composition, initialization, and runtime orchestration.
 
 ```text
-       Chip8Profile
+     Chip8Profile
     "What machine?"
           |
           v
@@ -44,7 +48,7 @@ The emulator separates machine definition, application composition, initializati
           |
           v
   MachineInitializer
- "Establish state"
+   "Establish state"
           |
    +------+------+
    |             |

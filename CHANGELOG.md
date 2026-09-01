@@ -15,6 +15,10 @@ During the `0.x` development phase:
 ### Added
 
 - **Chip8NX** project identity.
+- MIT project license.
+- Third-party notices and conformance-fixture provenance documentation.
+- GitHub Actions CI using the project-level `deno task ci` contract.
+- Dedicated conformance-test tasks for locally supplied external ROM fixtures.
 - Public `@chip8nx/core` package entrypoint.
 - Automated API documentation generation with `deno doc`.
 - Documentation structure for architecture, guides, and design decisions.
@@ -22,6 +26,8 @@ During the `0.x` development phase:
 ### Changed
 
 - Reorganized the repository as a Deno workspace.
+- External CHIP-8 ROM fixtures are no longer distributed with the repository and are ignored by Git.
+- The default `test` and CI tasks run unit and integration tests without requiring third-party ROMs; conformance tests are opt-in through `test:conformance`.
 - Renamed the reusable core workspace to `packages/core`.
 - Moved the reusable emulator implementation into `packages/core`.
 - Separated reusable emulator code from future application/front-end code.

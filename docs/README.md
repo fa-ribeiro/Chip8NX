@@ -17,12 +17,12 @@ docs/
 
 Architecture documents explain how the emulator is structured and how major components collaborate.
 
+See [Architecture](./architecture/README.md) for the architecture documentation index.
+
 Current topics include:
 
 - architecture overview;
 - machine lifecycle.
-
-See [Architecture](./architecture/README.md) for the architecture documentation index.
 
 ### Guides
 
@@ -32,7 +32,8 @@ See [Guides](./guides/README.md) for the guides documentation index.
 
 Current topics include:
 
-- embedding the CHIP-8 core in an application.
+- embedding the CHIP-8 core in an application;
+- continuous integration.
 
 ### Decisions
 

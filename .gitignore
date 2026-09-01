@@ -1,16 +1,17 @@
 # Git ignore file for the Chip-8 NX project
 
-# Output directories
-build/
-
-# Coverage directory
-coverage/
-
-# MacOS system files
+# macOS system files
 .DS_Store
 
 # VS Code settings folder
 .vscode/
 
-# Test ROMs
-packages/core/tests/conformance/roms/*.ch8
+# Generated output
+/build/
+/dist/
+/coverage/
+/node_modules/
+
+# External conformance ROMs are intentionally not distributed with Chip8NX.
+/packages/core/tests/conformance/roms/*
+!/packages/core/tests/conformance/roms/.gitkeep

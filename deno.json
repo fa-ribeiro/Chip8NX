@@ -1,15 +1,23 @@
 {
+  "workspace": ["./packages/core"],
   "tasks": {
-    "dev": "deno run --watch --allow-net main.ts",
-    "test": "deno test --allow-read src/**/*.test.ts tests/",
-    "test:watch": "deno test --watch --allow-read src/**/*.test.ts tests/",
-    "check": "deno check src/ tests/ && deno fmt --check src/ tests/ && deno lint src/ tests/"
+    "test": "deno test --allow-read packages/core/src/ packages/core/tests/integration/",
+    "test:watch": "deno test --watch --allow-read packages/core/src/ packages/core/tests/integration/",
+    "test:conformance": "deno test --allow-read packages/core/tests/conformance/",
+    "test:all": "deno task test && deno task test:conformance",
+    "check": "deno check packages/core/mod.ts packages/core/src/ packages/core/tests/ && deno fmt --check && deno lint",
+    "ci": "deno task check && deno task test",
+    "fmt": "deno fmt",
+    "lint": "deno lint",
+    "docs:build": "deno doc --html --name='Chip8NX Core' --output=build/docs/api packages/core/mod.ts",
+    "docs:check": "deno doc --lint packages/core/mod.ts"
   },
   "imports": {
     "@std/assert": "jsr:@std/assert@1"
   },
   "fmt": {
-    "lineWidth": 96
+    "lineWidth": 96,
+    "proseWrap": "preserve"
   },
   "lint": {
     "rules": {
@@ -19,5 +27,6 @@
   "compilerOptions": {
     "strict": true,
     "noUncheckedIndexedAccess": true
-  }
+  },
+  "exclude": ["build/"]
 }

@@ -7,6 +7,7 @@ Architecture documents explain how the system is structured. Guides instead expl
 ## Current guides
 
 - [Embedding the core](./embedding-the-core.md) — assemble, initialize, and drive a CHIP-8 machine from an application.
+- [Continuous integration](./continuous-integration.md) — understand the GitHub Actions workflow and the forge-independent `deno task ci` contract.
 
 Future guides may include:
 
