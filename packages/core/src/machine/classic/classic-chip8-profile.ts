@@ -21,6 +21,7 @@ export const CLASSIC_CHIP8_PROFILE: Chip8Profile = {
   display: {
     width: 64,
     height: 32,
+    refreshFrequency: Frequency.fromInteger(60n),
   },
 
   timerFrequency: Frequency.fromInteger(60n),

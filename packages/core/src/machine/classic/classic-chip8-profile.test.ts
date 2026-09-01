@@ -15,12 +15,10 @@ Deno.test("Classic CHIP-8 profile defines the classic machine characteristics", 
   assertEquals(CLASSIC_CHIP8_PROFILE.display, {
     width: 64,
     height: 32,
+    refreshFrequency: Frequency.fromInteger(60n),
   });
 
-  assertEquals(
-    CLASSIC_CHIP8_PROFILE.timerFrequency,
-    Frequency.fromInteger(60n),
-  );
+  assertEquals(CLASSIC_CHIP8_PROFILE.timerFrequency, Frequency.fromInteger(60n));
 
   assertEquals(CLASSIC_CHIP8_PROFILE.fontImage, CLASSIC_FONT_IMAGE);
 

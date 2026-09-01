@@ -34,6 +34,7 @@ export interface Chip8Profile {
   readonly display: {
     readonly width: number;
     readonly height: number;
+    readonly refreshFrequency: Frequency;
   };
 
   /**
