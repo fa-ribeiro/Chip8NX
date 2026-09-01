@@ -70,73 +70,58 @@ const EXPECTED_CORAX89_RESULT = [
   "................................................................",
 ].join("\n");
 
-Deno.test(
-  "Classic CHIP-8 passes the corax89 opcode test ROM",
-  async () => {
-    const profile = CLASSIC_CHIP8_PROFILE;
+Deno.test("Classic CHIP-8 passes the corax89 opcode test ROM", async () => {
+  const profile = CLASSIC_CHIP8_PROFILE;
 
-    const romBytes = await Deno.readFile(
-      new URL("./roms/test_opcode.ch8", import.meta.url),
-    );
+  const romBytes = await Deno.readFile(new URL("./roms/test_opcode.ch8", import.meta.url));
 
-    const program = new MemoryImage(romBytes);
+  const program = new MemoryImage(romBytes);
 
-    const delayTimer = new Timer();
-    const soundTimer = new Timer();
+  const delayTimer = new Timer();
+  const soundTimer = new Timer();
 
-    const context: ExecutionContext = {
-      registers: new Registers(),
-      memory: new Ram(profile.memorySize),
-      stack: new Stack(profile.stackCapacity),
-      programCounter: new ProgramCounter(profile.programStartAddress),
-      indexRegister: new IndexRegister(),
-      delayTimer,
-      soundTimer,
-      displayBuffer: new DisplayBuffer(
-        profile.display.width,
-        profile.display.height,
-      ),
-      keyboard: new TestKeyboard(),
-      font: new ClassicFont(profile.fontBaseAddress),
-      randomNumberGenerator: new TestRandomNumberGenerator([byte(0)]),
-    };
+  const context: ExecutionContext = {
+    registers: new Registers(),
+    memory: new Ram(profile.memorySize),
+    stack: new Stack(profile.stackCapacity),
+    programCounter: new ProgramCounter(profile.programStartAddress),
+    indexRegister: new IndexRegister(),
+    delayTimer,
+    soundTimer,
+    displayBuffer: new DisplayBuffer(profile.display.width, profile.display.height),
+    keyboard: new TestKeyboard(),
+    font: new ClassicFont(profile.fontBaseAddress),
+    randomNumberGenerator: new TestRandomNumberGenerator([byte(0)]),
+  };
 
-    const initializer = new MachineInitializer(new MemoryImageLoader());
+  const initializer = new MachineInitializer(new MemoryImageLoader());
 
-    initializer.initialize(context, profile, program);
+  initializer.initialize(context, profile, program);
 
-    const cpu = new Cpu(
-      context,
-      new Decoder(),
-      new InstructionExecutor(),
-    );
+  const cpu = new Cpu(context, new Decoder(), new InstructionExecutor());
 
-    const clock = new TestClock();
-    const scheduler = new Scheduler(clock);
+  const clock = new TestClock();
+  const scheduler = new Scheduler(clock);
 
-    const runtime = new Chip8Runtime(
-      cpu,
-      delayTimer,
-      soundTimer,
-      scheduler,
-      {
-        cpuFrequency: CORAX89_CPU_FREQUENCY,
-      },
-      profile.timerFrequency,
-    );
+  const runtime = new Chip8Runtime(
+    cpu,
+    delayTimer,
+    soundTimer,
+    scheduler,
+    {
+      cpuFrequency: CORAX89_CPU_FREQUENCY,
+    },
+    profile.timerFrequency,
+  );
 
-    runtime.resume();
+  runtime.resume();
 
-    clock.advance(CORAX89_EXECUTION_TIME);
+  clock.advance(CORAX89_EXECUTION_TIME);
 
-    runtime.tick();
+  runtime.tick();
 
-    assertEquals(
-      snapshotDisplay(context.displayBuffer),
-      EXPECTED_CORAX89_RESULT,
-    );
-  },
-);
+  assertEquals(snapshotDisplay(context.displayBuffer), EXPECTED_CORAX89_RESULT);
+});
 
 function snapshotDisplay(displayBuffer: DisplayBuffer): string {
   const rows: string[] = [];
