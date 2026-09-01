@@ -5,6 +5,7 @@ import { type Byte, byte } from "../core/types/byte.ts";
 import { opcode } from "../core/types/opcode.ts";
 import { key } from "../core/types/key.ts";
 import { DisplayBuffer } from "../display/display-buffer.ts";
+import { VerticalBlank } from "../display/vertical-blank.ts";
 import { ClassicFont } from "../font/classic-font.ts";
 import type { Font } from "../font/font.ts";
 import type { Instruction } from "../instruction/instruction.ts";
@@ -38,6 +39,7 @@ function createContext(overrides: Partial<ExecutionContext> = {}): ExecutionCont
     soundTimer: new Timer(),
     delayTimer: new Timer(),
     displayBuffer: new DisplayBuffer(profile.display.width, profile.display.height),
+    verticalBlank: new VerticalBlank(),
     keyboard: new TestKeyboard(),
     font: new ClassicFont(profile.fontBaseAddress),
     randomNumberGenerator: new TestRandomNumberGenerator([byte(0)]),

@@ -10,6 +10,7 @@ import { registerIndex } from "../../src/cpu/registers/register-index.ts";
 import { Registers } from "../../src/cpu/registers/registers.ts";
 import { Stack } from "../../src/cpu/stack/stack.ts";
 import { DisplayBuffer } from "../../src/display/display-buffer.ts";
+import { VerticalBlank } from "../../src/display/vertical-blank.ts";
 import { ClassicFont } from "../../src/font/classic-font.ts";
 import { TestKeyboard } from "../../src/keyboard/test-keyboard.ts";
 import { CLASSIC_CHIP8_PROFILE } from "../../src/machine/classic/classic-chip8-profile.ts";
@@ -40,6 +41,7 @@ function createMachine(profile: Chip8Profile = CLASSIC_CHIP8_PROFILE): TestMachi
     soundTimer: new Timer(),
     delayTimer: new Timer(),
     displayBuffer: new DisplayBuffer(profile.display.width, profile.display.height),
+    verticalBlank: new VerticalBlank(),
     keyboard,
     font: new ClassicFont(profile.fontBaseAddress),
     randomNumberGenerator,
@@ -254,3 +256,22 @@ Deno.test(
     assertEquals(context.registers.get(registerIndex(0x3)), byte(0xbb));
   },
 );
+
+Deno.test("MachineInitializer clears pending vertical blank state", () => {
+  // const { context, initializer, profile, program } = createHarness();
+
+  const profile = CLASSIC_CHIP8_PROFILE;
+  const { context } = createMachine(profile);
+  const initializer = new MachineInitializer(new MemoryImageLoader());
+  const program = new MemoryImage([0x60, 0x42]);
+
+  context.verticalBlank.signal();
+
+  assertEquals(context.verticalBlank.consume(), true);
+
+  context.verticalBlank.signal();
+
+  initializer.initialize(context, profile, program);
+
+  assertEquals(context.verticalBlank.consume(), false);
+});

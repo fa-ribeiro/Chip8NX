@@ -54,19 +54,12 @@ export class MachineInitializer {
     context.soundTimer.setValue(byte(0));
 
     context.displayBuffer.clear();
+    context.verticalBlank.reset();
     context.keyboard.reset();
 
-    this.memoryImageLoader.load(
-      context.memory,
-      profile.fontBaseAddress,
-      profile.fontImage,
-    );
+    this.memoryImageLoader.load(context.memory, profile.fontBaseAddress, profile.fontImage);
 
-    this.memoryImageLoader.load(
-      context.memory,
-      profile.programStartAddress,
-      program,
-    );
+    this.memoryImageLoader.load(context.memory, profile.programStartAddress, program);
   }
 
   /**

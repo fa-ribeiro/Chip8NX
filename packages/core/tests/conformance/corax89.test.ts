@@ -11,6 +11,7 @@ import { ProgramCounter } from "../../src/cpu/program-counter/program-counter.ts
 import { Registers } from "../../src/cpu/registers/registers.ts";
 import { Stack } from "../../src/cpu/stack/stack.ts";
 import { DisplayBuffer } from "../../src/display/display-buffer.ts";
+import { VerticalBlank } from "../../src/display/vertical-blank.ts";
 import { ClassicFont } from "../../src/font/classic-font.ts";
 import { Decoder } from "../../src/instruction/decoder.ts";
 import { TestKeyboard } from "../../src/keyboard/test-keyboard.ts";
@@ -89,6 +90,7 @@ Deno.test("Classic CHIP-8 passes the corax89 opcode test ROM", async () => {
     delayTimer,
     soundTimer,
     displayBuffer: new DisplayBuffer(profile.display.width, profile.display.height),
+    verticalBlank: new VerticalBlank(),
     keyboard: new TestKeyboard(),
     font: new ClassicFont(profile.fontBaseAddress),
     randomNumberGenerator: new TestRandomNumberGenerator([byte(0)]),

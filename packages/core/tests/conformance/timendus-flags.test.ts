@@ -11,6 +11,7 @@ import { ProgramCounter } from "../../src/cpu/program-counter/program-counter.ts
 import { Registers } from "../../src/cpu/registers/registers.ts";
 import { Stack } from "../../src/cpu/stack/stack.ts";
 import { DisplayBuffer } from "../../src/display/display-buffer.ts";
+import { VerticalBlank } from "../../src/display/vertical-blank.ts";
 import { ClassicFont } from "../../src/font/classic-font.ts";
 import { Decoder } from "../../src/instruction/decoder.ts";
 import { TestKeyboard } from "../../src/keyboard/test-keyboard.ts";
@@ -41,11 +42,7 @@ const TIMENDUS_FLAGS_EXECUTION_TIME = duration(2_000_000_000n as Duration);
  * The upstream ROM stores it as 0b10100000, 0b11000000, followed by the first
  * byte of the character table (0b10000000).
  */
-const EXPECTED_FLAG_OK = [
-  "#.#",
-  "##.",
-  "#..",
-].join("\n");
+const EXPECTED_FLAG_OK = ["#.#", "##.", "#.."].join("\n");
 
 const EXPECTED_FLAG_RESULTS = [
   // HAPPY: no overflow, borrow, or shifted-out bit.
@@ -116,9 +113,7 @@ const EXPECTED_FLAG_RESULTS = [
 Deno.test("Classic CHIP-8 passes the Timendus Flags test ROM", async () => {
   const profile = CLASSIC_CHIP8_PROFILE;
 
-  const romBytes = await Deno.readFile(
-    new URL("./roms/4-flags.ch8", import.meta.url),
-  );
+  const romBytes = await Deno.readFile(new URL("./roms/4-flags.ch8", import.meta.url));
 
   const program = new MemoryImage(romBytes);
 
@@ -133,10 +128,8 @@ Deno.test("Classic CHIP-8 passes the Timendus Flags test ROM", async () => {
     indexRegister: new IndexRegister(),
     delayTimer,
     soundTimer,
-    displayBuffer: new DisplayBuffer(
-      profile.display.width,
-      profile.display.height,
-    ),
+    displayBuffer: new DisplayBuffer(profile.display.width, profile.display.height),
+    verticalBlank: new VerticalBlank(),
     keyboard: new TestKeyboard(),
     font: new ClassicFont(profile.fontBaseAddress),
     randomNumberGenerator: new TestRandomNumberGenerator([byte(0)]),
@@ -146,11 +139,7 @@ Deno.test("Classic CHIP-8 passes the Timendus Flags test ROM", async () => {
 
   initializer.initialize(context, profile, program);
 
-  const cpu = new Cpu(
-    context,
-    new Decoder(),
-    new InstructionExecutor(),
-  );
+  const cpu = new Cpu(context, new Decoder(), new InstructionExecutor());
 
   const clock = new TestClock();
   const scheduler = new Scheduler(clock);

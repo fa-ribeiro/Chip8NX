@@ -23,6 +23,7 @@ import { TestRandomNumberGenerator } from "../../src/random/test-random-number-g
 import { Chip8Runtime } from "../../src/runtime/chip8-runtime.ts";
 import { Scheduler } from "../../src/scheduler/scheduler.ts";
 import { Timer } from "../../src/timer/timer.ts";
+import { VerticalBlank } from "../../src/display/vertical-blank.ts";
 
 interface RuntimeHarness {
   readonly runtime: Chip8Runtime;
@@ -32,9 +33,7 @@ interface RuntimeHarness {
   readonly soundTimer: Timer;
 }
 
-function createRuntime(
-  cpuFrequency: Frequency = Frequency.fromInteger(500n),
-): RuntimeHarness {
+function createRuntime(cpuFrequency: Frequency = Frequency.fromInteger(500n)): RuntimeHarness {
   const profile = CLASSIC_CHIP8_PROFILE;
 
   const registers = new Registers();
@@ -50,10 +49,8 @@ function createRuntime(
     indexRegister: new IndexRegister(),
     soundTimer,
     delayTimer,
-    displayBuffer: new DisplayBuffer(
-      profile.display.width,
-      profile.display.height,
-    ),
+    displayBuffer: new DisplayBuffer(profile.display.width, profile.display.height),
+    verticalBlank: new VerticalBlank(),
     keyboard: new TestKeyboard(),
     font: new ClassicFont(profile.fontBaseAddress),
     randomNumberGenerator: new TestRandomNumberGenerator([byte(0)]),
@@ -141,65 +138,59 @@ Deno.test("Chip8Runtime schedules CPU execution and timer countdown", () => {
   assertEquals(soundTimer.getValue(), byte(2));
 });
 
-Deno.test(
-  "Chip8Runtime pause freezes CPU execution and timer countdown",
-  () => {
-    const { runtime, clock, context, delayTimer } = createRuntime();
+Deno.test("Chip8Runtime pause freezes CPU execution and timer countdown", () => {
+  const { runtime, clock, context, delayTimer } = createRuntime();
 
-    delayTimer.setValue(byte(10));
+  delayTimer.setValue(byte(10));
 
-    runtime.resume();
+  runtime.resume();
 
-    advanceClock(clock, 4_000_000n);
-    runtime.tick();
+  advanceClock(clock, 4_000_000n);
+  runtime.tick();
 
-    assertEquals(context.registers.get(registerIndex(0)), byte(2));
+  assertEquals(context.registers.get(registerIndex(0)), byte(2));
 
-    runtime.pause();
+  runtime.pause();
 
-    assertEquals(runtime.isPaused, true);
+  assertEquals(runtime.isPaused, true);
 
-    advanceClock(clock, 1_000_000_000n);
-    runtime.tick();
+  advanceClock(clock, 1_000_000_000n);
+  runtime.tick();
 
-    assertEquals(context.registers.get(registerIndex(0)), byte(2));
+  assertEquals(context.registers.get(registerIndex(0)), byte(2));
 
-    assertEquals(delayTimer.getValue(), byte(10));
-  },
-);
+  assertEquals(delayTimer.getValue(), byte(10));
+});
 
-Deno.test(
-  "Chip8Runtime resume does not accumulate paused execution debt",
-  () => {
-    const { runtime, clock, context } = createRuntime();
+Deno.test("Chip8Runtime resume does not accumulate paused execution debt", () => {
+  const { runtime, clock, context } = createRuntime();
 
-    runtime.resume();
+  runtime.resume();
 
-    advanceClock(clock, 2_000_000n);
-    runtime.tick();
+  advanceClock(clock, 2_000_000n);
+  runtime.tick();
 
-    assertEquals(context.registers.get(registerIndex(0)), byte(1));
+  assertEquals(context.registers.get(registerIndex(0)), byte(1));
 
-    runtime.pause();
+  runtime.pause();
 
-    advanceClock(clock, 5_000_000_000n);
-    runtime.tick();
+  advanceClock(clock, 5_000_000_000n);
+  runtime.tick();
 
-    runtime.resume();
+  runtime.resume();
 
-    /*
-     * Resuming itself must not execute five seconds of missed work.
-     */
-    runtime.tick();
+  /*
+   * Resuming itself must not execute five seconds of missed work.
+   */
+  runtime.tick();
 
-    assertEquals(context.registers.get(registerIndex(0)), byte(1));
+  assertEquals(context.registers.get(registerIndex(0)), byte(1));
 
-    advanceClock(clock, 2_000_000n);
-    runtime.tick();
+  advanceClock(clock, 2_000_000n);
+  runtime.tick();
 
-    assertEquals(context.registers.get(registerIndex(0)), byte(2));
-  },
-);
+  assertEquals(context.registers.get(registerIndex(0)), byte(2));
+});
 
 Deno.test("Chip8Runtime pause and resume are idempotent", () => {
   const { runtime, clock, context } = createRuntime();
@@ -224,77 +215,64 @@ Deno.test("Chip8Runtime pause and resume are idempotent", () => {
   assertEquals(context.registers.get(registerIndex(0)), byte(1));
 });
 
-Deno.test(
-  "Chip8Runtime step executes exactly one instruction while paused",
-  () => {
-    const { runtime, context, delayTimer, soundTimer } = createRuntime();
+Deno.test("Chip8Runtime step executes exactly one instruction while paused", () => {
+  const { runtime, context, delayTimer, soundTimer } = createRuntime();
 
-    delayTimer.setValue(byte(10));
-    soundTimer.setValue(byte(20));
+  delayTimer.setValue(byte(10));
+  soundTimer.setValue(byte(20));
 
-    runtime.step();
+  runtime.step();
 
-    assertEquals(context.registers.get(registerIndex(0)), byte(1));
+  assertEquals(context.registers.get(registerIndex(0)), byte(1));
 
-    assertEquals(
-      context.programCounter.getValue(),
-      address(CLASSIC_CHIP8_PROFILE.programStartAddress + 2),
-    );
+  assertEquals(
+    context.programCounter.getValue(),
+    address(CLASSIC_CHIP8_PROFILE.programStartAddress + 2),
+  );
 
-    assertEquals(delayTimer.getValue(), byte(10));
-    assertEquals(soundTimer.getValue(), byte(20));
-  },
-);
+  assertEquals(delayTimer.getValue(), byte(10));
+  assertEquals(soundTimer.getValue(), byte(20));
+});
 
 Deno.test("Chip8Runtime rejects single stepping while running", () => {
   const { runtime } = createRuntime();
 
   runtime.resume();
 
-  assertThrows(
-    () => runtime.step(),
-    Error,
-    "Cannot step while runtime is running.",
-  );
+  assertThrows(() => runtime.step(), Error, "Cannot step while runtime is running.");
 });
 
-Deno.test(
-  "Chip8Runtime processes timers before CPU on an exact deadline tie",
-  () => {
-    const { runtime, clock, context, delayTimer } = createRuntime(
-      CLASSIC_CHIP8_PROFILE.timerFrequency,
-    );
+Deno.test("Chip8Runtime processes timers before CPU on an exact deadline tie", () => {
+  const { runtime, clock, context, delayTimer } = createRuntime(
+    CLASSIC_CHIP8_PROFILE.timerFrequency,
+  );
 
-    /*
-     * First instruction:
-     *
-     *     LD DT, V0
-     */
-    context.memory.write(CLASSIC_CHIP8_PROFILE.programStartAddress, byte(0xf0));
+  /*
+   * First instruction:
+   *
+   *     LD DT, V0
+   */
+  context.memory.write(CLASSIC_CHIP8_PROFILE.programStartAddress, byte(0xf0));
 
-    context.memory.write(
-      address(CLASSIC_CHIP8_PROFILE.programStartAddress + 1),
-      byte(0x15),
-    );
+  context.memory.write(address(CLASSIC_CHIP8_PROFILE.programStartAddress + 1), byte(0x15));
 
-    context.registers.set(registerIndex(0), byte(5));
+  context.registers.set(registerIndex(0), byte(5));
 
-    delayTimer.setValue(byte(1));
+  delayTimer.setValue(byte(1));
 
-    runtime.resume();
+  runtime.resume();
 
-    advanceClock(clock, 16_666_667n);
-    runtime.tick();
+  advanceClock(clock, 16_666_667n);
+  runtime.tick();
 
-    /*
-     * Both tasks have reached their first 60 Hz deadline.
-     *
-     * Timer first:
-     *     DT: 1 -> 0
-     *
-     * Then CPU executes LD DT, V0:
-     *     DT: 0 -> 5
-     */
-    assertEquals(delayTimer.getValue(), byte(5));
-  },
-);
+  /*
+   * Both tasks have reached their first 60 Hz deadline.
+   *
+   * Timer first:
+   *     DT: 1 -> 0
+   *
+   * Then CPU executes LD DT, V0:
+   *     DT: 0 -> 5
+   */
+  assertEquals(delayTimer.getValue(), byte(5));
+});
