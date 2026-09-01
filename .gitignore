@@ -1,0 +1,10 @@
+# Git ignore file for Chip-8 NX project
+
+# Output directories
+dist/
+
+# Coverage directory
+coverage/
+
+# MacOS system files
+.DS_Store

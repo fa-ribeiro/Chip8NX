@@ -1,0 +1,5 @@
+{
+  "name": "@chip8nx/core",
+  "exports": "./mod.ts",
+  "publish": false
+}
