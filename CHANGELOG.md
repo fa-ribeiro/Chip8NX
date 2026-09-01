@@ -12,6 +12,8 @@ During the `0.x` development phase:
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-01 - corax89 Opcode Conformance
+
 ### Added
 
 - **Chip8NX** project identity.
@@ -22,6 +24,7 @@ During the `0.x` development phase:
 - Public `@chip8nx/core` package entrypoint.
 - Automated API documentation generation with `deno doc`.
 - Documentation structure for architecture, guides, and design decisions.
+- End-to-end conformance test for the corax89 CHIP-8 opcode test ROM.
 
 ### Changed
 
@@ -31,6 +34,12 @@ During the `0.x` development phase:
 - Renamed the reusable core workspace to `packages/core`.
 - Moved the reusable emulator implementation into `packages/core`.
 - Separated reusable emulator code from future application/front-end code.
+
+### Milestone
+
+Chip8NX passes the original corax89 CHIP-8 opcode test ROM through the normal machine initialization, CPU, runtime, scheduler, and display pipeline.
+
+The milestone required no production-code changes: the instruction implementation developed before introducing the corax89 conformance test already produces the expected successful result framebuffer.
 
 ## [0.0.1] - 2026-09-01 - IBM Logo POC
 

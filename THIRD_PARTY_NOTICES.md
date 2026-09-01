@@ -10,7 +10,7 @@ The historical IBM Logo ROM is not included in this repository.
 
 Timendus' CHIP-8 test-suite documentation describes the classic IBM Logo ROM, provides a download/reference path, and notes that the original author is unknown. The suite's own reimplementation is published as part of the GPL-3.0-licensed `chip8-test-suite` repository.
 
-- Reference: https://github.com/Timendus/chip8-test-suite#ibm-logo
+- Reference: <https://github.com/Timendus/chip8-test-suite#ibm-logo>
 - Expected local filename: `packages/core/tests/conformance/roms/ibm-logo.ch8`
 - Expected size: `132` bytes
 - Expected SHA-256: `8bf3b46d8a64c2074e7538200f684a2eaced258404d3c7d3bd7a917c3d0143e5`
@@ -22,17 +22,19 @@ The checksums identify the exact historical fixture used for the Chip8NX `v0.0.1
 
 The corax89 opcode test is not included in this repository.
 
-- Upstream repository: https://github.com/corax89/chip8-test-rom
+- Upstream repository: <https://github.com/corax89/chip8-test-rom>
 - Upstream license: MIT
 - Upstream ROM filename: `test_opcode.ch8`
+- Expected size: `478` bytes
+- Expected SHA-256: `67759cf9f5b27db66f0769ea8fd0b30ba220f46d6f19f8ba4fd4108d986ce0ab`
 
-Chip8NX plans to use this suite as the `v0.1.0` conformance milestone. A pinned local filename and checksum will be documented when that fixture is integrated into an automated conformance test.
+The checksums identify the exact historical fixture used for the Chip8NX `v0.1.0` conformance milestone. They are not a statement about ownership or redistribution rights.
 
 ## Timendus CHIP-8 Test Suite
 
 The Timendus test suite is not included in this repository.
 
-- Upstream repository: https://github.com/Timendus/chip8-test-suite
+- Upstream repository: <https://github.com/Timendus/chip8-test-suite>
 - Upstream license: GPL-3.0
 
 Chip8NX intends to use relevant Classic CHIP-8 tests from this suite as a broader conformance target after the corax89 milestone.

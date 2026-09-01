@@ -1,30 +1,31 @@
 # Conformance Tests
 
-Chip8NX uses external CHIP-8 ROMs as behavioral acceptance tests, but third-party ROM binaries are intentionally not committed to this repository.
+This directory contains end-to-end conformance tests that run external CHIP-8 ROMs through the normal Chip8NX machine pipeline.
 
-The `roms/` directory is ignored by Git except for its `.gitkeep` file. Obtain each required fixture from its upstream source, place it at the documented path, and verify its checksum before running the corresponding conformance test.
+Third-party ROM images are **not distributed with Chip8NX**.
+
+To run these tests locally, obtain the required ROMs from their upstream sources and place them in the documented paths below.
+
+The repository-level [`THIRD_PARTY_NOTICES.md`](../../../../THIRD_PARTY_NOTICES.md) records provenance and licensing information for external test suites.
 
 ## Running conformance tests
 
-The normal project test command does not require third-party ROMs:
-
-```bash
-deno task test
-```
-
-Run external conformance tests explicitly with:
+From the repository root:
 
 ```bash
 deno task test:conformance
 ```
 
-To run both the normal test suite and locally installed conformance fixtures:
+Individual tests can also be run directly:
 
 ```bash
-deno task test:all
+deno test --allow-read packages/core/tests/conformance/ibm-logo.test.ts
+deno test --allow-read packages/core/tests/conformance/corax89.test.ts
 ```
 
-## IBM Logo ROM
+The `roms/` directory is intended for local test fixtures and should not contain redistributed third-party ROMs in the public repository.
+
+### IBM Logo ROM
 
 Expected path:
 
@@ -32,46 +33,74 @@ Expected path:
 packages/core/tests/conformance/roms/ibm-logo.ch8
 ```
 
-The historical fixture used for the Chip8NX `v0.0.1` milestone has:
+The IBM Logo ROM is a historical CHIP-8 test/program image used to verify basic end-to-end execution and drawing behavior.
+
+Chip8NX does not redistribute this ROM.
+
+Expected fixture identity:
 
 ```text
-Size:       132 bytes
-SHA-256:   8bf3b46d8a64c2074e7538200f684a2eaced258404d3c7d3bd7a917c3d0143e5
-MD5:       2dbace8066709ac9a264d23281820d32
+Filename: ibm-logo.ch8
+Size:     132 bytes
+MD5:      2dbace8066709ac9a264d23281820d32
+SHA-256:  8bf3b46d8a64c2074e7538200f684a2eaced258404d3c7d3bd7a917c3d0143e5
 ```
 
-A useful reference and download entry is the IBM Logo section of the Timendus CHIP-8 test suite:
+The conformance test executes the ROM through the normal machine initialization, CPU, runtime, and scheduler pipeline and compares the resulting framebuffer against the expected IBM Logo output.
 
-<https://github.com/Timendus/chip8-test-suite#ibm-logo>
+### corax89 CHIP-8 Test ROM
 
-Timendus notes that the original author of the historical ROM is unknown. Chip8NX therefore records the fixture identity but does not redistribute the ROM or claim that it is covered by the Chip8NX MIT license.
+Expected path:
 
-On Linux, you can verify a downloaded fixture with:
+```text
+packages/core/tests/conformance/roms/test_opcode.ch8
+```
+
+Chip8NX does not redistribute this ROM.
+
+The expected fixture is:
+
+```text
+Filename: test_opcode.ch8
+Size:     478 bytes
+SHA-256:  67759cf9f5b27db66f0769ea8fd0b30ba220f46d6f19f8ba4fd4108d986ce0ab
+```
+
+Chip8NX does not redistribute this ROM.
+
+The upstream corax89 project is MIT-licensed. See the repository-level [`THIRD_PARTY_NOTICES.md`](../../../../THIRD_PARTY_NOTICES.md) for provenance information.
+
+## Verifying the downloaded ROM
+
+After downloading the file, calculate its SHA-256 checksum locally.
+
+### Linux
 
 ```bash
-sha256sum packages/core/tests/conformance/roms/ibm-logo.ch8
+sha256sum packages/core/tests/conformance/roms/test_opcode.ch8
 ```
 
-On macOS:
+### macOS
 
 ```bash
-shasum -a 256 packages/core/tests/conformance/roms/ibm-logo.ch8
+shasum -a 256 packages/core/tests/conformance/roms/test_opcode.ch8
 ```
 
-On PowerShell:
+### PowerShell
 
 ```powershell
-Get-FileHash packages/core/tests/conformance/roms/ibm-logo.ch8 -Algorithm SHA256
+Get-FileHash packages/core/tests/conformance/roms/test_opcode.ch8 -Algorithm SHA256
 ```
 
-## Future fixtures
+## Future Fixtures
 
-The next planned external suite is the corax89 CHIP-8 test ROM:
-
-<https://github.com/corax89/chip8-test-rom>
-
-After that, relevant Classic CHIP-8 tests from the Timendus suite are planned:
+After corax89, relevant Classic CHIP-8 tests from the Timendus suite are planned:
 
 <https://github.com/Timendus/chip8-test-suite>
 
-When a new fixture becomes part of an automated conformance test, pin its expected filename and checksum here and document its upstream license/provenance in the repository-level [`THIRD_PARTY_NOTICES.md`](../../../../THIRD_PARTY_NOTICES.md).
+When a new fixture becomes part of an automated conformance test:
+
+1. do not commit the third-party ROM unless its redistribution terms are explicitly understood and intentionally accepted;
+2. document the expected local filename and path here;
+3. pin a checksum for the exact fixture used by Chip8NX;
+4. record upstream provenance and licensing in [`THIRD_PARTY_NOTICES.md`](../../../../THIRD_PARTY_NOTICES.md).

@@ -12,13 +12,11 @@ The project focuses first on accurate **Classic CHIP-8** behavior while keeping 
 
 ## Status
 
-**Current release: `v0.0.1` — IBM Logo POC**
+**Current release: `v0.1.0` - corax89 Opcode Conformance**
 
-The emulator can load and execute the canonical IBM Logo ROM through the normal initialization, CPU, runtime, and scheduling pipeline and produces the expected framebuffer.
+Chip8NX passes the original corax89 CHIP-8 opcode test ROM through the normal machine initialization, CPU, runtime, scheduling, and display pipeline.
 
-The next conformance milestone is the **corax89 CHIP-8 test ROM**, targeted for `v0.1.0`.
-
-Timendus' CHIP-8 test suite is the broader Classic CHIP-8 conformance target.
+The broader Classic CHIP-8 conformance target is the Timendus CHIP-8 test suite.
 
 ## Goals
 
@@ -194,9 +192,9 @@ Source comments explain individual APIs; project documentation explains how the 
 
 A real CHIP-8 ROM executes end-to-end and produces the expected framebuffer.
 
-### `v0.1.0` — corax89 CHIP-8 test ROM
+### `v0.1.0` — corax89 CHIP-8 test ROM ✓
 
-The first substantial external opcode-conformance milestone.
+The original corax89 opcode test ROM produces its expected successful result screen through the complete Chip8NX execution pipeline.
 
 ### Timendus CHIP-8 test suite
 
