@@ -33,6 +33,7 @@ export type { CpuState } from "./src/cpu/state/cpu-state.ts";
 
 // Display
 export { DisplayBuffer } from "./src/display/display-buffer.ts";
+export { VerticalBlank } from "./src/display/vertical-blank.ts";
 export type { Display } from "./src/display/display.ts";
 export { NullDisplay } from "./src/display/null-display.ts";
 

@@ -546,11 +546,16 @@ Deno.test("DRW draws the sprite stored at I", () => {
   const indexRegister = new IndexRegister(address(0x300));
   const displayBuffer = new DisplayBuffer(8, 8);
 
+  const verticalBlank = new VerticalBlank();
+
+  verticalBlank.signal();
+
   const context = createContext({
     registers,
     memory,
     indexRegister,
     displayBuffer,
+    verticalBlank,
   });
 
   const executor = new InstructionExecutor();
@@ -583,6 +588,10 @@ Deno.test("DRW sets VF when a sprite pixel collides", () => {
   const indexRegister = new IndexRegister(address(0x300));
   const displayBuffer = new DisplayBuffer(8, 8);
 
+  const verticalBlank = new VerticalBlank();
+
+  verticalBlank.signal();
+
   displayBuffer.setPixel(0, 0, true);
 
   const context = createContext({
@@ -590,6 +599,7 @@ Deno.test("DRW sets VF when a sprite pixel collides", () => {
     memory,
     indexRegister,
     displayBuffer,
+    verticalBlank,
   });
 
   const executor = new InstructionExecutor();
@@ -621,11 +631,16 @@ Deno.test("DRW clears VF when no collision occurs", () => {
   const indexRegister = new IndexRegister(address(0x300));
   const displayBuffer = new DisplayBuffer(8, 8);
 
+  const verticalBlank = new VerticalBlank();
+
+  verticalBlank.signal();
+
   const context = createContext({
     registers,
     memory,
     indexRegister,
     displayBuffer,
+    verticalBlank,
   });
 
   const executor = new InstructionExecutor();
@@ -642,6 +657,105 @@ Deno.test("DRW clears VF when no collision occurs", () => {
   );
 
   assertEquals(registers.get(FLAG_REGISTER), byte(0));
+});
+
+Deno.test("DRW waits for vertical blank before drawing", () => {
+  const registers = new Registers();
+
+  registers.set(registerIndex(0xa), byte(0x02));
+  registers.set(registerIndex(0xb), byte(0x03));
+  registers.set(FLAG_REGISTER, byte(1));
+
+  const memory = new Ram(0x1000);
+
+  memory.write(address(0x300), byte(0b1000_0000));
+
+  const indexRegister = new IndexRegister(address(0x300));
+  const displayBuffer = new DisplayBuffer(8, 8);
+  const programCounter = new ProgramCounter(address(0x202));
+  const verticalBlank = new VerticalBlank();
+
+  const context = createContext({
+    registers,
+    memory,
+    indexRegister,
+    displayBuffer,
+    programCounter,
+    verticalBlank,
+  });
+
+  const executor = new InstructionExecutor();
+
+  executor.execute(
+    {
+      kind: "draw-sprite",
+      opcode: opcode(0xdab1),
+      x: registerIndex(0xa),
+      y: registerIndex(0xb),
+      height: 1,
+    },
+    context,
+  );
+
+  assertEquals(programCounter.getValue(), address(0x200));
+
+  assertEquals(displayBuffer.getPixel(2, 3), false);
+
+  assertEquals(registers.get(FLAG_REGISTER), byte(1));
+});
+
+Deno.test("DRW completes after vertical blank becomes available", () => {
+  const registers = new Registers();
+
+  registers.set(registerIndex(0xa), byte(0));
+  registers.set(registerIndex(0xb), byte(0));
+
+  const memory = new Ram(0x1000);
+
+  memory.write(address(0x300), byte(0b1000_0000));
+
+  const indexRegister = new IndexRegister(address(0x300));
+  const displayBuffer = new DisplayBuffer(8, 8);
+  const programCounter = new ProgramCounter(address(0x202));
+  const verticalBlank = new VerticalBlank();
+
+  const context = createContext({
+    registers,
+    memory,
+    indexRegister,
+    displayBuffer,
+    programCounter,
+    verticalBlank,
+  });
+
+  const instruction: Extract<Instruction, { kind: "draw-sprite" }> = {
+    kind: "draw-sprite",
+    opcode: opcode(0xdab1),
+    x: registerIndex(0xa),
+    y: registerIndex(0xb),
+    height: 1,
+  };
+
+  const executor = new InstructionExecutor();
+
+  executor.execute(instruction, context);
+
+  assertEquals(programCounter.getValue(), address(0x200));
+
+  assertEquals(displayBuffer.getPixel(0, 0), false);
+
+  // Model the CPU fetching the same instruction again.
+  programCounter.setValue(address(0x202));
+
+  verticalBlank.signal();
+
+  executor.execute(instruction, context);
+
+  assertEquals(programCounter.getValue(), address(0x202));
+
+  assertEquals(displayBuffer.getPixel(0, 0), true);
+
+  assertEquals(verticalBlank.consume(), false);
 });
 
 Deno.test("LD I, addr stores the address in the index register", () => {

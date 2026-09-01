@@ -119,6 +119,7 @@ Deno.test("Classic CHIP-8 passes the Timendus Flags test ROM", async () => {
 
   const delayTimer = new Timer();
   const soundTimer = new Timer();
+  const verticalBlank = new VerticalBlank();
 
   const context: ExecutionContext = {
     registers: new Registers(),
@@ -129,7 +130,7 @@ Deno.test("Classic CHIP-8 passes the Timendus Flags test ROM", async () => {
     delayTimer,
     soundTimer,
     displayBuffer: new DisplayBuffer(profile.display.width, profile.display.height),
-    verticalBlank: new VerticalBlank(),
+    verticalBlank,
     keyboard: new TestKeyboard(),
     font: new ClassicFont(profile.fontBaseAddress),
     randomNumberGenerator: new TestRandomNumberGenerator([byte(0)]),
@@ -148,11 +149,13 @@ Deno.test("Classic CHIP-8 passes the Timendus Flags test ROM", async () => {
     cpu,
     delayTimer,
     soundTimer,
+    verticalBlank,
     scheduler,
     {
       cpuFrequency: TIMENDUS_FLAGS_CPU_FREQUENCY,
     },
     profile.timerFrequency,
+    profile.display.refreshFrequency,
   );
 
   runtime.resume();

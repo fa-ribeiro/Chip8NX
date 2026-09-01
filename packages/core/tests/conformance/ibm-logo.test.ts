@@ -29,13 +29,14 @@ import { Timer } from "../../src/timer/timer.ts";
 const IBM_LOGO_CPU_FREQUENCY = Frequency.fromInteger(500n);
 
 /**
- * The IBM logo is complete after exactly 20 CPU cycles.
+ * The IBM Logo ROM contains six draw instructions.
  *
- * At 500 Hz:
- *
- *     20 / 500 seconds = 40 milliseconds
+ * Classic CHIP-8 synchronizes Dxyn with vertical blank, so CPU scheduling
+ * attempts can stall and retry while waiting for the 60 Hz display boundary.
+ * 120 ms provides seven display intervals, enough for all six draws and the
+ * intervening instructions to complete.
  */
-const IBM_LOGO_EXECUTION_TIME = duration(40_000_000n as Duration);
+const IBM_LOGO_EXECUTION_TIME = duration(120_000_000n as Duration);
 
 const EXPECTED_IBM_LOGO = [
   "................................................................",
@@ -72,58 +73,64 @@ const EXPECTED_IBM_LOGO = [
   "................................................................",
 ].join("\n");
 
-Deno.test("Classic CHIP-8 renders the IBM logo after 20 CPU cycles", async () => {
-  const profile = CLASSIC_CHIP8_PROFILE;
+Deno.test(
+  "Classic CHIP-8 renders the IBM logo with vertical-blank synchronized drawing",
+  async () => {
+    const profile = CLASSIC_CHIP8_PROFILE;
 
-  const romBytes = await Deno.readFile(new URL("./roms/ibm-logo.ch8", import.meta.url));
+    const romBytes = await Deno.readFile(new URL("./roms/ibm-logo.ch8", import.meta.url));
 
-  const program = new MemoryImage(romBytes);
+    const program = new MemoryImage(romBytes);
 
-  const delayTimer = new Timer();
-  const soundTimer = new Timer();
+    const delayTimer = new Timer();
+    const soundTimer = new Timer();
+    const verticalBlank = new VerticalBlank();
 
-  const context: ExecutionContext = {
-    registers: new Registers(),
-    memory: new Ram(profile.memorySize),
-    stack: new Stack(profile.stackCapacity),
-    programCounter: new ProgramCounter(profile.programStartAddress),
-    indexRegister: new IndexRegister(),
-    delayTimer,
-    soundTimer,
-    displayBuffer: new DisplayBuffer(profile.display.width, profile.display.height),
-    verticalBlank: new VerticalBlank(),
-    keyboard: new TestKeyboard(),
-    font: new ClassicFont(profile.fontBaseAddress),
-    randomNumberGenerator: new TestRandomNumberGenerator([byte(0)]),
-  };
+    const context: ExecutionContext = {
+      registers: new Registers(),
+      memory: new Ram(profile.memorySize),
+      stack: new Stack(profile.stackCapacity),
+      programCounter: new ProgramCounter(profile.programStartAddress),
+      indexRegister: new IndexRegister(),
+      delayTimer,
+      soundTimer,
+      displayBuffer: new DisplayBuffer(profile.display.width, profile.display.height),
+      verticalBlank,
+      keyboard: new TestKeyboard(),
+      font: new ClassicFont(profile.fontBaseAddress),
+      randomNumberGenerator: new TestRandomNumberGenerator([byte(0)]),
+    };
 
-  const initializer = new MachineInitializer(new MemoryImageLoader());
+    const initializer = new MachineInitializer(new MemoryImageLoader());
 
-  initializer.initialize(context, profile, program);
+    initializer.initialize(context, profile, program);
 
-  const cpu = new Cpu(context, new Decoder(), new InstructionExecutor());
+    const cpu = new Cpu(context, new Decoder(), new InstructionExecutor());
 
-  const clock = new TestClock();
-  const scheduler = new Scheduler(clock);
+    const clock = new TestClock();
+    const scheduler = new Scheduler(clock);
 
-  const runtime = new Chip8Runtime(
-    cpu,
-    delayTimer,
-    soundTimer,
-    scheduler,
-    {
-      cpuFrequency: IBM_LOGO_CPU_FREQUENCY,
-    },
-    profile.timerFrequency,
-  );
+    const runtime = new Chip8Runtime(
+      cpu,
+      delayTimer,
+      soundTimer,
+      verticalBlank,
+      scheduler,
+      {
+        cpuFrequency: IBM_LOGO_CPU_FREQUENCY,
+      },
+      profile.timerFrequency,
+      profile.display.refreshFrequency,
+    );
 
-  runtime.resume();
+    runtime.resume();
 
-  clock.advance(IBM_LOGO_EXECUTION_TIME);
+    clock.advance(IBM_LOGO_EXECUTION_TIME);
 
-  runtime.tick();
-  assertEquals(snapshotDisplay(context.displayBuffer), EXPECTED_IBM_LOGO);
-});
+    runtime.tick();
+    assertEquals(snapshotDisplay(context.displayBuffer), EXPECTED_IBM_LOGO);
+  },
+);
 
 function snapshotDisplay(displayBuffer: DisplayBuffer): string {
   const rows: string[] = [];

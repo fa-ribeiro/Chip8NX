@@ -48,3 +48,17 @@ Deno.test("vertical blank can be signaled again after being consumed", () => {
   assertEquals(verticalBlank.consume(), true);
   assertEquals(verticalBlank.consume(), false);
 });
+
+Deno.test("isPending reports availability without consuming it", () => {
+  const verticalBlank = new VerticalBlank();
+
+  assertEquals(verticalBlank.isPending, false);
+
+  verticalBlank.signal();
+
+  assertEquals(verticalBlank.isPending, true);
+  assertEquals(verticalBlank.isPending, true);
+
+  assertEquals(verticalBlank.consume(), true);
+  assertEquals(verticalBlank.isPending, false);
+});

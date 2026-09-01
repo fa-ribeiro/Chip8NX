@@ -6,13 +6,20 @@
  * still represent only one pending opportunity.
  */
 export class VerticalBlank {
-  #pending = false;
+  private pending = false;
+
+  /**
+   * Returns whether a vertical-blank opportunity is currently pending.
+   */
+  public get isPending(): boolean {
+    return this.pending;
+  }
 
   /**
    * Marks a vertical-blank interval as available.
    */
-  signal(): void {
-    this.#pending = true;
+  public signal(): void {
+    this.pending = true;
   }
 
   /**
@@ -20,12 +27,12 @@ export class VerticalBlank {
    *
    * Returns `true` when one was available, otherwise `false`.
    */
-  consume(): boolean {
-    if (!this.#pending) {
+  public consume(): boolean {
+    if (!this.pending) {
       return false;
     }
 
-    this.#pending = false;
+    this.pending = false;
 
     return true;
   }
@@ -33,7 +40,7 @@ export class VerticalBlank {
   /**
    * Discards any pending vertical-blank interval.
    */
-  reset(): void {
-    this.#pending = false;
+  public reset(): void {
+    this.pending = false;
   }
 }

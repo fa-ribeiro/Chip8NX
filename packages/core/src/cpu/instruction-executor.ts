@@ -209,6 +209,13 @@ export class InstructionExecutor {
         return;
 
       case "draw-sprite": {
+        if (!context.verticalBlank.consume()) {
+          context.programCounter.setValue(
+            address(context.programCounter.getValue() - INSTRUCTION_SIZE),
+          );
+          return;
+        }
+
         const x = context.registers.get(instruction.x);
         const y = context.registers.get(instruction.y);
         const startAddress = context.indexRegister.getValue();

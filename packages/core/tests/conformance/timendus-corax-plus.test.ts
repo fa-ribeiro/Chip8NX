@@ -28,13 +28,15 @@ import { Timer } from "../../src/timer/timer.ts";
 const TIMENDUS_CORAX_PLUS_CPU_FREQUENCY = Frequency.fromInteger(500n);
 
 /**
- * Gives Corax+ one second of emulated execution at 500 Hz.
+ * Corax+ performs more than 60 sprite draws while constructing its result
+ * screen.
  *
- * After rendering its results, the ROM remains in a stable loop. The
- * acceptance criterion is therefore the observable result framebuffer rather
- * than an exact completion cycle.
+ * Classic CHIP-8 permits at most one synchronized draw per 60 Hz display
+ * interval, so one second is not sufficient once vertical-blank waiting is
+ * modeled correctly. Two seconds provides ample deterministic time for the
+ * ROM to reach its stable result loop.
  */
-const TIMENDUS_CORAX_PLUS_EXECUTION_TIME = duration(1_000_000_000n as Duration);
+const TIMENDUS_CORAX_PLUS_EXECUTION_TIME = duration(2_000_000_000n as Duration);
 
 /**
  * Successful Corax+ result screen.
@@ -87,6 +89,7 @@ Deno.test("Classic CHIP-8 passes the Timendus Corax+ opcode test ROM", async () 
 
   const delayTimer = new Timer();
   const soundTimer = new Timer();
+  const verticalBlank = new VerticalBlank();
 
   const context: ExecutionContext = {
     registers: new Registers(),
@@ -97,7 +100,7 @@ Deno.test("Classic CHIP-8 passes the Timendus Corax+ opcode test ROM", async () 
     delayTimer,
     soundTimer,
     displayBuffer: new DisplayBuffer(profile.display.width, profile.display.height),
-    verticalBlank: new VerticalBlank(),
+    verticalBlank,
     keyboard: new TestKeyboard(),
     font: new ClassicFont(profile.fontBaseAddress),
     randomNumberGenerator: new TestRandomNumberGenerator([byte(0)]),
@@ -116,11 +119,13 @@ Deno.test("Classic CHIP-8 passes the Timendus Corax+ opcode test ROM", async () 
     cpu,
     delayTimer,
     soundTimer,
+    verticalBlank,
     scheduler,
     {
       cpuFrequency: TIMENDUS_CORAX_PLUS_CPU_FREQUENCY,
     },
     profile.timerFrequency,
+    profile.display.refreshFrequency,
   );
 
   runtime.resume();

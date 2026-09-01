@@ -23,6 +23,7 @@ deno test --allow-read packages/core/tests/conformance/ibm-logo.test.ts
 deno test --allow-read packages/core/tests/conformance/corax89.test.ts
 deno test --allow-read packages/core/tests/conformance/timendus-corax-plus.test.ts
 deno test --allow-read packages/core/tests/conformance/timendus-flags.test.ts
+deno test --allow-read packages/core/tests/conformance/timendus-quirks.test.ts
 ```
 
 The `roms/` directory is intended for local test fixtures and should not contain redistributed third-party ROMs in the public repository.
@@ -124,6 +125,31 @@ The Timendus CHIP-8 test suite is licensed under GPL-3.0. The external ROM remai
 
 The Flags test verifies arithmetic and logical result values, VF flag behavior, carry and borrow cases, shifted-out bits, use of VF as an instruction operand, and Fx1E with both a normal register and VF.
 
+### Timendus Quirks Test
+
+The expected fixture is:
+
+```text
+Filename: 5-quirks.ch8
+Size:     3232 bytes
+SHA-256:  d839350268a3e73c7a16562b3d23c85aa1b92a567f5f61bd6727b1ea44635679
+```
+
+Chip8NX does not redistribute this ROM.
+
+The Timendus CHIP-8 test suite is licensed under GPL-3.0. The external ROM remains subject to its upstream license and is not covered by the Chip8NX MIT license.
+
+The automated test selects the Classic CHIP-8 target by writing `1` to address `0x1FF`, using the automation mechanism provided by the Timendus suite.
+
+The test verifies these compatibility behaviors:
+
+- `VF` reset by `8XY1`, `8XY2`, and `8XY3`;
+- `I` increment after `FX55` and `FX65`;
+- display synchronization with vertical blank;
+- sprite clipping and coordinate wrapping;
+- `8XY6` and `8XYE` shift-source behavior;
+- `BNNN` jump-offset behavior.
+
 ## Verifying the downloaded ROM
 
 After downloading the file, calculate its SHA-256 checksum locally.
@@ -135,7 +161,7 @@ sha256sum packages/core/tests/conformance/ibm-logo.test.ts
 sha256sum packages/core/tests/conformance/roms/test_opcode.ch8
 sha256sum packages/core/tests/conformance/timendus-corax-plus.test.ts
 sha256sum packages/core/tests/conformance/roms/4-flags.ch8
-
+sha256sum packages/core/tests/conformance/roms/5-quirks.ch8
 ```
 
 ### macOS
@@ -145,6 +171,7 @@ shasum -a 256 packages/core/tests/conformance/ibm-logo.test.ts
 shasum -a 256 packages/core/tests/conformance/roms/test_opcode.ch8
 shasum -a 256 packages/core/tests/conformance/timendus-corax-plus.test.ts
 shasum -a 256 packages/core/tests/conformance/roms/4-flags.ch8
+shasum -a 256 packages/core/tests/conformance/roms/5-quirks.ch8
 ```
 
 ### PowerShell
@@ -154,6 +181,7 @@ Get-FileHash packages/core/tests/conformance/ibm-logo.test.ts -Algorithm SHA256
 Get-FileHash packages/core/tests/conformance/roms/test_opcode.ch8 -Algorithm SHA256
 Get-FileHash packages/core/tests/conformance/timendus-corax-plus.test.ts -Algorithm SHA256
 Get-FileHash packages/core/tests/conformance/roms/4-flags.ch8 -Algorithm SHA256
+Get-FileHash packages/core/tests/conformance/roms/5-quirks.ch8 -Algorithm SHA256
 ```
 
 ## Future Fixtures

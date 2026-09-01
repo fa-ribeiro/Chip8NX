@@ -14,6 +14,7 @@ import { registerIndex } from "../../src/cpu/registers/register-index.ts";
 import { Registers } from "../../src/cpu/registers/registers.ts";
 import { Stack } from "../../src/cpu/stack/stack.ts";
 import { DisplayBuffer } from "../../src/display/display-buffer.ts";
+import { VerticalBlank } from "../../src/display/vertical-blank.ts";
 import { ClassicFont } from "../../src/font/classic-font.ts";
 import { Decoder } from "../../src/instruction/decoder.ts";
 import { TestKeyboard } from "../../src/keyboard/test-keyboard.ts";
@@ -23,7 +24,6 @@ import { TestRandomNumberGenerator } from "../../src/random/test-random-number-g
 import { Chip8Runtime } from "../../src/runtime/chip8-runtime.ts";
 import { Scheduler } from "../../src/scheduler/scheduler.ts";
 import { Timer } from "../../src/timer/timer.ts";
-import { VerticalBlank } from "../../src/display/vertical-blank.ts";
 
 interface RuntimeHarness {
   readonly runtime: Chip8Runtime;
@@ -31,6 +31,7 @@ interface RuntimeHarness {
   readonly context: ExecutionContext;
   readonly delayTimer: Timer;
   readonly soundTimer: Timer;
+  readonly verticalBlank: VerticalBlank;
 }
 
 function createRuntime(cpuFrequency: Frequency = Frequency.fromInteger(500n)): RuntimeHarness {
@@ -40,7 +41,7 @@ function createRuntime(cpuFrequency: Frequency = Frequency.fromInteger(500n)): R
   const memory = new Ram(profile.memorySize);
   const delayTimer = new Timer();
   const soundTimer = new Timer();
-
+  const verticalBlank = new VerticalBlank();
   const context: ExecutionContext = {
     registers,
     memory,
@@ -50,7 +51,7 @@ function createRuntime(cpuFrequency: Frequency = Frequency.fromInteger(500n)): R
     soundTimer,
     delayTimer,
     displayBuffer: new DisplayBuffer(profile.display.width, profile.display.height),
-    verticalBlank: new VerticalBlank(),
+    verticalBlank: verticalBlank,
     keyboard: new TestKeyboard(),
     font: new ClassicFont(profile.fontBaseAddress),
     randomNumberGenerator: new TestRandomNumberGenerator([byte(0)]),
@@ -78,14 +79,16 @@ function createRuntime(cpuFrequency: Frequency = Frequency.fromInteger(500n)): R
     cpu,
     delayTimer,
     soundTimer,
+    verticalBlank,
     scheduler,
     {
       cpuFrequency,
     },
     profile.timerFrequency,
+    profile.display.refreshFrequency,
   );
 
-  return { runtime, clock, context, delayTimer, soundTimer };
+  return { runtime, clock, context, delayTimer, soundTimer, verticalBlank };
 }
 
 function advanceClock(clock: TestClock, nanoseconds: bigint): void {
@@ -275,4 +278,104 @@ Deno.test("Chip8Runtime processes timers before CPU on an exact deadline tie", (
    *     DT: 0 -> 5
    */
   assertEquals(delayTimer.getValue(), byte(5));
+});
+
+Deno.test("Chip8Runtime does not signal vertical blank while paused", () => {
+  const { runtime, clock, verticalBlank } = createRuntime();
+
+  advanceClock(clock, 20_000_000n);
+
+  runtime.tick();
+
+  assertEquals(verticalBlank.consume(), false);
+});
+
+Deno.test("Chip8Runtime schedules display-frame boundaries", () => {
+  const { runtime, clock, verticalBlank } = createRuntime();
+
+  runtime.resume();
+
+  advanceClock(clock, 20_000_000n);
+
+  runtime.tick();
+
+  assertEquals(verticalBlank.consume(), true);
+  assertEquals(verticalBlank.consume(), false);
+});
+
+Deno.test("Chip8Runtime pause does not accumulate vertical blank debt", () => {
+  const { runtime, clock, verticalBlank } = createRuntime();
+
+  runtime.resume();
+
+  advanceClock(clock, 20_000_000n);
+  runtime.tick();
+
+  assertEquals(verticalBlank.consume(), true);
+
+  runtime.pause();
+
+  advanceClock(clock, 1_000_000_000n);
+  runtime.tick();
+
+  assertEquals(verticalBlank.consume(), false);
+
+  runtime.resume();
+  runtime.tick();
+
+  assertEquals(verticalBlank.consume(), false);
+});
+
+Deno.test("Chip8Runtime step allows a draw instruction to complete while paused", () => {
+  const { runtime, context, verticalBlank } = createRuntime();
+
+  /*
+   * First instruction:
+   *
+   *     DRW V0, V1, 1
+   */
+  context.memory.write(CLASSIC_CHIP8_PROFILE.programStartAddress, byte(0xd0));
+
+  context.memory.write(address(CLASSIC_CHIP8_PROFILE.programStartAddress + 1), byte(0x11));
+
+  context.indexRegister.setValue(address(0x300));
+  context.memory.write(address(0x300), byte(0b1000_0000));
+
+  context.registers.set(registerIndex(0), byte(2));
+  context.registers.set(registerIndex(1), byte(3));
+
+  assertEquals(verticalBlank.isPending, false);
+
+  runtime.step();
+
+  assertEquals(context.displayBuffer.getPixel(2, 3), true);
+
+  assertEquals(
+    context.programCounter.getValue(),
+    address(CLASSIC_CHIP8_PROFILE.programStartAddress + 2),
+  );
+
+  assertEquals(verticalBlank.isPending, false);
+});
+
+Deno.test("Chip8Runtime step does not leave a temporary vertical blank pending", () => {
+  const { runtime, context, verticalBlank } = createRuntime();
+
+  assertEquals(verticalBlank.isPending, false);
+
+  runtime.step();
+
+  assertEquals(context.registers.get(registerIndex(0)), byte(1));
+  assertEquals(verticalBlank.isPending, false);
+});
+
+Deno.test("Chip8Runtime step preserves an existing vertical blank when unused", () => {
+  const { runtime, context, verticalBlank } = createRuntime();
+
+  verticalBlank.signal();
+
+  runtime.step();
+
+  assertEquals(context.registers.get(registerIndex(0)), byte(1));
+  assertEquals(verticalBlank.isPending, true);
 });

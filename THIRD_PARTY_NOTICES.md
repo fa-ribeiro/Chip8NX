@@ -45,5 +45,9 @@ The Timendus CHIP-8 test suite is not included in this repository.
   - Expected local filename: `packages/core/tests/conformance/roms/4-flags.ch8`
   - Flags expected size: `1041` bytes
   - Flags expected SHA-256: `f00ddadd37bc878473de0c8f16faecf9985dea39036a3a796d551bc9fec47cfa`
+- Quirks upstream ROM filename: `5-quirks.ch8`
+  - Expected local filename: `packages/core/tests/conformance/roms/5-quirks.ch8`
+  - Expected size: `3232` bytes
+  - Expected SHA-256: `d839350268a3e73c7a16562b3d23c85aa1b92a567f5f61bd6727b1ea44635679`
 
 Chip8NX uses relevant Classic CHIP-8 tests from this suite as external conformance fixtures. These ROMs remain subject to the upstream GPL-3.0 license and are not distributed as part of Chip8NX.
