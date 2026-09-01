@@ -27,14 +27,9 @@ interface TestMachine {
   readonly randomNumberGenerator: TestRandomNumberGenerator;
 }
 
-function createMachine(
-  profile: Chip8Profile = CLASSIC_CHIP8_PROFILE,
-): TestMachine {
+function createMachine(profile: Chip8Profile = CLASSIC_CHIP8_PROFILE): TestMachine {
   const keyboard = new TestKeyboard();
-  const randomNumberGenerator = new TestRandomNumberGenerator([
-    byte(0x12),
-    byte(0x34),
-  ]);
+  const randomNumberGenerator = new TestRandomNumberGenerator([byte(0x12), byte(0x34)]);
 
   const context: ExecutionContext = {
     registers: new Registers(),
@@ -44,10 +39,7 @@ function createMachine(
     indexRegister: new IndexRegister(),
     soundTimer: new Timer(),
     delayTimer: new Timer(),
-    displayBuffer: new DisplayBuffer(
-      profile.display.width,
-      profile.display.height,
-    ),
+    displayBuffer: new DisplayBuffer(profile.display.width, profile.display.height),
     keyboard,
     font: new ClassicFont(profile.fontBaseAddress),
     randomNumberGenerator,
@@ -87,10 +79,7 @@ Deno.test(
     assertEquals(context.memory.read(address(0x300)), byte(0));
     assertEquals(context.registers.get(registerIndex(0x3)), byte(0));
     assertEquals(context.stack.isEmpty(), true);
-    assertEquals(
-      context.programCounter.getValue(),
-      profile.programStartAddress,
-    );
+    assertEquals(context.programCounter.getValue(), profile.programStartAddress);
     assertEquals(context.indexRegister.getValue(), address(0));
     assertEquals(context.delayTimer.getValue(), byte(0));
     assertEquals(context.soundTimer.getValue(), byte(0));
@@ -112,50 +101,35 @@ Deno.test(
     assertEquals(randomNumberGenerator.nextByte(), byte(0x34));
 
     for (const [offset, value] of profile.fontImage.bytes.entries()) {
-      assertEquals(
-        context.memory.read(address(profile.fontBaseAddress + offset)),
-        value,
-      );
+      assertEquals(context.memory.read(address(profile.fontBaseAddress + offset)), value);
     }
 
     for (const [offset, value] of program.bytes.entries()) {
-      assertEquals(
-        context.memory.read(address(profile.programStartAddress + offset)),
-        value,
-      );
+      assertEquals(context.memory.read(address(profile.programStartAddress + offset)), value);
     }
   },
 );
 
-Deno.test(
-  "MachineInitializer rejects an oversized program before mutating the machine",
-  () => {
-    const profile = CLASSIC_CHIP8_PROFILE;
-    const { context } = createMachine(profile);
+Deno.test("MachineInitializer rejects an oversized program before mutating the machine", () => {
+  const profile = CLASSIC_CHIP8_PROFILE;
+  const { context } = createMachine(profile);
 
-    context.memory.write(address(0x300), byte(0xaa));
-    context.registers.set(registerIndex(0x3), byte(0xbb));
-    context.programCounter.setValue(address(0x300));
+  context.memory.write(address(0x300), byte(0xaa));
+  context.registers.set(registerIndex(0x3), byte(0xbb));
+  context.programCounter.setValue(address(0x300));
 
-    const availableProgramBytes =
-      profile.memorySize - profile.programStartAddress;
+  const availableProgramBytes = profile.memorySize - profile.programStartAddress;
 
-    const program = new MemoryImage(
-      new Array(availableProgramBytes + 1).fill(0),
-    );
+  const program = new MemoryImage(new Array(availableProgramBytes + 1).fill(0));
 
-    const initializer = new MachineInitializer(new MemoryImageLoader());
+  const initializer = new MachineInitializer(new MemoryImageLoader());
 
-    assertThrows(
-      () => initializer.initialize(context, profile, program),
-      RangeError,
-    );
+  assertThrows(() => initializer.initialize(context, profile, program), RangeError);
 
-    assertEquals(context.memory.read(address(0x300)), byte(0xaa));
-    assertEquals(context.registers.get(registerIndex(0x3)), byte(0xbb));
-    assertEquals(context.programCounter.getValue(), address(0x300));
-  },
-);
+  assertEquals(context.memory.read(address(0x300)), byte(0xaa));
+  assertEquals(context.registers.get(registerIndex(0x3)), byte(0xbb));
+  assertEquals(context.programCounter.getValue(), address(0x300));
+});
 
 Deno.test(
   "MachineInitializer rejects a font image that does not fit before mutating the machine",
@@ -164,9 +138,7 @@ Deno.test(
       ...CLASSIC_CHIP8_PROFILE,
 
       fontBaseAddress: address(
-        CLASSIC_CHIP8_PROFILE.memorySize -
-          CLASSIC_CHIP8_PROFILE.fontImage.bytes.length +
-          1,
+        CLASSIC_CHIP8_PROFILE.memorySize - CLASSIC_CHIP8_PROFILE.fontImage.bytes.length + 1,
       ),
     };
 
@@ -179,10 +151,7 @@ Deno.test(
 
     const initializer = new MachineInitializer(new MemoryImageLoader());
 
-    assertThrows(
-      () => initializer.initialize(context, profile, program),
-      RangeError,
-    );
+    assertThrows(() => initializer.initialize(context, profile, program), RangeError);
 
     assertEquals(context.memory.read(address(0x300)), byte(0xaa));
     assertEquals(context.registers.get(registerIndex(0x3)), byte(0xbb));
@@ -206,10 +175,7 @@ Deno.test(
 
     const initializer = new MachineInitializer(new MemoryImageLoader());
 
-    assertThrows(
-      () => initializer.initialize(context, profile, program),
-      RangeError,
-    );
+    assertThrows(() => initializer.initialize(context, profile, program), RangeError);
 
     assertEquals(context.memory.read(address(0x300)), byte(0xaa));
     assertEquals(context.registers.get(registerIndex(0x3)), byte(0xbb));
@@ -232,43 +198,37 @@ Deno.test(
 
     const program = new MemoryImage([0x60, 0x42]);
 
-    assertThrows(
-      () => initializer.initialize(context, profile, program),
-      RangeError,
-    );
+    assertThrows(() => initializer.initialize(context, profile, program), RangeError);
 
     assertEquals(context.memory.read(address(0x300)), byte(0xaa));
   },
 );
 
-Deno.test(
-  "MachineInitializer rejects an empty font image before mutating the machine",
-  () => {
-    const profile: Chip8Profile = {
-      ...CLASSIC_CHIP8_PROFILE,
-      fontImage: new MemoryImage([]),
-    };
+Deno.test("MachineInitializer rejects an empty font image before mutating the machine", () => {
+  const profile: Chip8Profile = {
+    ...CLASSIC_CHIP8_PROFILE,
+    fontImage: new MemoryImage([]),
+  };
 
-    const { context } = createMachine(profile);
+  const { context } = createMachine(profile);
 
-    context.memory.write(address(0x300), byte(0xaa));
-    context.registers.set(registerIndex(0x3), byte(0xbb));
+  context.memory.write(address(0x300), byte(0xaa));
+  context.registers.set(registerIndex(0x3), byte(0xbb));
 
-    const program = new MemoryImage([0x60, 0x42]);
+  const program = new MemoryImage([0x60, 0x42]);
 
-    const initializer = new MachineInitializer(new MemoryImageLoader());
+  const initializer = new MachineInitializer(new MemoryImageLoader());
 
-    assertThrows(
-      () => initializer.initialize(context, profile, program),
-      RangeError,
-      "Font image must not be empty.",
-    );
+  assertThrows(
+    () => initializer.initialize(context, profile, program),
+    RangeError,
+    "Font image must not be empty.",
+  );
 
-    assertEquals(context.memory.read(address(0x300)), byte(0xaa));
+  assertEquals(context.memory.read(address(0x300)), byte(0xaa));
 
-    assertEquals(context.registers.get(registerIndex(0x3)), byte(0xbb));
-  },
-);
+  assertEquals(context.registers.get(registerIndex(0x3)), byte(0xbb));
+});
 
 Deno.test(
   "MachineInitializer rejects an empty program image before mutating the machine",
