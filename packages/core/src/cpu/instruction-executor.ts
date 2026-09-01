@@ -59,10 +59,7 @@ export class InstructionExecutor {
       case "random-and": {
         const randomValue = context.randomNumberGenerator.nextByte();
 
-        context.registers.set(
-          instruction.register,
-          byte(randomValue & instruction.mask),
-        );
+        context.registers.set(instruction.register, byte(randomValue & instruction.mask));
         return;
       }
 
@@ -79,19 +76,13 @@ export class InstructionExecutor {
         return;
 
       case "skip-equal-register":
-        if (
-          context.registers.get(instruction.x) ===
-            context.registers.get(instruction.y)
-        ) {
+        if (context.registers.get(instruction.x) === context.registers.get(instruction.y)) {
           context.programCounter.advance();
         }
         return;
 
       case "skip-not-equal-register":
-        if (
-          context.registers.get(instruction.x) !==
-            context.registers.get(instruction.y)
-        ) {
+        if (context.registers.get(instruction.x) !== context.registers.get(instruction.y)) {
           context.programCounter.advance();
         }
         return;
@@ -119,22 +110,15 @@ export class InstructionExecutor {
       }
 
       case "get-delay-timer":
-        context.registers.set(
-          instruction.register,
-          context.delayTimer.getValue(),
-        );
+        context.registers.set(instruction.register, context.delayTimer.getValue());
         return;
 
       case "set-delay-timer":
-        context.delayTimer.setValue(
-          context.registers.get(instruction.register),
-        );
+        context.delayTimer.setValue(context.registers.get(instruction.register));
         return;
 
       case "set-sound-timer":
-        context.soundTimer.setValue(
-          context.registers.get(instruction.register),
-        );
+        context.soundTimer.setValue(context.registers.get(instruction.register));
         return;
 
       case "wait-for-key": {
@@ -191,9 +175,7 @@ export class InstructionExecutor {
           );
         }
 
-        context.indexRegister.setValue(
-          address(startAddress + instruction.register + 1),
-        );
+        context.indexRegister.setValue(address(startAddress + instruction.register + 1));
         return;
       }
 
@@ -207,9 +189,7 @@ export class InstructionExecutor {
           );
         }
 
-        context.indexRegister.setValue(
-          address(startAddress + instruction.register + 1),
-        );
+        context.indexRegister.setValue(address(startAddress + instruction.register + 1));
         return;
       }
 
@@ -218,10 +198,7 @@ export class InstructionExecutor {
         return;
 
       case "add-immediate": {
-        const result = add8(
-          context.registers.get(instruction.register),
-          instruction.value,
-        );
+        const result = add8(context.registers.get(instruction.register), instruction.value);
 
         context.registers.set(instruction.register, result.value);
         return;
@@ -268,14 +245,17 @@ export class InstructionExecutor {
 
       case "or":
         context.registers.set(instruction.x, byte(x | y));
+        context.registers.set(FLAG_REGISTER, byte(0));
         return;
 
       case "and":
         context.registers.set(instruction.x, byte(x & y));
+        context.registers.set(FLAG_REGISTER, byte(0));
         return;
 
       case "xor":
         context.registers.set(instruction.x, byte(x ^ y));
+        context.registers.set(FLAG_REGISTER, byte(0));
         return;
 
       case "add": {

@@ -26,9 +26,7 @@ import { TestKeyboard } from "../keyboard/test-keyboard.ts";
 
 import { CLASSIC_CHIP8_PROFILE } from "../machine/classic/classic-chip8-profile.ts";
 
-function createContext(
-  overrides: Partial<ExecutionContext> = {},
-): ExecutionContext {
+function createContext(overrides: Partial<ExecutionContext> = {}): ExecutionContext {
   const profile = CLASSIC_CHIP8_PROFILE;
 
   return {
@@ -39,10 +37,7 @@ function createContext(
     indexRegister: new IndexRegister(),
     soundTimer: new Timer(),
     delayTimer: new Timer(),
-    displayBuffer: new DisplayBuffer(
-      profile.display.width,
-      profile.display.height,
-    ),
+    displayBuffer: new DisplayBuffer(profile.display.width, profile.display.height),
     keyboard: new TestKeyboard(),
     font: new ClassicFont(profile.fontBaseAddress),
     randomNumberGenerator: new TestRandomNumberGenerator([byte(0)]),
@@ -299,10 +294,12 @@ Deno.test("LD Vx, Vy copies the source register", () => {
   assertEquals(registers.get(registerIndex(0xa)), byte(0xab));
 });
 
-Deno.test("OR Vx, Vy performs a bitwise OR", () => {
+Deno.test("OR Vx, Vy performs a bitwise OR and clears VF", () => {
   const registers = new Registers();
+
   registers.set(registerIndex(0xa), byte(0b1010_0000));
   registers.set(registerIndex(0xb), byte(0b0000_1111));
+  registers.set(FLAG_REGISTER, byte(0xff));
 
   const context = createContext({ registers });
   const executor = new InstructionExecutor();
@@ -310,12 +307,15 @@ Deno.test("OR Vx, Vy performs a bitwise OR", () => {
   executor.execute(registerOperation("or", 0xa, 0xb, 0x8ab1), context);
 
   assertEquals(registers.get(registerIndex(0xa)), byte(0b1010_1111));
+  assertEquals(registers.get(FLAG_REGISTER), byte(0));
 });
 
-Deno.test("AND Vx, Vy performs a bitwise AND", () => {
+Deno.test("AND Vx, Vy performs a bitwise AND and clears VF", () => {
   const registers = new Registers();
+
   registers.set(registerIndex(0xa), byte(0b1010_1010));
   registers.set(registerIndex(0xb), byte(0b1111_0000));
+  registers.set(FLAG_REGISTER, byte(0xff));
 
   const context = createContext({ registers });
   const executor = new InstructionExecutor();
@@ -323,12 +323,15 @@ Deno.test("AND Vx, Vy performs a bitwise AND", () => {
   executor.execute(registerOperation("and", 0xa, 0xb, 0x8ab2), context);
 
   assertEquals(registers.get(registerIndex(0xa)), byte(0b1010_0000));
+  assertEquals(registers.get(FLAG_REGISTER), byte(0));
 });
 
-Deno.test("XOR Vx, Vy performs a bitwise XOR", () => {
+Deno.test("XOR Vx, Vy performs a bitwise XOR and clears VF", () => {
   const registers = new Registers();
+
   registers.set(registerIndex(0xa), byte(0b1010_1010));
   registers.set(registerIndex(0xb), byte(0b1111_0000));
+  registers.set(FLAG_REGISTER, byte(0xff));
 
   const context = createContext({ registers });
   const executor = new InstructionExecutor();
@@ -336,6 +339,7 @@ Deno.test("XOR Vx, Vy performs a bitwise XOR", () => {
   executor.execute(registerOperation("xor", 0xa, 0xb, 0x8ab3), context);
 
   assertEquals(registers.get(registerIndex(0xa)), byte(0b0101_1010));
+  assertEquals(registers.get(FLAG_REGISTER), byte(0));
 });
 
 Deno.test("ADD Vx, Vy stores the wrapped result and carry in VF", () => {
@@ -422,10 +426,7 @@ Deno.test("SUBN Vx, Vy computes Vy minus Vx", () => {
   const context = createContext({ registers });
   const executor = new InstructionExecutor();
 
-  executor.execute(
-    registerOperation("reverse-subtract", 0xa, 0xb, 0x8ab7),
-    context,
-  );
+  executor.execute(registerOperation("reverse-subtract", 0xa, 0xb, 0x8ab7), context);
 
   assertEquals(registers.get(registerIndex(0xa)), byte(0x02));
   assertEquals(registers.get(FLAG_REGISTER), byte(0x01));
@@ -438,10 +439,7 @@ Deno.test("SUBN Vx, Vy computes Vy minus Vx and wraps when a borrow occurs", () 
 
   const context = createContext({ registers });
   const executor = new InstructionExecutor();
-  executor.execute(
-    registerOperation("reverse-subtract", 0xa, 0xb, 0x8ab7),
-    context,
-  );
+  executor.execute(registerOperation("reverse-subtract", 0xa, 0xb, 0x8ab7), context);
 
   assertEquals(registers.get(registerIndex(0xa)), byte(0xfe));
   assertEquals(registers.get(FLAG_REGISTER), byte(0x00));
@@ -466,18 +464,33 @@ Deno.test("SHL Vx shifts left and stores the old MSB in VF", () => {
   assertEquals(registers.get(FLAG_REGISTER), byte(0x00));
 });
 
-Deno.test("logical register operations do not modify VF", () => {
+Deno.test("logical register operations read VF before clearing it when VF is Vy", () => {
   const registers = new Registers();
-  registers.set(registerIndex(0xa), byte(0xf0));
-  registers.set(registerIndex(0xb), byte(0x0f));
-  registers.set(FLAG_REGISTER, byte(0x01));
+
+  registers.set(registerIndex(0xa), byte(0b0000_1111));
+  registers.set(FLAG_REGISTER, byte(0b1111_0000));
 
   const context = createContext({ registers });
   const executor = new InstructionExecutor();
 
-  executor.execute(registerOperation("xor", 0xa, 0xb, 0x8ab3), context);
+  executor.execute(registerOperation("or", 0xa, 0xf, 0x8af1), context);
 
-  assertEquals(registers.get(FLAG_REGISTER), byte(0x01));
+  assertEquals(registers.get(registerIndex(0xa)), byte(0b1111_1111));
+  assertEquals(registers.get(FLAG_REGISTER), byte(0));
+});
+
+Deno.test("logical register operations clear VF last when VF is Vx", () => {
+  const registers = new Registers();
+
+  registers.set(FLAG_REGISTER, byte(0b1111_0000));
+  registers.set(registerIndex(0xa), byte(0b0000_1111));
+
+  const context = createContext({ registers });
+  const executor = new InstructionExecutor();
+
+  executor.execute(registerOperation("or", 0xf, 0xa, 0x8fa1), context);
+
+  assertEquals(registers.get(FLAG_REGISTER), byte(0));
 });
 
 Deno.test("unsupported instructions throw UnsupportedInstructionError", () => {
@@ -694,9 +707,7 @@ Deno.test("JP V0, addr uses V0 regardless of other register values", () => {
 Deno.test("RND Vx, byte stores random byte AND mask", () => {
   const registers = new Registers();
 
-  const randomNumberGenerator = new TestRandomNumberGenerator([
-    byte(0b1010_1010),
-  ]);
+  const randomNumberGenerator = new TestRandomNumberGenerator([byte(0b1010_1010)]);
 
   const context = createContext({
     registers,
@@ -721,9 +732,7 @@ Deno.test("RND Vx, byte stores random byte AND mask", () => {
 Deno.test("RND Vx, byte performs a bitwise AND", () => {
   const registers = new Registers();
 
-  const randomNumberGenerator = new TestRandomNumberGenerator([
-    byte(0b1100_1010),
-  ]);
+  const randomNumberGenerator = new TestRandomNumberGenerator([byte(0b1100_1010)]);
 
   const context = createContext({
     registers,
@@ -748,10 +757,7 @@ Deno.test("RND Vx, byte performs a bitwise AND", () => {
 Deno.test("RND Vx, byte requests a new random byte for each execution", () => {
   const registers = new Registers();
 
-  const randomNumberGenerator = new TestRandomNumberGenerator([
-    byte(0x12),
-    byte(0xab),
-  ]);
+  const randomNumberGenerator = new TestRandomNumberGenerator([byte(0x12), byte(0xab)]);
 
   const context = createContext({
     registers,
