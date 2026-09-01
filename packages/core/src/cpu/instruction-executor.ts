@@ -275,7 +275,7 @@ export class InstructionExecutor {
       }
 
       case "shift-right": {
-        const result = shiftRight8(x);
+        const result = shiftRight8(y);
 
         context.registers.set(instruction.x, result.value);
         context.registers.set(FLAG_REGISTER, byte(result.flag ? 1 : 0));
@@ -291,7 +291,7 @@ export class InstructionExecutor {
       }
 
       case "shift-left": {
-        const result = shiftLeft8(x);
+        const result = shiftLeft8(y);
 
         context.registers.set(instruction.x, result.value);
         context.registers.set(FLAG_REGISTER, byte(result.flag ? 1 : 0));

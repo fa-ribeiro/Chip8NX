@@ -399,23 +399,35 @@ Deno.test("SUB Vx, Vy wraps and clears VF when a borrow occurs", () => {
   assertEquals(registers.get(FLAG_REGISTER), byte(0x00));
 });
 
-Deno.test("SHR Vx shifts right and stores the old LSB in VF", () => {
+Deno.test("SHR Vx, Vy shifts Vy right into Vx and stores its old LSB in VF", () => {
   const registers = new Registers();
-  registers.set(registerIndex(0xa), byte(0b0000_0011));
-  registers.set(registerIndex(0xb), byte(0b0000_0010));
+
+  registers.set(registerIndex(0xa), byte(0b1111_0000));
+  registers.set(registerIndex(0xb), byte(0b0000_0011));
 
   const context = createContext({ registers });
   const executor = new InstructionExecutor();
 
-  executor.execute(registerOperation("shift-right", 0xa, 0x0, 0x8ab6), context);
+  executor.execute(registerOperation("shift-right", 0xa, 0xb, 0x8ab6), context);
 
   assertEquals(registers.get(registerIndex(0xa)), byte(0b0000_0001));
-  assertEquals(registers.get(FLAG_REGISTER), byte(0x01));
+  assertEquals(registers.get(registerIndex(0xb)), byte(0b0000_0011));
+  assertEquals(registers.get(FLAG_REGISTER), byte(1));
+});
 
-  executor.execute(registerOperation("shift-right", 0xb, 0x0, 0x8ab6), context);
+Deno.test("SHR reads VF before updating it when VF is Vy", () => {
+  const registers = new Registers();
 
-  assertEquals(registers.get(registerIndex(0xb)), byte(0b0000_0001));
-  assertEquals(registers.get(FLAG_REGISTER), byte(0x0));
+  registers.set(registerIndex(0xa), byte(0xff));
+  registers.set(FLAG_REGISTER, byte(0b0000_0011));
+
+  const context = createContext({ registers });
+  const executor = new InstructionExecutor();
+
+  executor.execute(registerOperation("shift-right", 0xa, 0xf, 0x8af6), context);
+
+  assertEquals(registers.get(registerIndex(0xa)), byte(0b0000_0001));
+  assertEquals(registers.get(FLAG_REGISTER), byte(1));
 });
 
 Deno.test("SUBN Vx, Vy computes Vy minus Vx", () => {
@@ -445,23 +457,34 @@ Deno.test("SUBN Vx, Vy computes Vy minus Vx and wraps when a borrow occurs", () 
   assertEquals(registers.get(FLAG_REGISTER), byte(0x00));
 });
 
-Deno.test("SHL Vx shifts left and stores the old MSB in VF", () => {
+Deno.test("SHL Vx, Vy shifts Vy left into Vx and stores its old MSB in VF", () => {
   const registers = new Registers();
-  registers.set(registerIndex(0xa), byte(0b1000_0001));
-  registers.set(registerIndex(0xb), byte(0b0100_0001));
+
+  registers.set(registerIndex(0xa), byte(0b0000_1111));
+  registers.set(registerIndex(0xb), byte(0b1000_0001));
 
   const context = createContext({ registers });
   const executor = new InstructionExecutor();
 
-  executor.execute(registerOperation("shift-left", 0xa, 0x0, 0x8abe), context);
+  executor.execute(registerOperation("shift-left", 0xa, 0xb, 0x8abe), context);
 
   assertEquals(registers.get(registerIndex(0xa)), byte(0b0000_0010));
-  assertEquals(registers.get(FLAG_REGISTER), byte(0x01));
+  assertEquals(registers.get(registerIndex(0xb)), byte(0b1000_0001));
+  assertEquals(registers.get(FLAG_REGISTER), byte(1));
+});
 
-  executor.execute(registerOperation("shift-left", 0xb, 0x0, 0x8abe), context);
+Deno.test("SHL writes VF last when VF is Vx", () => {
+  const registers = new Registers();
 
-  assertEquals(registers.get(registerIndex(0xb)), byte(0b1000_0010));
-  assertEquals(registers.get(FLAG_REGISTER), byte(0x00));
+  registers.set(FLAG_REGISTER, byte(0));
+  registers.set(registerIndex(0xa), byte(0b1000_0001));
+
+  const context = createContext({ registers });
+  const executor = new InstructionExecutor();
+
+  executor.execute(registerOperation("shift-left", 0xf, 0xa, 0x8fae), context);
+
+  assertEquals(registers.get(FLAG_REGISTER), byte(1));
 });
 
 Deno.test("logical register operations read VF before clearing it when VF is Vy", () => {
