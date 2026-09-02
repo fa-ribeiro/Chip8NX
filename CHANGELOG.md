@@ -12,17 +12,20 @@ During the `0.x` development phase:
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-02 - Classic CHIP-8 Baseline
+
 ### Added
 
 - Timendus Corax+ opcode conformance test.
 - Timendus Flags conformance test.
 - Timendus Quirks conformance test running in automated Classic CHIP-8 mode.
+- Timendus Keypad conformance test covering `EX9E`, `EXA1`, and `FX0A`.
 - `VerticalBlank` machine-state component for display synchronization.
 - Display refresh frequency as an explicit `Chip8Profile` characteristic.
 - Runtime scheduling of emulated display-frame boundaries.
 - Unit and integration coverage for vertical-blank availability, scheduling, pause/resume behavior, and debugger stepping.
-- Timendus Keypad conformance test covering `EX9E`, `EXA1`, and `FX0A` Classic keyboard behavior.
-- Added a documented Classic CHIP-8 opcode coverage audit and explicit tests for zero-height `DXY0` display-wait behavior.
+- Explicit unit coverage for Classic zero-height `DXY0` display-wait behavior.
+- Documented Classic CHIP-8 opcode coverage audit.
 
 ### Changed
 
@@ -33,10 +36,11 @@ During the `0.x` development phase:
 - Updated paused single-step execution so a display-synchronized draw can complete without advancing scheduled time or leaking a synthetic vertical-blank opportunity.
 - Updated IBM Logo and Timendus Corax+ conformance execution budgets to account for Classic vertical-blank-synchronized drawing while keeping their framebuffer acceptance criteria unchanged.
 - Expanded external conformance-fixture documentation for the Timendus test suite.
+- Documented `0mmm` native COSMAC system calls as intentionally unsupported by the generic CHIP-8 core.
 
 ### Conformance
 
-Current `main` passes:
+Chip8NX `v0.2.0` passes:
 
 - IBM Logo;
 - original corax89 opcode test;
@@ -44,6 +48,16 @@ Current `main` passes:
 - Timendus Flags;
 - Timendus Quirks in Classic CHIP-8 mode;
 - Timendus Keypad.
+
+The Classic opcode audit confirms that every Classic opcode family is intentionally handled by the implementation.
+
+Ordinary CHIP-8 virtual-machine instructions have executable semantics and direct unit coverage. The historical `0mmm` instruction is recognized and decoded but intentionally rejected because it transfers execution to native CDP1802 machine code outside the scope of the generic CHIP-8 core.
+
+### Milestone
+
+`v0.2.0` establishes the Chip8NX Classic CHIP-8 baseline.
+
+Classic opcode implementation and conformance are now sufficiently complete that additional Classic conformance ROMs no longer block feature development. Further conformance testing remains useful when it provides new behavioral evidence, but development can now proceed toward applications, public-API refinement, and future CHIP-8-family profiles.
 
 ## [0.1.0] - 2026-09-01 - corax89 Opcode Conformance
 

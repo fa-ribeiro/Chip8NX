@@ -12,20 +12,26 @@ The project focuses first on accurate **Classic CHIP-8** behavior while keeping 
 
 ## Status
 
-**Current release: `v0.1.0` — corax89 Opcode Conformance**
+**Current release: `v0.2.0` — Classic CHIP-8 Baseline**
 
-The `v0.1.0` milestone established successful execution of the original corax89 CHIP-8 opcode test ROM through the normal Chip8NX machine pipeline.
+The `v0.2.0` milestone establishes a complete Classic CHIP-8 opcode baseline for Chip8NX.
 
-Current development on `main` additionally passes the relevant Classic CHIP-8 modes of:
+Every Classic opcode family is now intentionally handled, with direct unit coverage for executable CHIP-8 semantics and an explicit policy for the historical `0mmm` native COSMAC system call.
 
+The Classic implementation passes the project's current external conformance stack:
+
+- IBM Logo;
+- original corax89 opcode test;
 - Timendus Corax+;
 - Timendus Flags;
 - Timendus Quirks;
 - Timendus Keypad.
 
-These tests have already exposed and helped correct Classic behavior around flag reset semantics, shift-source semantics, and vertical-blank-synchronized drawing.
+This conformance work validated and, where necessary, corrected Classic behavior around arithmetic flags, shift-source semantics, memory transfer, keyboard input, sprite clipping, and vertical-blank-synchronized drawing.
 
-The broader target remains accurate Classic CHIP-8 behavior, with additional CHIP-8-family profiles planned only after the Classic implementation is mature.
+Additional Classic conformance tests may still be added when they provide useful new evidence, but they no longer block feature development.
+
+The next phase of Chip8NX can therefore focus on using and refining the emulator core through real host applications before additional CHIP-8-family profiles are introduced.
 
 ## Goals
 
@@ -268,18 +274,37 @@ Validates all three Classic CHIP-8 keyboard instructions:
 
 The full automated Keypad test passes without requiring additional production-code changes.
 
+### `v0.2.0` — Classic CHIP-8 Baseline ✓
+
+The Classic opcode coverage audit confirms that every Classic opcode family is intentionally handled.
+
+The release incorporates successful Classic-mode coverage from:
+
+- Timendus Corax+;
+- Timendus Flags;
+- Timendus Quirks;
+- Timendus Keypad.
+
+Together with IBM Logo and the original corax89 opcode test, this establishes the current Classic CHIP-8 conformance baseline.
+
+The historical `0mmm` native COSMAC system call is explicitly recognized but intentionally unsupported because executing it would require emulation of native CDP1802 machine code outside the CHIP-8 virtual-machine boundary.
+
+Further Classic conformance tests are no longer blockers for feature development.
+
 ### Next
 
-Continue through relevant Timendus tests and other Classic CHIP-8 behavior until the project has a well-defined Classic conformance target suitable for `1.0.0`.
+Exercise the reusable core through a real host application.
+
+This will put practical pressure on application composition, the public Core API, rendering, input integration, timing, and eventual sound presentation before the machine model is complicated by additional CHIP-8-family profiles.
 
 ### Future work
 
-After the Classic implementation is mature:
+After the first host application has helped validate the Core integration boundaries:
 
-- additional CHIP-8-family profiles;
-- explicit profile-driven compatibility behavior where variants genuinely differ;
-- terminal, web, and desktop frontends;
-- debugging and inspection tooling.
+- refine the public Core API based on real application usage;
+- add host audio integration for the CHIP-8 sound timer;
+- add debugging and inspection tooling;
+- introduce additional CHIP-8-family profiles when concrete variant behavior justifies profile-driven compatibility options.
 
 ## External conformance fixtures
 
