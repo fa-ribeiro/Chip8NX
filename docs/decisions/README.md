@@ -46,6 +46,7 @@ Use [`0000-template.md`](./0000-template.md) when creating a new record.
 | [0010](./0010-unified-chip8-profile.md)            | Use a unified CHIP-8 profile                                  | Accepted       | 2026-08-31 |
 | [0011](./0011-deadline-driven-scheduler.md)        | Use a deadline-driven scheduler                               | Accepted       | 2026-09-01 |
 | [0012](./0012-application-owned-composition.md)    | Application-owned composition                                 | Accepted       | 2026-08-31 |
+| [0013](./0013-emulated-display-timing.md)          | Model display synchronization as emulated machine timing      | Accepted       | 2026-09-02 |
 
 ## Superseded decisions
 
