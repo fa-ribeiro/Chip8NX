@@ -12,6 +12,36 @@ During the `0.x` development phase:
 
 ## [Unreleased]
 
+### Added
+
+- Timendus Corax+ opcode conformance test.
+- Timendus Flags conformance test.
+- Timendus Quirks conformance test running in automated Classic CHIP-8 mode.
+- `VerticalBlank` machine-state component for display synchronization.
+- Display refresh frequency as an explicit `Chip8Profile` characteristic.
+- Runtime scheduling of emulated display-frame boundaries.
+- Unit and integration coverage for vertical-blank availability, scheduling, pause/resume behavior, and debugger stepping.
+
+### Changed
+
+- Corrected Classic `8XY1`, `8XY2`, and `8XY3` semantics so `VF` is reset after the logical result is written.
+- Corrected Classic `8XY6` and `8XYE` semantics so `Vy` is the shift source and `Vx` receives the shifted result.
+- Changed Classic `Dxyn` execution to wait for and consume a vertical-blank opportunity before drawing.
+- Extended `Chip8Runtime` to coordinate CPU execution, timer countdown, and display-frame timing.
+- Updated paused single-step execution so a display-synchronized draw can complete without advancing scheduled time or leaking a synthetic vertical-blank opportunity.
+- Updated IBM Logo and Timendus Corax+ conformance execution budgets to account for Classic vertical-blank-synchronized drawing while keeping their framebuffer acceptance criteria unchanged.
+- Expanded external conformance-fixture documentation for the Timendus test suite.
+
+### Conformance
+
+Current `main` passes:
+
+- IBM Logo;
+- original corax89 opcode test;
+- Timendus Corax+;
+- Timendus Flags;
+- Timendus Quirks in Classic CHIP-8 mode.
+
 ## [0.1.0] - 2026-09-01 - corax89 Opcode Conformance
 
 ### Added
@@ -24,7 +54,7 @@ During the `0.x` development phase:
 - Public `@chip8nx/core` package entrypoint.
 - Automated API documentation generation with `deno doc`.
 - Documentation structure for architecture, guides, and design decisions.
-- End-to-end conformance test for the corax89 CHIP-8 opcode test ROM.
+- End-to-end conformance test for the original corax89 CHIP-8 opcode test ROM.
 
 ### Changed
 
@@ -33,13 +63,13 @@ During the `0.x` development phase:
 - The default `test` and CI tasks run unit and integration tests without requiring third-party ROMs; conformance tests are opt-in through `test:conformance`.
 - Renamed the reusable core workspace to `packages/core`.
 - Moved the reusable emulator implementation into `packages/core`.
-- Separated reusable emulator code from future application/front-end code.
+- Separated reusable emulator code from future application/frontend code.
 
 ### Milestone
 
 Chip8NX passes the original corax89 CHIP-8 opcode test ROM through the normal machine initialization, CPU, runtime, scheduler, and display pipeline.
 
-The milestone required no production-code changes: the instruction implementation developed before introducing the corax89 conformance test already produces the expected successful result framebuffer.
+The milestone required no production-code changes: the instruction implementation developed before introducing the corax89 conformance test already produced the expected successful result framebuffer.
 
 ## [0.0.1] - 2026-09-01 - IBM Logo POC
 
@@ -67,4 +97,4 @@ The milestone required no production-code changes: the instruction implementatio
 
 ### Milestone
 
-The emulator successfully loads and executes the canonical IBM Logo ROM through the normal machine initialization, CPU, runtime, and scheduler pipeline and produces the expected framebuffer after 20 CPU cycles.
+The emulator successfully loads and executes the canonical IBM Logo ROM through the normal machine initialization, CPU, runtime, and scheduler pipeline and produces the expected framebuffer.
