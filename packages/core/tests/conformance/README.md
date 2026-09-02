@@ -115,8 +115,8 @@ The expected fixture is:
 
 ```text
 Filename: 4-flags.ch8
-Size: 1041
-SHA-256: f00ddadd37bc878473de0c8f16faecf9985dea39036a3a796d551bc9fec47cfa
+Size:     1041
+SHA-256:  f00ddadd37bc878473de0c8f16faecf9985dea39036a3a796d551bc9fec47cfa
 ```
 
 Chip8NX does not redistribute this ROM.
@@ -126,6 +126,16 @@ The Timendus CHIP-8 test suite is licensed under GPL-3.0. The external ROM remai
 The Flags test verifies arithmetic and logical result values, VF flag behavior, carry and borrow cases, shifted-out bits, use of VF as an instruction operand, and Fx1E with both a normal register and VF.
 
 ### Timendus Quirks Test
+
+Expected path:
+
+```text
+packages/core/tests/conformance/roms/5-quirks.ch8
+```
+
+Obtain the ROM from the Timendus CHIP-8 test suite:
+
+<https://github.com/Timendus/chip8-test-suite#quirks-test>
 
 The expected fixture is:
 
