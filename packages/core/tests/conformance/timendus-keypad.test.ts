@@ -16,7 +16,7 @@ import { DisplayBuffer } from "../../src/display/display-buffer.ts";
 import { VerticalBlank } from "../../src/display/vertical-blank.ts";
 import { ClassicFont } from "../../src/font/classic-font.ts";
 import { Decoder } from "../../src/instruction/decoder.ts";
-import { TestKeyboard } from "../../src/keyboard/test-keyboard.ts";
+import { KeyboardState } from "../../src/keyboard/keyboard-state.ts";
 import { CLASSIC_CHIP8_PROFILE } from "../../src/machine/classic/classic-chip8-profile.ts";
 import { MachineInitializer } from "../../src/machine/machine-initializer.ts";
 import { MemoryImageLoader } from "../../src/memory/memory-image-loader.ts";
@@ -215,7 +215,7 @@ Deno.test("Classic CHIP-8 passes Timendus EXA1 keypad behavior", async () => {
 
 interface KeypadHarness {
   readonly context: ExecutionContext;
-  readonly keyboard: TestKeyboard;
+  readonly keyboard: KeyboardState;
   readonly clock: TestClock;
   readonly runtime: Chip8Runtime;
 }
@@ -229,7 +229,7 @@ async function createKeypadHarness(selection: Byte): Promise<KeypadHarness> {
   const delayTimer = new Timer();
   const soundTimer = new Timer();
   const verticalBlank = new VerticalBlank();
-  const keyboard = new TestKeyboard();
+  const keyboard = new KeyboardState();
 
   const context: ExecutionContext = {
     registers: new Registers(),

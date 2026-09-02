@@ -52,6 +52,7 @@ export * from "./src/instruction/instruction.ts";
 
 // Keyboard
 export type { Keyboard } from "./src/keyboard/keyboard.ts";
+export { KeyboardState } from "./src/keyboard/keyboard-state.ts";
 
 // Machine
 export type { Chip8Profile } from "./src/machine/chip8-profile.ts";

@@ -2,29 +2,27 @@ import type { Key } from "../core/types/key.ts";
 import type { Keyboard } from "./keyboard.ts";
 
 /**
- * Deterministic in-memory Keyboard implementation intended for tests.
+ * In-memory state of the CHIP-8 hexadecimal keypad.
  *
- * TestKeyboard allows tests to explicitly control the state and transitions
- * of individual CHIP-8 keys without depending on operating-system or UI
- * input.
+ * KeyboardState translates explicit key press and release events into the
+ * {@link Keyboard} behavior consumed by the emulator core.
+ *
+ * It does not obtain host input itself. Applications can feed it events from
+ * terminals, browser keyboard events, game controllers, tests, or any other
+ * input source.
  */
-export class TestKeyboard implements Keyboard {
+export class KeyboardState implements Keyboard {
   private readonly pressedKeys = new Set<Key>();
-
   private keyReleaseWaitActive = false;
   private latchedKey: Key | undefined;
   private completedKeyRelease: Key | undefined;
 
-  /**
-   * {@inheritDoc Keyboard.isPressed}
-   */
+  /** {@inheritDoc Keyboard.isPressed} */
   public isPressed(key: Key): boolean {
     return this.pressedKeys.has(key);
   }
 
-  /**
-   * {@inheritDoc Keyboard.pollKeyRelease}
-   */
+  /** {@inheritDoc Keyboard.pollKeyRelease} */
   public pollKeyRelease(): Key | undefined {
     if (this.completedKeyRelease !== undefined) {
       const releasedKey = this.completedKeyRelease;
@@ -50,10 +48,11 @@ export class TestKeyboard implements Keyboard {
   }
 
   /**
-   * Marks a key as pressed.
+   * Marks a CHIP-8 key as currently pressed.
    *
-   * This method is intentionally specific to the test implementation and
-   * is not part of the {@link Keyboard} interface.
+   * Repeated presses of an already-held key are idempotent.
+   *
+   * @param key - CHIP-8 key whose input state became pressed.
    */
   public press(key: Key): void {
     this.pressedKeys.add(key);
@@ -68,10 +67,11 @@ export class TestKeyboard implements Keyboard {
   }
 
   /**
-   * Marks a key as released.
+   * Marks a CHIP-8 key as currently released.
    *
-   * This method is intentionally specific to the test implementation and
-   * is not part of the {@link Keyboard} interface.
+   * Releasing a key that was not pressed has no effect.
+   *
+   * @param key - CHIP-8 key whose input state became released.
    */
   public release(key: Key): void {
     const wasPressed = this.pressedKeys.delete(key);
@@ -83,7 +83,10 @@ export class TestKeyboard implements Keyboard {
   }
 
   /**
-   * Releases all currently pressed keys.
+   * Releases every currently pressed CHIP-8 key.
+   *
+   * If an active key-release wait has latched one of those keys, releasing all
+   * keys completes that wait with the latched key.
    */
   public releaseAll(): void {
     if (
@@ -98,9 +101,7 @@ export class TestKeyboard implements Keyboard {
     this.pressedKeys.clear();
   }
 
-  /**
-   * {@inheritDoc Keyboard.reset}
-   */
+  /** {@inheritDoc Keyboard.reset} */
   public reset(): void {
     this.keyReleaseWaitActive = false;
     this.latchedKey = undefined;

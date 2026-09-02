@@ -7,7 +7,7 @@ import { DisplayBuffer } from "../display/display-buffer.ts";
 import { VerticalBlank } from "../display/vertical-blank.ts";
 import { ClassicFont } from "../font/classic-font.ts";
 import { Decoder } from "../instruction/decoder.ts";
-import { TestKeyboard } from "../keyboard/test-keyboard.ts";
+import { KeyboardState } from "../keyboard/keyboard-state.ts";
 import { Ram } from "../memory/ram.ts";
 import { TestRandomNumberGenerator } from "../random/test-random-number-generator.ts";
 import { Timer } from "../timer/timer.ts";
@@ -35,7 +35,7 @@ function createContext(overrides: Partial<ExecutionContext> = {}): ExecutionCont
     delayTimer: new Timer(),
     displayBuffer: new DisplayBuffer(profile.display.width, profile.display.height),
     verticalBlank: new VerticalBlank(),
-    keyboard: new TestKeyboard(),
+    keyboard: new KeyboardState(),
     font: new ClassicFont(profile.fontBaseAddress),
     randomNumberGenerator: new TestRandomNumberGenerator([byte(0)]),
     ...overrides,
@@ -126,7 +126,7 @@ Deno.test("CPU jump instructions replace the normally advanced program counter",
 Deno.test("CPU repeats LD Vx, K until a key press and release completes", () => {
   const memory = new Ram(0x1000);
   const registers = new Registers();
-  const keyboard = new TestKeyboard();
+  const keyboard = new KeyboardState();
 
   registers.set(registerIndex(0xa), byte(0x42));
 

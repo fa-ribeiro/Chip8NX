@@ -12,7 +12,7 @@ import { Stack } from "../../src/cpu/stack/stack.ts";
 import { DisplayBuffer } from "../../src/display/display-buffer.ts";
 import { VerticalBlank } from "../../src/display/vertical-blank.ts";
 import { ClassicFont } from "../../src/font/classic-font.ts";
-import { TestKeyboard } from "../../src/keyboard/test-keyboard.ts";
+import { KeyboardState } from "../../src/keyboard/keyboard-state.ts";
 import { CLASSIC_CHIP8_PROFILE } from "../../src/machine/classic/classic-chip8-profile.ts";
 import type { Chip8Profile } from "../../src/machine/chip8-profile.ts";
 import { MachineInitializer } from "../../src/machine/machine-initializer.ts";
@@ -24,12 +24,12 @@ import { Timer } from "../../src/timer/timer.ts";
 
 interface TestMachine {
   readonly context: ExecutionContext;
-  readonly keyboard: TestKeyboard;
+  readonly keyboard: KeyboardState;
   readonly randomNumberGenerator: TestRandomNumberGenerator;
 }
 
 function createMachine(profile: Chip8Profile = CLASSIC_CHIP8_PROFILE): TestMachine {
-  const keyboard = new TestKeyboard();
+  const keyboard = new KeyboardState();
   const randomNumberGenerator = new TestRandomNumberGenerator([byte(0x12), byte(0x34)]);
 
   const context: ExecutionContext = {

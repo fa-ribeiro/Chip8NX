@@ -197,7 +197,7 @@ The ROM supports automated test selection by writing a value to address `0x1FF`:
 2. selects `EXA1`;
 3. selects `FX0A`.
 
-The EX9E and EXA1 conformance tests drive the deterministic TestKeyboard implementation directly. The FX0A test additionally verifies that execution remains blocked while waiting, CHIP-8 timers continue to advance, and execution resumes only after the selected key is released.
+The EX9E and EXA1 conformance tests drive the deterministic KeyboardState implementation directly. The FX0A test additionally verifies that execution remains blocked while waiting, CHIP-8 timers continue to advance, and execution resumes only after the selected key is released.
 
 ## Verifying the downloaded ROM
 

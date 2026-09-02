@@ -23,7 +23,7 @@ import { registerIndex } from "./registers/register-index.ts";
 import { Registers } from "./registers/registers.ts";
 import { Stack } from "./stack/stack.ts";
 import { TestRandomNumberGenerator } from "../random/test-random-number-generator.ts";
-import { TestKeyboard } from "../keyboard/test-keyboard.ts";
+import { KeyboardState } from "../keyboard/keyboard-state.ts";
 
 import { CLASSIC_CHIP8_PROFILE } from "../machine/classic/classic-chip8-profile.ts";
 
@@ -40,7 +40,7 @@ function createContext(overrides: Partial<ExecutionContext> = {}): ExecutionCont
     delayTimer: new Timer(),
     displayBuffer: new DisplayBuffer(profile.display.width, profile.display.height),
     verticalBlank: new VerticalBlank(),
-    keyboard: new TestKeyboard(),
+    keyboard: new KeyboardState(),
     font: new ClassicFont(profile.fontBaseAddress),
     randomNumberGenerator: new TestRandomNumberGenerator([byte(0)]),
     ...overrides,
@@ -1007,7 +1007,7 @@ Deno.test("RND Vx, byte requests a new random byte for each execution", () => {
 Deno.test("SKP Vx skips when the corresponding key is pressed", () => {
   const registers = new Registers();
   const programCounter = new ProgramCounter(address(0x200));
-  const keyboard = new TestKeyboard();
+  const keyboard = new KeyboardState();
 
   registers.set(registerIndex(0xa), byte(0x5));
   keyboard.press(key(0x5));
@@ -1035,7 +1035,7 @@ Deno.test("SKP Vx skips when the corresponding key is pressed", () => {
 Deno.test("SKP Vx does not skip when the corresponding key is not pressed", () => {
   const registers = new Registers();
   const programCounter = new ProgramCounter(address(0x200));
-  const keyboard = new TestKeyboard();
+  const keyboard = new KeyboardState();
 
   registers.set(registerIndex(0xa), byte(0x5));
 
@@ -1062,7 +1062,7 @@ Deno.test("SKP Vx does not skip when the corresponding key is not pressed", () =
 Deno.test("SKP Vx uses only the low nibble of Vx as the key", () => {
   const registers = new Registers();
   const programCounter = new ProgramCounter(address(0x200));
-  const keyboard = new TestKeyboard();
+  const keyboard = new KeyboardState();
 
   registers.set(registerIndex(0xa), byte(0xab));
   keyboard.press(key(0xb));
@@ -1090,7 +1090,7 @@ Deno.test("SKP Vx uses only the low nibble of Vx as the key", () => {
 Deno.test("SKNP Vx skips when the corresponding key is not pressed", () => {
   const registers = new Registers();
   const programCounter = new ProgramCounter(address(0x200));
-  const keyboard = new TestKeyboard();
+  const keyboard = new KeyboardState();
 
   registers.set(registerIndex(0xa), byte(0x5));
 
@@ -1117,7 +1117,7 @@ Deno.test("SKNP Vx skips when the corresponding key is not pressed", () => {
 Deno.test("SKNP Vx does not skip when the corresponding key is pressed", () => {
   const registers = new Registers();
   const programCounter = new ProgramCounter(address(0x200));
-  const keyboard = new TestKeyboard();
+  const keyboard = new KeyboardState();
 
   registers.set(registerIndex(0xa), byte(0x5));
   keyboard.press(key(0x5));
@@ -1145,7 +1145,7 @@ Deno.test("SKNP Vx does not skip when the corresponding key is pressed", () => {
 Deno.test("SKNP Vx uses only the low nibble of Vx as the key", () => {
   const registers = new Registers();
   const programCounter = new ProgramCounter(address(0x200));
-  const keyboard = new TestKeyboard();
+  const keyboard = new KeyboardState();
 
   registers.set(registerIndex(0xa), byte(0xab));
   keyboard.press(key(0xb));
@@ -1645,7 +1645,7 @@ Deno.test("LD VF, [I] loads all sixteen registers and advances I by sixteen", ()
 
 Deno.test("LD Vx, K repeats the instruction while waiting for a key release", () => {
   const registers = new Registers();
-  const keyboard = new TestKeyboard();
+  const keyboard = new KeyboardState();
   const programCounter = new ProgramCounter(address(0x302));
 
   registers.set(registerIndex(0xa), byte(0x42));
@@ -1673,7 +1673,7 @@ Deno.test("LD Vx, K repeats the instruction while waiting for a key release", ()
 
 Deno.test("LD Vx, K stores the released key and continues execution", () => {
   const registers = new Registers();
-  const keyboard = new TestKeyboard();
+  const keyboard = new KeyboardState();
   const programCounter = new ProgramCounter(address(0x302));
 
   const context = createContext({

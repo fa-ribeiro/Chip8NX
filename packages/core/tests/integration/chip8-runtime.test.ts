@@ -17,7 +17,7 @@ import { DisplayBuffer } from "../../src/display/display-buffer.ts";
 import { VerticalBlank } from "../../src/display/vertical-blank.ts";
 import { ClassicFont } from "../../src/font/classic-font.ts";
 import { Decoder } from "../../src/instruction/decoder.ts";
-import { TestKeyboard } from "../../src/keyboard/test-keyboard.ts";
+import { KeyboardState } from "../../src/keyboard/keyboard-state.ts";
 import { CLASSIC_CHIP8_PROFILE } from "../../src/machine/classic/classic-chip8-profile.ts";
 import { Ram } from "../../src/memory/ram.ts";
 import { TestRandomNumberGenerator } from "../../src/random/test-random-number-generator.ts";
@@ -52,7 +52,7 @@ function createRuntime(cpuFrequency: Frequency = Frequency.fromInteger(500n)): R
     delayTimer,
     displayBuffer: new DisplayBuffer(profile.display.width, profile.display.height),
     verticalBlank: verticalBlank,
-    keyboard: new TestKeyboard(),
+    keyboard: new KeyboardState(),
     font: new ClassicFont(profile.fontBaseAddress),
     randomNumberGenerator: new TestRandomNumberGenerator([byte(0)]),
   };

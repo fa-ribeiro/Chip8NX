@@ -245,7 +245,7 @@ Examples may eventually include:
 TerminalKeyboard
 BrowserKeyboard
 DesktopKeyboard
-TestKeyboard
+KeyboardState
 ```
 
 The core should not know how host events are collected.

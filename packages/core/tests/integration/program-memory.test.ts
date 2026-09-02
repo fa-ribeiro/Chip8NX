@@ -6,7 +6,7 @@ import { DisplayBuffer } from "../../src/display/display-buffer.ts";
 import { VerticalBlank } from "../../src/display/vertical-blank.ts";
 import { ClassicFont } from "../../src/font/classic-font.ts";
 import { Decoder } from "../../src/instruction/decoder.ts";
-import { TestKeyboard } from "../../src/keyboard/test-keyboard.ts";
+import { KeyboardState } from "../../src/keyboard/keyboard-state.ts";
 import { MemoryImage } from "../../src/memory/memory-image.ts";
 import { MemoryImageLoader } from "../../src/memory/memory-image-loader.ts";
 import { Ram } from "../../src/memory/ram.ts";
@@ -50,7 +50,7 @@ Deno.test("CPU executes a program loaded into memory from a MemoryImage", () => 
     delayTimer: new Timer(),
     displayBuffer: new DisplayBuffer(profile.display.width, profile.display.height),
     verticalBlank: new VerticalBlank(),
-    keyboard: new TestKeyboard(),
+    keyboard: new KeyboardState(),
     font: new ClassicFont(profile.fontBaseAddress),
     randomNumberGenerator: new TestRandomNumberGenerator([byte(0)]),
   };
