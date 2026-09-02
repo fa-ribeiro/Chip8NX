@@ -13,6 +13,15 @@ export interface ReturnInstruction {
   readonly opcode: Opcode;
 }
 
+/**
+ * Represents the Classic `0mmm` native system-call instruction.
+ *
+ * @remarks
+ * On the COSMAC VIP this transfers execution to a native CDP1802
+ * subroutine. Chip8NX preserves the decoded instruction identity, but the
+ * generic CHIP-8 core does not emulate CDP1802 machine code. Execution of
+ * this instruction is therefore intentionally unsupported.
+ */
 export interface SystemCallInstruction {
   readonly kind: "system-call";
   readonly opcode: Opcode;

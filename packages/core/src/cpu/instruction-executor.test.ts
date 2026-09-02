@@ -518,9 +518,10 @@ Deno.test("logical register operations clear VF last when VF is Vx", () => {
   assertEquals(registers.get(FLAG_REGISTER), byte(0));
 });
 
-Deno.test("unsupported instructions throw UnsupportedInstructionError", () => {
+Deno.test("0NNN native system calls throw UnsupportedInstructionError", () => {
   const context = createContext();
   const executor = new InstructionExecutor();
+
   const instruction: Instruction = {
     kind: "system-call",
     opcode: opcode(0x0123),
