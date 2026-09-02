@@ -26,6 +26,7 @@ import {
 
 import { StdoutTerminalOutput } from "./src/display/stdout-terminal-output.ts";
 import { TerminalDisplay } from "./src/display/terminal-display.ts";
+import { TerminalScreenSession } from "./src/display/terminal-screen-session.ts";
 import { StdinTerminalInput } from "./src/keyboard/stdin-terminal-input.ts";
 import { TerminalInputSession } from "./src/keyboard/terminal-input-session.ts";
 import { TerminalKeyEventParser } from "./src/keyboard/terminal-key-event-parser.ts";
@@ -50,10 +51,12 @@ if (romPath === undefined || Deno.args.length !== 1) {
 }
 
 const profile = CLASSIC_CHIP8_PROFILE;
+
 const program = new MemoryImage(await Deno.readFile(romPath));
 
 const delayTimer = new Timer();
 const soundTimer = new Timer();
+
 const verticalBlank = new VerticalBlank();
 const displayBuffer = new DisplayBuffer(profile.display.width, profile.display.height);
 
@@ -99,6 +102,8 @@ const output = new StdoutTerminalOutput();
 
 const display = new TerminalDisplay(output);
 
+const screenSession = new TerminalScreenSession(output);
+
 const terminalKeyboard = new TerminalKeyboard(keyboardState);
 
 const inputSession = new TerminalInputSession(
@@ -107,29 +112,32 @@ const inputSession = new TerminalInputSession(
   new TerminalKeyEventParser(),
   terminalKeyboard,
 );
-const inputTask = inputSession.start();
 
-runtime.resume();
+screenSession.start();
 
 try {
-  while (!inputSession.quitRequested) {
-    runtime.tick();
+  const inputTask = inputSession.start();
 
-    /*
-     * Legacy synthetic releases use host time and therefore need regular
-     * servicing independently of CHIP-8 emulated time.
-     */
-    terminalKeyboard.tick();
+  runtime.resume();
 
-    display.render(displayBuffer);
+  try {
+    while (!inputSession.quitRequested) {
+      runtime.tick();
 
-    await sleep(HOST_RENDER_INTERVAL_MS);
+      terminalKeyboard.tick();
+
+      display.render(displayBuffer);
+
+      await sleep(HOST_RENDER_INTERVAL_MS);
+    }
+  } finally {
+    await inputSession.stop();
   }
-} finally {
-  await inputSession.stop();
-}
 
-await inputTask;
+  await inputTask;
+} finally {
+  screenSession.stop();
+}
 
 function sleep(milliseconds: number): Promise<void> {
   return new Promise((resolve) => {
