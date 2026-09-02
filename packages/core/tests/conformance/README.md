@@ -24,6 +24,7 @@ deno test --allow-read packages/core/tests/conformance/corax89.test.ts
 deno test --allow-read packages/core/tests/conformance/timendus-corax-plus.test.ts
 deno test --allow-read packages/core/tests/conformance/timendus-flags.test.ts
 deno test --allow-read packages/core/tests/conformance/timendus-quirks.test.ts
+deno test --allow-read packages/core/tests/conformance/timendus-keypad.test.ts
 ```
 
 The `roms/` directory is intended for local test fixtures and should not contain redistributed third-party ROMs in the public repository.
@@ -160,6 +161,44 @@ The test verifies these compatibility behaviors:
 - `8XY6` and `8XYE` shift-source behavior;
 - `BNNN` jump-offset behavior.
 
+### Timendus Keypad Test
+
+Expected path:
+
+```text
+packages/core/tests/conformance/roms/6-keypad.ch8
+```
+
+Obtain the ROM from the Timendus CHIP-8 test suite:
+
+<https://github.com/Timendus/chip8-test-suite#keypad-test>
+
+The expected fixture is:
+
+```text
+Filename: 6-keypad.ch8
+Size:     913 bytes
+SHA-256:  558902b0e406bb97dc808c16d55abf493706598246e3c77aea9d9401063169c9
+```
+
+Chip8NX does not redistribute this ROM.
+
+The Timendus CHIP-8 test suite is licensed under GPL-3.0. The external ROM remains subject to its upstream license and is not covered by the Chip8NX MIT license.
+
+The Keypad test exercises all three Classic CHIP-8 keyboard instructions:
+
+- `EX9E` — skip when the key stored in `VX` is pressed;
+- `EXA1` — skip when the key stored in `VX` is not pressed;
+- `FX0A` — wait for a key press followed by release.
+
+The ROM supports automated test selection by writing a value to address `0x1FF`:
+
+1. selects `EX9E`;
+2. selects `EXA1`;
+3. selects `FX0A`.
+
+The EX9E and EXA1 conformance tests drive the deterministic TestKeyboard implementation directly. The FX0A test additionally verifies that execution remains blocked while waiting, CHIP-8 timers continue to advance, and execution resumes only after the selected key is released.
+
 ## Verifying the downloaded ROM
 
 After downloading the file, calculate its SHA-256 checksum locally.
@@ -172,6 +211,7 @@ sha256sum packages/core/tests/conformance/roms/test_opcode.ch8
 sha256sum packages/core/tests/conformance/roms/3-corax+.ch8
 sha256sum packages/core/tests/conformance/roms/4-flags.ch8
 sha256sum packages/core/tests/conformance/roms/5-quirks.ch8
+sha256sum packages/core/tests/conformance/roms/6-keypad.ch8
 ```
 
 ### macOS
@@ -182,6 +222,7 @@ shasum -a 256 packages/core/tests/conformance/roms/test_opcode.ch8
 shasum -a 256 packages/core/tests/conformance/roms/3-corax+.ch8
 shasum -a 256 packages/core/tests/conformance/roms/4-flags.ch8
 shasum -a 256 packages/core/tests/conformance/roms/5-quirks.ch8
+shasum -a 256 packages/core/tests/conformance/roms/6-keypad.ch8
 ```
 
 ### PowerShell
@@ -192,15 +233,16 @@ Get-FileHash packages/core/tests/conformance/roms/test_opcode.ch8 -Algorithm SHA
 Get-FileHash packages/core/tests/conformance/roms/3-corax+.ch8 -Algorithm SHA256
 Get-FileHash packages/core/tests/conformance/roms/4-flags.ch8 -Algorithm SHA256
 Get-FileHash packages/core/tests/conformance/roms/5-quirks.ch8 -Algorithm SHA256
+Get-FileHash packages/core/tests/conformance/roms/6-keypad.ch8 -Algorithm SHA256
 ```
 
 ## Future Fixtures
 
-The next planned Classic CHIP-8 conformance target is the Timendus flags test:
+Further Timendus fixtures will be added when they exercise behavior applicable to the supported Chip8NX machine profiles.
 
-<https://github.com/Timendus/chip8-test-suite#flags-test>
+The Timendus Beep test depends on host audio presentation and is therefore deferred until Chip8NX has an appropriate audio integration boundary.
 
-After that, the Timendus quirks test will be used to validate Classic CHIP-8 variant behavior explicitly.
+The Timendus Scrolling test targets SUPER-CHIP and XO-CHIP instructions and is not applicable to the current Classic CHIP-8 profile.
 
 When a new fixture becomes part of an automated conformance test:
 

@@ -21,6 +21,7 @@ During the `0.x` development phase:
 - Display refresh frequency as an explicit `Chip8Profile` characteristic.
 - Runtime scheduling of emulated display-frame boundaries.
 - Unit and integration coverage for vertical-blank availability, scheduling, pause/resume behavior, and debugger stepping.
+- Timendus Keypad conformance test covering `EX9E`, `EXA1`, and `FX0A` Classic keyboard behavior.
 
 ### Changed
 
@@ -40,7 +41,8 @@ Current `main` passes:
 - original corax89 opcode test;
 - Timendus Corax+;
 - Timendus Flags;
-- Timendus Quirks in Classic CHIP-8 mode.
+- Timendus Quirks in Classic CHIP-8 mode;
+- Timendus Keypad.
 
 ## [0.1.0] - 2026-09-01 - corax89 Opcode Conformance
 

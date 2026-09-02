@@ -49,5 +49,9 @@ The Timendus CHIP-8 test suite is not included in this repository.
   - Expected local filename: `packages/core/tests/conformance/roms/5-quirks.ch8`
   - Expected size: `3232` bytes
   - Expected SHA-256: `d839350268a3e73c7a16562b3d23c85aa1b92a567f5f61bd6727b1ea44635679`
+- Keypad upstream ROM filename: `6-keypad.ch8`
+  - Expected local filename: `packages/core/tests/conformance/roms/6-keypad.ch8`
+  - Expected size: `913` bytes
+  - Expected SHA-256: `558902b0e406bb97dc808c16d55abf493706598246e3c77aea9d9401063169c9`
 
 Chip8NX uses relevant Classic CHIP-8 tests from this suite as external conformance fixtures. These ROMs remain subject to the upstream GPL-3.0 license and are not distributed as part of Chip8NX.

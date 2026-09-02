@@ -20,7 +20,8 @@ Current development on `main` additionally passes the relevant Classic CHIP-8 mo
 
 - Timendus Corax+;
 - Timendus Flags;
-- Timendus Quirks.
+- Timendus Quirks;
+- Timendus Keypad.
 
 These tests have already exposed and helped correct Classic behavior around flag reset semantics, shift-source semantics, and vertical-blank-synchronized drawing.
 
@@ -256,6 +257,16 @@ Validates Classic behavior for:
 - sprite clipping;
 - `Vy`-based shifting;
 - `V0`-based `BNNN` jumping.
+
+### Timendus Keypad ✓
+
+Validates all three Classic CHIP-8 keyboard instructions:
+
+- `EX9E` skips when the key identified by `VX` is pressed;
+- `EXA1` skips when the key identified by `VX` is not pressed;
+- `FX0A` waits for a key press followed by release while CHIP-8 timers continue to advance.
+
+The full automated Keypad test passes without requiring additional production-code changes.
 
 ### Next
 
