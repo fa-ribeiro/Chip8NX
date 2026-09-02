@@ -157,9 +157,9 @@ After downloading the file, calculate its SHA-256 checksum locally.
 ### Linux
 
 ```bash
-sha256sum packages/core/tests/conformance/ibm-logo.test.ts
+sha256sum packages/core/tests/conformance/roms/ibm-logo.ch8
 sha256sum packages/core/tests/conformance/roms/test_opcode.ch8
-sha256sum packages/core/tests/conformance/timendus-corax-plus.test.ts
+sha256sum packages/core/tests/conformance/roms/3-corax+.ch8
 sha256sum packages/core/tests/conformance/roms/4-flags.ch8
 sha256sum packages/core/tests/conformance/roms/5-quirks.ch8
 ```
@@ -167,9 +167,9 @@ sha256sum packages/core/tests/conformance/roms/5-quirks.ch8
 ### macOS
 
 ```bash
-shasum -a 256 packages/core/tests/conformance/ibm-logo.test.ts
+shasum -a 256 packages/core/tests/conformance/roms/ibm-logo.ch8
 shasum -a 256 packages/core/tests/conformance/roms/test_opcode.ch8
-shasum -a 256 packages/core/tests/conformance/timendus-corax-plus.test.ts
+shasum -a 256 packages/core/tests/conformance/roms/3-corax+.ch8
 shasum -a 256 packages/core/tests/conformance/roms/4-flags.ch8
 shasum -a 256 packages/core/tests/conformance/roms/5-quirks.ch8
 ```
@@ -177,9 +177,9 @@ shasum -a 256 packages/core/tests/conformance/roms/5-quirks.ch8
 ### PowerShell
 
 ```powershell
-Get-FileHash packages/core/tests/conformance/ibm-logo.test.ts -Algorithm SHA256
+Get-FileHash packages/core/tests/conformance/roms/ibm-logo.ch8 -Algorithm SHA256
 Get-FileHash packages/core/tests/conformance/roms/test_opcode.ch8 -Algorithm SHA256
-Get-FileHash packages/core/tests/conformance/timendus-corax-plus.test.ts -Algorithm SHA256
+Get-FileHash packages/core/tests/conformance/roms/3-corax+.ch8 -Algorithm SHA256
 Get-FileHash packages/core/tests/conformance/roms/4-flags.ch8 -Algorithm SHA256
 Get-FileHash packages/core/tests/conformance/roms/5-quirks.ch8 -Algorithm SHA256
 ```
