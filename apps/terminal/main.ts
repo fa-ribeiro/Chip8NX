@@ -10,6 +10,7 @@ import {
   Frequency,
   IndexRegister,
   InstructionExecutor,
+  KeyboardState,
   MachineInitializer,
   MemoryImage,
   MemoryImageLoader,
@@ -23,9 +24,12 @@ import {
   VerticalBlank,
 } from "@chip8nx/core";
 
-import { NoInputKeyboard } from "./src/no-input-keyboard.ts";
-import { StdoutTerminalOutput } from "./src/stdout-terminal-output.ts";
-import { TerminalDisplay } from "./src/terminal-display.ts";
+import { StdoutTerminalOutput } from "./src/display/stdout-terminal-output.ts";
+import { TerminalDisplay } from "./src/display/terminal-display.ts";
+import { StdinTerminalInput } from "./src/keyboard/stdin-terminal-input.ts";
+import { TerminalInputSession } from "./src/keyboard/terminal-input-session.ts";
+import { TerminalKeyEventParser } from "./src/keyboard/terminal-key-event-parser.ts";
+import { TerminalKeyboard } from "./src/keyboard/terminal-keyboard.ts";
 
 const CPU_FREQUENCY = Frequency.fromInteger(500n);
 
@@ -53,6 +57,8 @@ const soundTimer = new Timer();
 const verticalBlank = new VerticalBlank();
 const displayBuffer = new DisplayBuffer(profile.display.width, profile.display.height);
 
+const keyboardState = new KeyboardState();
+
 const context: ExecutionContext = {
   registers: new Registers(),
   memory: new Ram(profile.memorySize),
@@ -63,7 +69,7 @@ const context: ExecutionContext = {
   soundTimer,
   displayBuffer,
   verticalBlank,
-  keyboard: new NoInputKeyboard(),
+  keyboard: keyboardState,
   font: new ClassicFont(profile.fontBaseAddress),
   randomNumberGenerator: new DefaultRandomNumberGenerator(),
 };
@@ -89,16 +95,41 @@ const runtime = new Chip8Runtime(
   profile.display.refreshFrequency,
 );
 
-const display = new TerminalDisplay(new StdoutTerminalOutput());
+const output = new StdoutTerminalOutput();
+
+const display = new TerminalDisplay(output);
+
+const terminalKeyboard = new TerminalKeyboard(keyboardState);
+
+const inputSession = new TerminalInputSession(
+  new StdinTerminalInput(),
+  output,
+  new TerminalKeyEventParser(),
+  terminalKeyboard,
+);
+const inputTask = inputSession.start();
 
 runtime.resume();
 
-while (true) {
-  runtime.tick();
-  display.render(displayBuffer);
+try {
+  while (!inputSession.quitRequested) {
+    runtime.tick();
 
-  await sleep(HOST_RENDER_INTERVAL_MS);
+    /*
+     * Legacy synthetic releases use host time and therefore need regular
+     * servicing independently of CHIP-8 emulated time.
+     */
+    terminalKeyboard.tick();
+
+    display.render(displayBuffer);
+
+    await sleep(HOST_RENDER_INTERVAL_MS);
+  }
+} finally {
+  await inputSession.stop();
 }
+
+await inputTask;
 
 function sleep(milliseconds: number): Promise<void> {
   return new Promise((resolve) => {
