@@ -225,6 +225,16 @@ Deno.test("decodes DXYN", () => {
   });
 });
 
+Deno.test("decodes DXY0 as a zero-height draw", () => {
+  assertEquals(decoder.decode(opcode(0xdab0)), {
+    kind: "draw-sprite",
+    opcode: opcode(0xdab0),
+    x: registerIndex(0xa),
+    y: registerIndex(0xb),
+    height: 0,
+  });
+});
+
 Deno.test("decodes EX9E", () => {
   assertEquals(decoder.decode(opcode(0xea9e)), {
     kind: "skip-key-pressed",

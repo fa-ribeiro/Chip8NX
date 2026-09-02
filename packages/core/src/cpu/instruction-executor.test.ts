@@ -758,6 +758,79 @@ Deno.test("DRW completes after vertical blank becomes available", () => {
   assertEquals(verticalBlank.consume(), false);
 });
 
+Deno.test("DRW with zero height still waits for vertical blank", () => {
+  const registers = new Registers();
+  registers.set(FLAG_REGISTER, byte(1));
+
+  const displayBuffer = new DisplayBuffer(8, 8);
+  displayBuffer.setPixel(2, 3, true);
+
+  const programCounter = new ProgramCounter(address(0x202));
+  const verticalBlank = new VerticalBlank();
+
+  const context = createContext({
+    registers,
+    displayBuffer,
+    programCounter,
+    verticalBlank,
+  });
+
+  const executor = new InstructionExecutor();
+
+  executor.execute(
+    {
+      kind: "draw-sprite",
+      opcode: opcode(0xdab0),
+      x: registerIndex(0xa),
+      y: registerIndex(0xb),
+      height: 0,
+    },
+    context,
+  );
+
+  assertEquals(programCounter.getValue(), address(0x200));
+  assertEquals(displayBuffer.getPixel(2, 3), true);
+  assertEquals(registers.get(FLAG_REGISTER), byte(1));
+});
+
+Deno.test("DRW with zero height consumes vertical blank without drawing", () => {
+  const registers = new Registers();
+  registers.set(FLAG_REGISTER, byte(1));
+
+  const displayBuffer = new DisplayBuffer(8, 8);
+  displayBuffer.setPixel(2, 3, true);
+
+  const programCounter = new ProgramCounter(address(0x202));
+  const verticalBlank = new VerticalBlank();
+
+  verticalBlank.signal();
+
+  const context = createContext({
+    registers,
+    displayBuffer,
+    programCounter,
+    verticalBlank,
+  });
+
+  const executor = new InstructionExecutor();
+
+  executor.execute(
+    {
+      kind: "draw-sprite",
+      opcode: opcode(0xdab0),
+      x: registerIndex(0xa),
+      y: registerIndex(0xb),
+      height: 0,
+    },
+    context,
+  );
+
+  assertEquals(programCounter.getValue(), address(0x202));
+  assertEquals(displayBuffer.getPixel(2, 3), true);
+  assertEquals(registers.get(FLAG_REGISTER), byte(0));
+  assertEquals(verticalBlank.consume(), false);
+});
+
 Deno.test("LD I, addr stores the address in the index register", () => {
   const indexRegister = new IndexRegister();
   const context = createContext({ indexRegister });
