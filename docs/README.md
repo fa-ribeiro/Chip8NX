@@ -10,6 +10,7 @@ Source-level API behavior should normally be documented with JSDoc close to the 
 docs/
 ├── architecture/
 ├── guides/
+├── reference/
 └── decisions/
 ```
 
@@ -34,6 +35,16 @@ Current topics include:
 
 - embedding the CHIP-8 core in an application;
 - continuous integration.
+
+### Reference
+
+Reference documents record stable implementation and conformance facts.
+
+See [Reference](./reference/README.md) for the reference documentation index.
+
+Current topics include:
+
+- Classic CHIP-8 opcode coverage audit.
 
 ### Decisions
 
