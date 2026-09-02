@@ -1,6 +1,7 @@
 {
   "workspace": ["./packages/core", "./apps/terminal"],
   "tasks": {
+    "terminal": "deno run --allow-read apps/terminal/main.ts",
     "test": "deno test --allow-read packages/core/src/ packages/core/tests/integration/ apps/terminal/src/",
     "test:watch": "deno test --watch --allow-read packages/core/src/ packages/core/tests/integration/ apps/terminal/src/",
     "test:conformance": "deno test --allow-read packages/core/tests/conformance/",
