@@ -22,6 +22,7 @@ During the `0.x` development phase:
 - Runtime scheduling of emulated display-frame boundaries.
 - Unit and integration coverage for vertical-blank availability, scheduling, pause/resume behavior, and debugger stepping.
 - Timendus Keypad conformance test covering `EX9E`, `EXA1`, and `FX0A` Classic keyboard behavior.
+- Added a documented Classic CHIP-8 opcode coverage audit and explicit tests for zero-height `DXY0` display-wait behavior.
 
 ### Changed
 
