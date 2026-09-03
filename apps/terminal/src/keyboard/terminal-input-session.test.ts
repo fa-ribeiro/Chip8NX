@@ -103,3 +103,36 @@ class RecordingTerminalOutput implements TerminalOutput {
 function nextTask(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
 }
+
+Deno.test("TerminalInputSession exits when Escape is pressed", async () => {
+  const input = new ControlledTerminalInput();
+  const output = new RecordingTerminalOutput();
+
+  const session = new TerminalInputSession(
+    input,
+    output,
+    new TerminalKeyEventParser(),
+    new TerminalKeyboard(new KeyboardState()),
+  );
+
+  const inputTask = session.start();
+
+  /*
+   * CSI-u:
+   *
+   * 27   = Escape
+   * 1    = no modifiers
+   * :1   = press event
+   */
+  input.enqueue(encoder.encode("\x1b[27;1:1u"));
+
+  await inputTask;
+
+  assertEquals(session.quitRequested, true);
+
+  await session.stop();
+
+  assertEquals(output.writes, ["\x1b[>10u", "\x1b[<u"]);
+
+  assertEquals(input.rawStates, [true, false]);
+});

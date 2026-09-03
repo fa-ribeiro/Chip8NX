@@ -16,7 +16,7 @@ const RESTORE_KEYBOARD = "\x1b[<u";
  * 2. requests Kitty keyboard event-type and all-key reporting;
  * 3. reads and parses terminal input;
  * 4. forwards CHIP-8 input to TerminalKeyboard;
- * 5. recognizes Ctrl+C as the application quit command;
+ * 5. recognizes Escape and Ctrl+C as application quit commands;
  * 6. restores terminal keyboard mode and raw mode during cleanup.
  *
  * Terminals that do not support the Kitty keyboard protocol simply continue
@@ -119,7 +119,18 @@ export class TerminalInputSession {
   }
 }
 
+const ESCAPE = "\x1b";
+
 function isQuitEvent(event: TerminalKeyEvent): boolean {
+  /*
+   * Enhanced keyboard reporting represents Escape as an explicit key event,
+   * avoiding ambiguity with the ESC prefix used by terminal control
+   * sequences.
+   */
+  if (event.source === "csi-u" && event.type === "press" && event.character === ESCAPE) {
+    return true;
+  }
+
   /*
    * In legacy raw mode Ctrl+C is the single control byte ETX (0x03).
    */
