@@ -71,15 +71,13 @@ export class StandardTerminalHost {
   public constructor(keyboard: KeyboardState, options: StandardTerminalHostOptions = {}) {
     const output = options.output ?? new StdoutTerminalOutput();
 
-    const createPresentation =
-      options.createPresentation ??
+    const createPresentation = options.createPresentation ??
       ((output: TerminalOutput) =>
         new StandardTerminalPresentation({
           output,
         }));
 
-    const createInput =
-      options.createInput ??
+    const createInput = options.createInput ??
       ((keyboard: KeyboardState, output: TerminalOutput) =>
         new StandardTerminalInput(keyboard, output));
 

@@ -71,8 +71,7 @@ const font = new ClassicFont(
   profile.fontBaseAddress,
 );
 
-const randomNumberGenerator =
-  new DefaultRandomNumberGenerator();
+const randomNumberGenerator = new DefaultRandomNumberGenerator();
 ```
 
 `DisplayBuffer` stores pixels.
@@ -128,10 +127,7 @@ All of those sources ultimately become a `MemoryImage`.
 Create a `MachineInitializer`:
 
 ```ts
-import {
-  MachineInitializer,
-  MemoryImageLoader,
-} from "@chip8nx/core";
+import { MachineInitializer, MemoryImageLoader } from "@chip8nx/core";
 
 const initializer = new MachineInitializer(
   new MemoryImageLoader(),
@@ -157,11 +153,7 @@ The random-number generator is not reset by initialization.
 ## Create the CPU
 
 ```ts
-import {
-  Cpu,
-  Decoder,
-  InstructionExecutor,
-} from "@chip8nx/core";
+import { Cpu, Decoder, InstructionExecutor } from "@chip8nx/core";
 
 const cpu = new Cpu(
   context,
@@ -199,10 +191,7 @@ const runtimeConfiguration = {
 Create a scheduler using a monotonic clock:
 
 ```ts
-import {
-  PerformanceClock,
-  Scheduler,
-} from "@chip8nx/core";
+import { PerformanceClock, Scheduler } from "@chip8nx/core";
 
 const scheduler = new Scheduler(
   new PerformanceClock(),

@@ -134,10 +134,9 @@ A typical assembly is:
 ```ts
 const output = new StdoutTerminalOutput();
 
-const presentation =
-  new StandardTerminalPresentation({
-    output,
-  });
+const presentation = new StandardTerminalPresentation({
+  output,
+});
 
 const input = new StandardTerminalInput(
   machine.keyboard,
@@ -162,12 +161,10 @@ const input = new StandardTerminalInput(
 Or retain standard presentation lifecycle with a custom display implementation:
 
 ```ts
-const presentation =
-  new StandardTerminalPresentation({
-    output,
-    createDisplay: (output) =>
-      new MyCustomDisplay(output),
-  });
+const presentation = new StandardTerminalPresentation({
+  output,
+  createDisplay: (output) => new MyCustomDisplay(output),
+});
 ```
 
 The principle is:

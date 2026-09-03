@@ -41,8 +41,8 @@ export class StandardTerminalPresentation implements TerminalPresentation {
   public constructor(options: StandardTerminalPresentationOptions = {}) {
     const output = options.output ?? new StdoutTerminalOutput();
 
-    const createDisplay =
-      options.createDisplay ?? ((output: TerminalOutput) => new TerminalDisplay(output));
+    const createDisplay = options.createDisplay ??
+      ((output: TerminalOutput) => new TerminalDisplay(output));
 
     this.display = createDisplay(output);
     this.screenSession = new TerminalScreenSession(output);

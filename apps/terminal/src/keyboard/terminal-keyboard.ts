@@ -58,8 +58,8 @@ export class TerminalKeyboard {
   ) {
     this.mapKey = options.mapKey ?? mapTerminalCharacterToChip8Key;
 
-    this.legacyReleaseDelayMs =
-      options.legacyReleaseDelayMs ?? DEFAULT_LEGACY_KEY_RELEASE_DELAY_MS;
+    this.legacyReleaseDelayMs = options.legacyReleaseDelayMs ??
+      DEFAULT_LEGACY_KEY_RELEASE_DELAY_MS;
 
     this.now = options.now ?? (() => performance.now());
 
