@@ -10,7 +10,26 @@ The project focuses first on accurate **Classic CHIP-8** behavior while keeping 
 
 ## Status
 
-**Current release: `v0.2.0` — Classic CHIP-8 Baseline**
+**Current release: `v0.3.0` — Interactive Terminal Host**
+
+`v0.3.0` adds the first complete Chip8NX host application: an interactive terminal frontend with framebuffer presentation, keyboard input, clean terminal lifecycle management, and three documented composition levels.
+
+The terminal application also completes the first case study for layered composition. That design will be tested again with a substantially different host before it is considered for broader use in the reusable Core.
+
+The Classic CHIP-8 Core remains at the `v0.2.0` conformance baseline, with intentional coverage for the complete Classic opcode set and the project's current external conformance suite:
+
+- IBM Logo;
+- original corax89 opcode test;
+- Timendus Corax+;
+- Timendus Flags;
+- Timendus Quirks in Classic CHIP-8 mode;
+- Timendus Keypad.
+
+`0mmm` is recognized and decoded but intentionally rejected because it transfers execution to native CDP1802 code outside the generic CHIP-8 virtual machine.
+
+Current development is moving toward a web host while preserving the terminal application as the completed first-host reference implementation.
+
+**`v0.2.0` — Classic CHIP-8 Baseline**
 
 The Classic core now has intentional coverage for the complete Classic opcode set and passes the project's current external conformance baseline:
 
@@ -121,7 +140,9 @@ deno task ci
 deno task terminal <rom-path>
 ```
 
-The terminal host presents the 64×32 Classic framebuffer using Unicode block characters and accepts the conventional CHIP-8 keyboard mapping.
+The terminal host presents the 64×32 Classic framebuffer using Unicode block characters with a retro green presentation and accepts the conventional CHIP-8 keyboard mapping.
+
+Press `Escape` to exit. `Ctrl+C` remains available as an alternative exit path.
 
 ### Compare terminal composition levels
 
@@ -193,11 +214,13 @@ The first concrete Chip8NX host application.
 
 It adapts the reusable Core to terminal-specific presentation and input while keeping terminal concerns out of the emulator package.
 
-The terminal application is also the current proof of concept for three composition depths:
+The terminal application also serves as the completed first case study for three composition depths:
 
 1. individual components;
 2. standard subsystem compositions;
 3. a ready-to-use standard terminal host.
+
+The three levels use the same underlying components and demonstrate how convenience can reduce assembly burden without removing the manual, fully customizable path.
 
 ### `docs`
 
@@ -229,14 +252,20 @@ The Classic implementation passes the relevant Timendus Corax+, Flags, Quirks, a
 
 See [Classic CHIP-8 opcode coverage audit](./docs/reference/classic-opcode-audit.md).
 
+### `v0.3.0` — Interactive Terminal Host ✓
+
+The first complete Chip8NX host provides terminal framebuffer presentation, interactive keyboard input, clean terminal lifecycle management, and runnable examples demonstrating Level-1, Level-2, and Level-3 composition.
+
 ## Future work
 
-Post-baseline work can proceed in parallel across areas such as:
+Post-`v0.3.0` development can proceed across areas such as:
 
-- terminal host refinement, including sound integration;
-- public API and composition ergonomics;
-- web and desktop hosts;
+- a web host used as a second application and architectural case study;
+- evaluation of layered composition across multiple host environments;
+- public Core API and composition ergonomics after additional architectural evidence;
+- desktop hosts;
 - debugging and inspection tooling;
+- sound integration in host environments where it provides a useful implementation model;
 - additional CHIP-8-family profiles when the project is ready to model variant differences explicitly.
 
 ## References
