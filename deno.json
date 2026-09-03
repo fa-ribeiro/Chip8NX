@@ -11,7 +11,10 @@
     "fmt": "deno fmt",
     "lint": "deno lint",
     "docs:build": "deno doc --html --name='Chip8NX Core' --output=build/docs/api packages/core/mod.ts",
-    "docs:check": "deno doc --lint packages/core/mod.ts"
+    "docs:check": "deno doc --lint packages/core/mod.ts",
+    "terminal:example:components": "deno run --allow-read apps/terminal/examples/01-components.ts",
+    "terminal:example:standard": "deno run --allow-read apps/terminal/examples/02-standard-compositions.ts",
+    "terminal:example:host": "deno run --allow-read apps/terminal/examples/03-standard-host.ts"
   },
   "imports": {
     "@std/assert": "jsr:@std/assert@1"
