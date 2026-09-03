@@ -8,11 +8,11 @@ Deno.test("TerminalScreenSession enters and restores presentation mode", () => {
 
   session.start();
 
-  assertEquals(output.writes, ["\x1b[?1049h\x1b[?25l"]);
+  assertEquals(output.writes, ["\x1b[?1049h\x1b[?25l\x1b[32m"]);
 
   session.stop();
 
-  assertEquals(output.writes, ["\x1b[?1049h\x1b[?25l", "\x1b[?25h\x1b[?1049l"]);
+  assertEquals(output.writes, ["\x1b[?1049h\x1b[?25l\x1b[32m", "\x1b[0m\x1b[?25h\x1b[?1049l"]);
 });
 
 Deno.test("TerminalScreenSession lifecycle is idempotent", () => {
@@ -25,7 +25,7 @@ Deno.test("TerminalScreenSession lifecycle is idempotent", () => {
   session.stop();
   session.stop();
 
-  assertEquals(output.writes, ["\x1b[?1049h\x1b[?25l", "\x1b[?25h\x1b[?1049l"]);
+  assertEquals(output.writes, ["\x1b[?1049h\x1b[?25l\x1b[32m", "\x1b[0m\x1b[?25h\x1b[?1049l"]);
 });
 
 class RecordingTerminalOutput implements TerminalOutput {

@@ -19,9 +19,9 @@ Deno.test("StandardTerminalPresentation provides the standard display compositio
   presentation.stop();
 
   assertEquals(output.writes, [
-    "\x1b[?1049h\x1b[?25l",
+    "\x1b[?1049h\x1b[?25l\x1b[32m",
     "\x1b[2J\x1b[H▀▄",
-    "\x1b[?25h\x1b[?1049l",
+    "\x1b[0m\x1b[?25h\x1b[?1049l",
   ]);
 });
 
@@ -48,7 +48,10 @@ Deno.test(
 
     assertEquals(customDisplay.renderedBuffers, [buffer]);
 
-    assertEquals(output.writes, ["\x1b[?1049h\x1b[?25l", "\x1b[?25h\x1b[?1049l"]);
+    assertEquals(output.writes, [
+      "\x1b[?1049h\x1b[?25l\x1b[32m",
+      "\x1b[0m\x1b[?25h\x1b[?1049l",
+    ]);
   },
 );
 

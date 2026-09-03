@@ -28,7 +28,8 @@ export interface StandardTerminalPresentationOptions {
  * - terminal output;
  * - framebuffer rendering;
  * - alternate-screen lifecycle;
- * - cursor lifecycle.
+ * - cursor lifecycle;
+ * - standard terminal presentation styling.
  *
  * Each underlying component remains available independently for applications
  * that need full manual composition.
