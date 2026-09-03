@@ -27,6 +27,7 @@ import { CanvasDisplay } from "./display/canvas-display.ts";
 import { BrowserKeyboard } from "./keyboard/browser-keyboard.ts";
 import { KeyboardInputHub } from "./keyboard/keyboard-input-hub.ts";
 import { VirtualKeypad } from "./keyboard/virtual-keypad.ts";
+import { WebAudioBeeper } from "./audio/web-audio-beeper.ts";
 
 import "./style.css";
 
@@ -41,9 +42,9 @@ interface WebMachineSession {
 
   readonly runtime: Chip8Runtime;
   readonly displayBuffer: DisplayBuffer;
+  readonly soundTimer: Timer;
 
   readonly browserKeyboard: BrowserKeyboard;
-
   readonly virtualKeypad: VirtualKeypad;
 }
 
@@ -60,6 +61,8 @@ const virtualKeypadElement = requireElement<HTMLElement>("#virtual-keypad");
 
 const display = new CanvasDisplay(canvas);
 
+const beeper = new WebAudioBeeper();
+
 let machine: WebMachineSession | undefined;
 
 let animationFrameId: number | undefined;
@@ -73,10 +76,14 @@ romInput.addEventListener("change", () => {
     return;
   }
 
+  unlockAudio();
+
   void loadAndRun(rom);
 });
 
 startButton.addEventListener("click", () => {
+  unlockAudio();
+
   startMachine();
 });
 
@@ -92,8 +99,16 @@ resetButton.addEventListener("click", () => {
   resetMachine();
 });
 
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    beeper.setActive(false);
+  }
+});
+
 async function loadAndRun(rom: File): Promise<void> {
   stopHostLoop();
+
+  beeper.setActive(false);
 
   machine?.runtime.pause();
   machine?.browserKeyboard.stop();
@@ -211,6 +226,7 @@ function createMachine(romName: string, program: MemoryImage): WebMachineSession
     displayBuffer,
     browserKeyboard,
     virtualKeypad,
+    soundTimer,
   };
 }
 
@@ -236,6 +252,8 @@ function pauseMachine(): void {
   machine.runtime.pause();
 
   stopHostLoop();
+
+  beeper.setActive(false);
 
   display.render(machine.displayBuffer);
 
@@ -270,6 +288,8 @@ function resetMachine(): void {
   machine.runtime.pause();
 
   stopHostLoop();
+
+  beeper.setActive(false);
 
   try {
     machine.initializer.initialize(machine.context, CLASSIC_CHIP8_PROFILE, machine.program);
@@ -311,6 +331,8 @@ function runHostLoop(session: WebMachineSession): void {
        */
       session.runtime.tick();
 
+      beeper.setActive(session.soundTimer.getValue() > 0);
+
       display.render(session.displayBuffer);
 
       animationFrameId = requestAnimationFrame(frame);
@@ -321,6 +343,8 @@ function runHostLoop(session: WebMachineSession): void {
 
       session.browserKeyboard.stop();
       session.virtualKeypad.stop();
+
+      beeper.setActive(false);
 
       setStatus(`Emulation stopped: ${describeError(error)}`, true);
 
@@ -383,4 +407,13 @@ function requireElement<T extends Element>(selector: string): T {
   }
 
   return element;
+}
+
+function unlockAudio(): void {
+  beeper.unlock().catch((error: unknown) => {
+    /*
+     * Audio failure should not prevent the emulator itself from running.
+     */
+    console.warn("Web Audio is unavailable:", error);
+  });
 }
