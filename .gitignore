@@ -7,10 +7,10 @@
 .vscode/
 
 # Generated output
-/build/
-/dist/
-/coverage/
-/node_modules/
+build/
+dist/
+coverage/
+node_modules/
 
 # External conformance ROMs are intentionally not distributed with Chip8NX.
 /packages/core/tests/conformance/roms/*

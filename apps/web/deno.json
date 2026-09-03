@@ -1,0 +1,14 @@
+{
+  "name": "@chip8nx/web",
+  "publish": false,
+  "exports": "./src/main.ts",
+  "tasks": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "compilerOptions": {
+    "lib": ["dom", "dom.iterable", "dom.asynciterable", "deno.ns"]
+  },
+  "exclude": ["dist/"]
+}

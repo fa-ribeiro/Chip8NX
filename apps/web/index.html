@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Chip8NX Classic CHIP-8 web emulator" />
+
+    <title>Chip8NX Web</title>
+  </head>
+
+  <body>
+    <main class="app">
+      <header>
+        <h1>Chip8NX</h1>
+        <p>Classic CHIP-8 web host</p>
+      </header>
+
+      <section class="rom-loader" aria-label="ROM loader">
+        <label for="rom-input"> Choose ROM </label>
+
+        <input id="rom-input" type="file" accept=".ch8,application/octet-stream" />
+
+        <p id="status" role="status">Choose a CHIP-8 ROM to begin.</p>
+      </section>
+
+      <section class="display" aria-label="CHIP-8 display">
+        <canvas
+          id="chip8-display"
+          width="64"
+          height="32"
+          aria-label="CHIP-8 framebuffer"
+        ></canvas>
+      </section>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
