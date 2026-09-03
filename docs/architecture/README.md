@@ -1,20 +1,14 @@
 # Architecture
 
-This directory documents the high-level architecture of the CHIP-8 emulator core.
+This directory documents the high-level architecture of the reusable Chip8NX Core.
 
-Source-level JSDoc explains individual classes, interfaces, methods, and types. The documents here instead explain how larger parts of the system collaborate and why the architecture is organized the way it is.
+Source-level JSDoc explains individual classes, interfaces, methods, and types. The documents here instead explain how larger parts of the system collaborate, their dependency direction, and important lifecycle/timing boundaries.
 
 ## Documents
 
-- [Overview](./overview.md) — major architectural layers and dependency direction.
-- [Machine lifecycle](./machine-lifecycle.md) — construction, initialization, execution, pause/resume, and reset.
+- [Overview](./overview.md) — global Core component diagram, CPU execution pipeline, runtime/timing relationships, host boundaries, and application composition.
+- [Machine lifecycle](./machine-lifecycle.md) — construction, initialization, execution, pause/resume, display synchronization, single stepping, and reset.
 
 For the rationale behind major architectural choices, see the [Architecture Decision Records](../decisions/README.md).
 
-Future topics may include:
-
-- instruction execution;
-- display and input boundaries;
-- CHIP-8 variants and quirks;
-- conformance testing;
-- public API boundaries.
+Host-specific architecture belongs with the relevant host documentation. The terminal application's Level-1/2/3 composition case study is documented in [Terminal composition levels](../guides/terminal-composition-levels.md).

@@ -1,45 +1,113 @@
 # Chip8NX Architecture Overview
 
-Chip8NX is designed around a reusable CHIP-8 core that can be hosted by multiple applications.
+Chip8NX is designed around a reusable CHIP-8 Core that can be hosted by multiple applications.
 
-The core does not assume a terminal, browser, desktop toolkit, renderer, audio system, filesystem, or event loop. Those decisions belong to applications built around the core.
+The Core does not assume a terminal, browser, desktop toolkit, renderer, audio system, filesystem, or host event loop. Those decisions belong to applications built around the Core.
 
-The architecture distinguishes three important concerns:
+At the highest level, the architecture distinguishes three concerns:
 
-```text
-Profile
-"What machine are we emulating?"
-        |
-        v
-Application composition
-"Which concrete implementations are used?"
-        |
-        v
-Runtime
-"How is the assembled machine driven over time?"
+```mermaid
+flowchart LR
+    Profile["Chip8Profile<br/><small>What machine?</small>"]
+    Composition["Application composition<br/><small>Which implementations?</small>"]
+    Runtime["Chip8Runtime<br/><small>How is the machine driven?</small>"]
+
+    Profile --> Composition --> Runtime
 ```
 
 ## Machine profile
 
 A `Chip8Profile` is a declarative description of the CHIP-8 environment being emulated.
 
-For example, the Classic CHIP-8 profile defines characteristics such as:
+The Classic profile supplies characteristics such as:
 
 - memory size;
 - program start address;
 - stack capacity;
-- display geometry;
+- display width and height;
+- display refresh frequency;
 - timer frequency;
 - font image;
 - font location.
 
 A profile describes the machine itself. It does not select host-specific implementations.
 
-Future profiles may also describe compatibility behavior and quirks required by CHIP-8 variants such as CHIP-48, Super-CHIP, or XO-CHIP.
+Future profiles may describe different machine characteristics or compatibility behavior when CHIP-8-family variants genuinely require different semantics.
 
-## Components
+## Core component overview
 
-The emulator is composed from focused components such as:
+The following diagram is intentionally high level. It shows the main components and their most important direct relationships without trying to represent every method call.
+
+```mermaid
+flowchart TB
+    Profile["Chip8Profile"]
+    Program["MemoryImage"]
+
+    Initializer["MachineInitializer"]
+    Loader["MemoryImageLoader"]
+
+    Runtime["Chip8Runtime"]
+    Scheduler["Scheduler"]
+    Clock["Clock"]
+
+    Cpu["Cpu"]
+    Decoder["Decoder"]
+    Executor["InstructionExecutor"]
+
+    Context["ExecutionContext"]
+
+    subgraph State["Machine state and capabilities"]
+        Memory["Memory / Ram"]
+        Registers["Registers"]
+        Stack["Stack"]
+        PC["ProgramCounter"]
+        I["IndexRegister"]
+        Delay["Delay Timer"]
+        Sound["Sound Timer"]
+        Buffer["DisplayBuffer"]
+        VBlank["VerticalBlank"]
+        Keyboard["Keyboard / KeyboardState"]
+        Font["Font"]
+        RNG["RandomNumberGenerator"]
+    end
+
+    Profile --> Initializer
+    Program --> Initializer
+    Loader --> Initializer
+    Initializer --> Context
+
+    Cpu --> Decoder
+    Cpu --> Executor
+    Cpu --> Context
+
+    Runtime --> Scheduler
+    Scheduler --> Clock
+    Runtime --> Cpu
+    Runtime --> Delay
+    Runtime --> Sound
+    Runtime --> VBlank
+
+    Context --> Memory
+    Context --> Registers
+    Context --> Stack
+    Context --> PC
+    Context --> I
+    Context --> Delay
+    Context --> Sound
+    Context --> Buffer
+    Context --> VBlank
+    Context --> Keyboard
+    Context --> Font
+    Context --> RNG
+```
+
+`ExecutionContext` is an explicit aggregate of the mutable state and capabilities required by instruction execution.
+
+The context does not make these components a monolith. The individual components remain independently constructed, replaceable, and testable.
+
+## Focused components
+
+The emulator is composed from narrow components such as:
 
 - `Memory`;
 - `Registers`;
@@ -48,14 +116,13 @@ The emulator is composed from focused components such as:
 - `IndexRegister`;
 - `Timer`;
 - `DisplayBuffer`;
+- `VerticalBlank`;
 - `Keyboard`;
 - `Font`;
 - `RandomNumberGenerator`;
 - `Cpu`.
 
-Each component owns a narrow responsibility and validates its own local invariants.
-
-Generic components do not contain hidden Classic CHIP-8 defaults.
+Generic components do not hide Classic-specific defaults.
 
 For example:
 
@@ -64,141 +131,216 @@ new Stack(profile.stackCapacity);
 
 new ProgramCounter(profile.programStartAddress);
 
-new DisplayBuffer(profile.display.width, profile.display.height);
+new DisplayBuffer(
+  profile.display.width,
+  profile.display.height,
+);
 ```
 
 The profile supplies machine-specific values while the components remain reusable.
 
-## Execution context
+## CPU execution pipeline
 
-`ExecutionContext` groups the machine state required by instruction execution.
+The CPU owns the CHIP-8 fetch/decode/execute cycle.
 
-The `Cpu` owns the CHIP-8 fetch/decode/execute cycle:
+```mermaid
+flowchart LR
+    PC["ProgramCounter"]
+    Memory["Memory"]
+    Cpu["Cpu"]
+    Opcode["Opcode"]
+    Decoder["Decoder"]
+    Instruction["Typed Instruction"]
+    Executor["InstructionExecutor"]
+    Context["ExecutionContext"]
 
-```text
-read opcode
-    |
-    v
-advance PC
-    |
-    v
-decode instruction
-    |
-    v
-execute instruction against ExecutionContext
+    PC --> Cpu
+    Memory --> Cpu
+    Cpu -->|"fetch"| Opcode
+    Opcode --> Decoder
+    Decoder -->|"decode"| Instruction
+    Instruction --> Executor
+    Context --> Executor
+    Executor -->|"apply semantics"| Context
 ```
 
-Instruction decoding and instruction execution remain separate responsibilities.
+The cycle advances the normal program counter before execution. Instructions that must wait, such as Classic `FX0A` or a display-synchronized `Dxyn`, can rewind the program counter so the same instruction is retried later.
 
-The `InstructionExecutor` is stateless. Machine-specific mutable dependencies such as registers, memory, keyboard state, timers, fonts, and random-number generation belong to the execution context.
+Instruction decoding and instruction execution are deliberately separate responsibilities:
+
+- `Decoder` understands opcode encoding;
+- the typed `Instruction` representation carries decoded meaning;
+- `InstructionExecutor` applies instruction semantics to `ExecutionContext`.
+
+The executor is stateless.
 
 ## Machine initialization
 
-`MachineInitializer` establishes a valid initial machine state.
+`MachineInitializer` establishes a valid initial state for already-constructed components.
 
-It is responsible for:
+It:
 
-- validating memory layout before mutation;
-- clearing mutable machine state;
-- resetting registers and stack;
-- setting the initial program counter;
-- resetting timers and the index register;
-- clearing the display;
-- resetting transient keyboard interpretation state;
-- installing profile-provided font data;
-- loading the program image.
+1. validates the complete memory layout before mutation;
+2. clears mutable machine state;
+3. resets registers, stack, timers, index register, display, vertical-blank state, and keyboard interpreter state;
+4. sets the initial program counter;
+5. installs profile-provided font data;
+6. loads the program image.
 
-It does not construct components or control runtime execution.
+It does not construct components, perform external I/O, or drive execution.
 
-## Runtime
+The random-number generator is intentionally not reset by machine initialization because CHIP-8 does not define an RNG seeding lifecycle.
 
-`Chip8Runtime` coordinates execution over time.
+## Runtime and timing
 
-It schedules:
+`Chip8Runtime` coordinates emulated work over time through the generic deadline-driven `Scheduler`.
 
-- CPU execution at a runtime-configured frequency;
-- both CHIP-8 timers at the profile-defined timer frequency.
+It schedules three categories of work:
 
-It also provides:
+- CPU instructions at the runtime-configured CPU frequency;
+- both CHIP-8 timers at the profile timer frequency;
+- display-frame boundaries at the profile display refresh frequency.
 
-- pause;
-- resume;
-- single-step execution.
+```mermaid
+flowchart TB
+    Clock["Clock"]
+    Scheduler["Scheduler"]
+    Runtime["Chip8Runtime"]
 
-Rendering, audio output, host input events, and host event loops remain outside the runtime.
+    VBlankTask["Display-frame task"]
+    TimerTask["Timer task"]
+    CpuTask["CPU task"]
 
-## Scheduling
+    VBlank["VerticalBlank"]
+    Delay["Delay Timer"]
+    Sound["Sound Timer"]
+    Cpu["Cpu"]
 
-The generic `Scheduler` owns temporal ordering.
+    Draw["Dxyn"]
+    Buffer["DisplayBuffer"]
+    Host["Host renderer"]
 
-Periodic work is represented internally by exact rational deadlines rather than by independent tasks accumulating elapsed time.
+    Clock --> Scheduler
+    Runtime --> Scheduler
 
-When the host calls `tick()`, the scheduler executes all occurrences whose deadlines are due, globally ordered by time.
+    Scheduler --> VBlankTask
+    Scheduler --> TimerTask
+    Scheduler --> CpuTask
 
-This is important for emulator correctness because CPU instructions and timer ticks must remain chronologically ordered even when the host calls the scheduler irregularly.
+    VBlankTask -->|"signal()"| VBlank
+    TimerTask -->|"tick()"| Delay
+    TimerTask -->|"tick()"| Sound
+    CpuTask -->|"step()"| Cpu
 
-The scheduler contains no CHIP-8-specific logic.
+    VBlank -->|"consume()"| Draw
+    Draw -->|"draw pixels"| Buffer
 
-## Application composition
-
-The reusable core deliberately does not provide a `CompositionRoot`, `MachineFactory`, or dependency-injection container.
-
-The application is the composition root.
-
-For example, a terminal application may choose:
-
-```text
-Classic CHIP-8 profile
-Ram
-TerminalKeyboard
-TerminalRenderer
-DefaultRandomNumberGenerator
-real monotonic clock
+    Buffer -. "observe / present" .-> Host
 ```
 
-while a web application may choose:
+### Deadline ordering
 
-```text
-Classic CHIP-8 profile
-Ram
-BrowserKeyboard
-Canvas renderer
-DefaultRandomNumberGenerator
-browser-compatible clock
-```
+The runtime registers vertical blank before timers and CPU.
 
-Both applications can run the same emulated machine semantics.
+This makes exact deadline ties deterministic:
+
+1. a new display interval becomes available;
+2. timer boundaries are processed;
+3. the CPU executes the instruction scheduled at the same instant.
+
+The scheduler itself contains no CHIP-8-specific logic. It owns globally chronological deadline ordering.
 
 ## Display boundary
 
-`DisplayBuffer` represents emulated CHIP-8 graphical state.
+`DisplayBuffer` is emulated graphical state.
 
-It should not be confused with host rendering.
+`VerticalBlank` is emulated display-timing state.
 
-```text
-DisplayBuffer
-    |
-    +--> Terminal renderer
-    +--> Canvas renderer
-    +--> Desktop renderer
-    +--> Test inspection
+A host renderer is neither of those things.
+
+```mermaid
+flowchart LR
+    Runtime["Chip8Runtime"]
+    VBlank["VerticalBlank"]
+    Cpu["Cpu / Dxyn"]
+    Buffer["DisplayBuffer"]
+
+    Terminal["Terminal renderer"]
+    Canvas["Canvas renderer"]
+    Desktop["Desktop renderer"]
+    Tests["Tests / inspection"]
+
+    Runtime -->|"display frame"| VBlank
+    VBlank -->|"permission consumed by Dxyn"| Cpu
+    Cpu --> Buffer
+
+    Buffer -.-> Terminal
+    Buffer -.-> Canvas
+    Buffer -.-> Desktop
+    Buffer -.-> Tests
 ```
 
-A renderer observes the display buffer and presents it using host-specific technology.
+A renderer observes the buffer and presents it using host-specific technology.
 
-The CHIP-8 core does not need to know how that presentation happens.
+Host rendering does **not** generate CHIP-8 vertical blank and does not need to run at the exact emulated display refresh frequency.
+
+This separation allows a terminal host, browser host, desktop host, and deterministic tests to share the same display semantics.
+
+## Keyboard boundary
+
+The machine-facing abstraction is `Keyboard`.
+
+The standard mutable Core implementation is `KeyboardState`.
+
+Host adapters translate platform events into state transitions:
+
+```mermaid
+flowchart LR
+    Host["Host key events"]
+    Adapter["Host keyboard adapter"]
+    State["KeyboardState"]
+    Executor["InstructionExecutor"]
+
+    Host --> Adapter
+    Adapter -->|"press / release"| State
+    State -->|"Keyboard capability"| Executor
+```
+
+`KeyboardState` owns CHIP-8-facing pressed-state behavior and the `FX0A` press-then-release wait state machine.
+
+The host adapter owns platform-specific concerns such as terminal escape-sequence parsing, browser event handling, or synthetic release behavior.
+
+## Application composition
+
+The reusable Core deliberately does not require a dependency-injection container or a single mandatory machine factory.
+
+The application remains the composition root.
+
+A terminal application can choose terminal-specific adapters while a browser application can choose browser-specific adapters, with both sharing the same Core semantics.
+
+The current terminal application is also testing optional higher-level composition helpers. This does not change the Core dependency rule: those helpers live in the host application and assemble the same lower-level components.
+
+See [Terminal composition levels](../guides/terminal-composition-levels.md).
 
 ## Dependency direction
 
-Dependencies should point inward toward the emulator core.
+Dependencies point inward toward the emulator Core.
 
-```text
-terminal app ----\
-web app ----------> Chip8NX Core
-desktop app ------/
-tests ------------/
+```mermaid
+flowchart LR
+    Terminal["Terminal app"]
+    Web["Web app"]
+    Desktop["Desktop app"]
+    Tests["Tests"]
+
+    Core["Chip8NX Core"]
+
+    Terminal --> Core
+    Web --> Core
+    Desktop --> Core
+    Tests --> Core
 ```
 
-The core must not import application-specific code.
+The Core must not import application-specific code.
 
-This boundary is what allows the emulator to remain reusable across multiple frontends.
+That boundary is what allows the emulator to remain reusable across multiple frontends.

@@ -18,29 +18,32 @@ docs/
 
 Architecture documents explain how the emulator is structured and how major components collaborate.
 
-See [Architecture](./architecture/README.md) for the architecture documentation index.
+See [Architecture](./architecture/README.md).
 
 Current topics include:
 
-- architecture overview;
+- the Core architecture and component relationships;
+- CPU fetch/decode/execute flow;
+- runtime, timer, and vertical-blank timing;
 - machine lifecycle.
 
 ### Guides
 
-Guides explain how to accomplish larger tasks using the emulator core.
+Guides explain how to accomplish larger tasks using the emulator or how to understand host-level composition.
 
-See [Guides](./guides/README.md) for the guides documentation index.
+See [Guides](./guides/README.md).
 
 Current topics include:
 
-- embedding the CHIP-8 core in an application;
+- embedding the CHIP-8 Core in an application;
+- terminal composition levels and terminal component diagrams;
 - continuous integration.
 
 ### Reference
 
 Reference documents record stable implementation and conformance facts.
 
-See [Reference](./reference/README.md) for the reference documentation index.
+See [Reference](./reference/README.md).
 
 Current topics include:
 
@@ -48,9 +51,11 @@ Current topics include:
 
 ### Decisions
 
-Architecture Decision Records (ADRs) preserve important design choices and the reasoning behind them.
+Architecture Decision Records preserve significant design choices and their reasoning.
 
-See [Architecture Decision Records](./decisions/README.md) for the decision index and ADR conventions.
+See [Architecture Decision Records](./decisions/README.md).
+
+ADRs are historical records. New experiments such as the terminal layered-composition case study should not rewrite accepted ADRs until the project deliberately adopts a new architectural decision.
 
 ## API documentation
 
@@ -80,4 +85,4 @@ Documentation diagnostics can be run with:
 deno task docs:check
 ```
 
-Documentation linting is intentionally treated as a public-API audit: exported symbols should either be intentionally public and documented, or removed from the public package entrypoint.
+Documentation linting is treated as a public-API audit: exported symbols should either be intentionally public and documented or removed from the public package entrypoint.
