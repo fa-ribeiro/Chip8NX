@@ -34,8 +34,8 @@ flowchart TB
     Presentation --> Buffer
     InputKit --> KeyboardState
 
-    Output --> Presentation
-    Output --> InputKit
+    Presentation --> Output
+    InputKit --> Output
 ```
 
 The shared `TerminalOutput` dependency is significant: both presentation and input-session protocol negotiation write to the same terminal.
@@ -233,11 +233,11 @@ The examples intentionally share the same Classic machine construction.
 
 Only the terminal assembly depth changes.
 
-| Example | Terminal assembly | Best for |
-| --- | --- | --- |
-| `01-components.ts` | individual components | maximum control and learning component relationships |
-| `02-standard-compositions.ts` | presentation + input kits | normal customization at subsystem boundaries |
-| `03-standard-host.ts` | one standard host | quickest standard terminal integration |
+| Example                       | Terminal assembly         | Best for                                             |
+| ----------------------------- | ------------------------- | ---------------------------------------------------- |
+| `01-components.ts`            | individual components     | maximum control and learning component relationships |
+| `02-standard-compositions.ts` | presentation + input kits | normal customization at subsystem boundaries         |
+| `03-standard-host.ts`         | one standard host         | quickest standard terminal integration               |
 
 This makes the examples useful as an architectural experiment: the observable emulator behavior should remain equivalent while composition burden changes.
 
@@ -271,7 +271,9 @@ The display and keyboard Level-2 case studies have demonstrated that:
 - existing specialized components remain the implementation foundation;
 - a giant all-purpose options object is not required.
 
-The Level-3 host tests whether the two standard subsystems can be composed around shared terminal resources without leaking their internal details back into the application root.
+The Level-3 host demonstrates that the two standard subsystems can be composed around shared terminal resources without leaking their internal details back into the application root.
+
+The three terminal composition levels now provide enough implementation evidence to evaluate whether the pattern should be generalized beyond the terminal application.
 
 The result should be evaluated before this model is generalized to Core composition or formalized in a new project-wide ADR.
 
