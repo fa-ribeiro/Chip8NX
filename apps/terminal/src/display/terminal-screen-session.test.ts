@@ -2,7 +2,7 @@ import { assertEquals } from "@std/assert";
 import { TerminalScreenSession } from "./terminal-screen-session.ts";
 import type { TerminalOutput } from "./terminal-output.ts";
 
-Deno.test("TerminalScreenSession enters and restores terminal presentation mode", () => {
+Deno.test("TerminalScreenSession enters and restores presentation mode", () => {
   const output = new RecordingTerminalOutput();
   const session = new TerminalScreenSession(output);
 
@@ -15,7 +15,7 @@ Deno.test("TerminalScreenSession enters and restores terminal presentation mode"
   assertEquals(output.writes, ["\x1b[?1049h\x1b[?25l", "\x1b[?25h\x1b[?1049l"]);
 });
 
-Deno.test("TerminalScreenSession lifecycle operations are idempotent", () => {
+Deno.test("TerminalScreenSession lifecycle is idempotent", () => {
   const output = new RecordingTerminalOutput();
   const session = new TerminalScreenSession(output);
 

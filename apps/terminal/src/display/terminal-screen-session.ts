@@ -7,12 +7,9 @@ const HIDE_CURSOR = "\x1b[?25l";
 const SHOW_CURSOR = "\x1b[?25h";
 
 /**
- * Owns terminal presentation lifecycle that applies to the application as a
- * whole rather than to an individual rendered CHIP-8 frame.
+ * Owns terminal presentation state that applies to the application as a whole.
  *
- * The session uses the terminal's alternate screen and hides the text cursor
- * while the emulator is running. Stopping the session restores the cursor and
- * the user's original terminal contents.
+ * Individual renderers remain responsible only for presenting frames.
  */
 export class TerminalScreenSession {
   private started = false;

@@ -24,7 +24,7 @@ Deno.test("TerminalKeyboard synthetically releases legacy key presses", () => {
   let now = 0;
 
   const keyboard = new KeyboardState();
-  const terminalKeyboard = new TerminalKeyboard(keyboard, () => now);
+  const terminalKeyboard = new TerminalKeyboard(keyboard, { now: () => now });
 
   terminalKeyboard.handleEvent(legacyEvent("q"));
 
@@ -47,7 +47,7 @@ Deno.test(
     let now = 0;
 
     const keyboard = new KeyboardState();
-    const terminalKeyboard = new TerminalKeyboard(keyboard, () => now);
+    const terminalKeyboard = new TerminalKeyboard(keyboard, { now: () => now });
 
     terminalKeyboard.handleEvent(legacyEvent("q"));
 
@@ -75,7 +75,7 @@ Deno.test("TerminalKeyboard legacy release completes KeyboardState key-release w
   let now = 0;
 
   const keyboard = new KeyboardState();
-  const terminalKeyboard = new TerminalKeyboard(keyboard, () => now);
+  const terminalKeyboard = new TerminalKeyboard(keyboard, { now: () => now });
 
   assertEquals(keyboard.pollKeyRelease(), undefined);
 
@@ -93,7 +93,7 @@ Deno.test("TerminalKeyboard tracks legacy keys independently", () => {
   let now = 0;
 
   const keyboard = new KeyboardState();
-  const terminalKeyboard = new TerminalKeyboard(keyboard, () => now);
+  const terminalKeyboard = new TerminalKeyboard(keyboard, { now: () => now });
 
   terminalKeyboard.handleEvent(legacyEvent("q"));
 
@@ -153,7 +153,7 @@ Deno.test("TerminalKeyboard releaseAll clears exact and synthetic input state", 
   let now = 0;
 
   const keyboard = new KeyboardState();
-  const terminalKeyboard = new TerminalKeyboard(keyboard, () => now);
+  const terminalKeyboard = new TerminalKeyboard(keyboard, { now: () => now });
 
   terminalKeyboard.handleEvent(legacyEvent("q"));
   terminalKeyboard.handleEvent(csiUEvent("w", "press"));
@@ -207,3 +207,38 @@ function noModifiers(): TerminalKeyModifiers {
     numLock: false,
   };
 }
+
+Deno.test("TerminalKeyboard supports custom CHIP-8 key mappings", () => {
+  const keyboard = new KeyboardState();
+
+  const terminalKeyboard = new TerminalKeyboard(keyboard, {
+    mapKey: (character) => (character === "p" ? key(0xa) : undefined),
+  });
+
+  terminalKeyboard.handleEvent(legacyEvent("p"));
+
+  assertEquals(keyboard.isPressed(key(0xa)), true);
+});
+
+Deno.test("TerminalKeyboard supports custom legacy release delays", () => {
+  let now = 0;
+
+  const keyboard = new KeyboardState();
+
+  const terminalKeyboard = new TerminalKeyboard(keyboard, {
+    legacyReleaseDelayMs: 250,
+    now: () => now,
+  });
+
+  terminalKeyboard.handleEvent(legacyEvent("q"));
+
+  now = 100;
+  terminalKeyboard.tick();
+
+  assertEquals(keyboard.isPressed(key(0x4)), true);
+
+  now = 250;
+  terminalKeyboard.tick();
+
+  assertEquals(keyboard.isPressed(key(0x4)), false);
+});

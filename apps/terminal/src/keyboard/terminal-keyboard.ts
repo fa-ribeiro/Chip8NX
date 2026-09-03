@@ -1,8 +1,37 @@
 import { type Key, KeyboardState } from "@chip8nx/core";
-import { mapTerminalCharacterToChip8Key } from "./chip8-key-mapping.ts";
+import {
+  mapTerminalCharacterToChip8Key,
+  type TerminalKeyMapping,
+} from "./chip8-key-mapping.ts";
 import type { TerminalKeyEvent, TerminalKeyModifiers } from "./terminal-key-event.ts";
 
-const LEGACY_KEY_RELEASE_DELAY_MS = 100;
+const DEFAULT_LEGACY_KEY_RELEASE_DELAY_MS = 100;
+
+/**
+ * Configures terminal-to-CHIP-8 input adaptation.
+ */
+export interface TerminalKeyboardOptions {
+  /**
+   * Maps terminal characters onto CHIP-8 keypad keys.
+   *
+   * Defaults to the conventional CHIP-8 terminal layout.
+   */
+  readonly mapKey?: TerminalKeyMapping;
+
+  /**
+   * Time after which a legacy terminal key press is synthetically released.
+   *
+   * Legacy terminals do not report physical key-release events.
+   */
+  readonly legacyReleaseDelayMs?: number;
+
+  /**
+   * Supplies monotonic host time in milliseconds.
+   *
+   * Primarily useful when manually composing or testing the adapter.
+   */
+  readonly now?: () => number;
+}
 
 /**
  * Adapts semantic terminal key events into CHIP-8 keyboard state.
@@ -10,34 +39,44 @@ const LEGACY_KEY_RELEASE_DELAY_MS = 100;
  * CSI-u events provide explicit press, repeat, and release transitions.
  *
  * Legacy terminal input provides only press-like events, so those keys are
- * released synthetically after a short period. Receiving the same legacy key
- * again before its deadline refreshes that deadline.
+ * released synthetically after a configurable period. Receiving the same
+ * legacy key again before its deadline refreshes that deadline.
  *
- * TerminalKeyboard owns host-input policy only. The CHIP-8-facing keyboard
- * semantics, including FX0A press/release tracking, remain owned by
- * {@link KeyboardState}.
+ * TerminalKeyboard owns host-input policy only. CHIP-8-facing keyboard
+ * semantics remain owned by {@link KeyboardState}.
  */
 export class TerminalKeyboard {
   private readonly legacyReleaseDeadlines = new Map<Key, number>();
 
+  private readonly mapKey: TerminalKeyMapping;
+  private readonly legacyReleaseDelayMs: number;
+  private readonly now: () => number;
+
   public constructor(
     private readonly keyboard: KeyboardState,
-    private readonly now: () => number = () => performance.now(),
-  ) {}
+    options: TerminalKeyboardOptions = {},
+  ) {
+    this.mapKey = options.mapKey ?? mapTerminalCharacterToChip8Key;
+
+    this.legacyReleaseDelayMs =
+      options.legacyReleaseDelayMs ?? DEFAULT_LEGACY_KEY_RELEASE_DELAY_MS;
+
+    this.now = options.now ?? (() => performance.now());
+
+    if (!Number.isFinite(this.legacyReleaseDelayMs) || this.legacyReleaseDelayMs < 0) {
+      throw new RangeError("Legacy key release delay must be a non-negative finite number.");
+    }
+  }
 
   /**
    * Applies one decoded terminal key event.
-   *
-   * Terminal characters outside the CHIP-8 mapping are ignored. Control-like
-   * modifiers are also ignored so host shortcuts such as Ctrl+C do not become
-   * CHIP-8 key presses.
    */
   public handleEvent(event: TerminalKeyEvent): void {
     if (hasControlModifier(event.modifiers)) {
       return;
     }
 
-    const chip8Key = mapTerminalCharacterToChip8Key(event.character);
+    const chip8Key = this.mapKey(event.character);
 
     if (chip8Key === undefined) {
       return;
@@ -53,8 +92,6 @@ export class TerminalKeyboard {
 
   /**
    * Applies synthetic releases whose legacy-input deadlines have expired.
-   *
-   * Applications should call this regularly from their host loop.
    */
   public tick(): void {
     const currentTime = this.now();
@@ -71,8 +108,6 @@ export class TerminalKeyboard {
 
   /**
    * Releases all input and discards pending synthetic-release deadlines.
-   *
-   * This is intended for host-input shutdown and cleanup.
    */
   public releaseAll(): void {
     this.legacyReleaseDeadlines.clear();
@@ -82,14 +117,10 @@ export class TerminalKeyboard {
   private handleLegacyPress(chip8Key: Key): void {
     this.keyboard.press(chip8Key);
 
-    this.legacyReleaseDeadlines.set(chip8Key, this.now() + LEGACY_KEY_RELEASE_DELAY_MS);
+    this.legacyReleaseDeadlines.set(chip8Key, this.now() + this.legacyReleaseDelayMs);
   }
 
   private handleExactEvent(chip8Key: Key, event: TerminalKeyEvent): void {
-    /*
-     * An exact CSI-u event supersedes any synthetic legacy deadline that may
-     * previously have existed for this key.
-     */
     this.legacyReleaseDeadlines.delete(chip8Key);
 
     switch (event.type) {

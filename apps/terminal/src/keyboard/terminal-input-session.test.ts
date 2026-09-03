@@ -13,7 +13,7 @@ Deno.test("TerminalInputSession manages terminal lifecycle and keyboard input", 
   const output = new RecordingTerminalOutput();
 
   const keyboardState = new KeyboardState();
-  const terminalKeyboard = new TerminalKeyboard(keyboardState, () => 0);
+  const terminalKeyboard = new TerminalKeyboard(keyboardState, { now: () => 0 });
 
   const session = new TerminalInputSession(
     input,

@@ -1,6 +1,11 @@
 import { type Key, key } from "@chip8nx/core";
 
 /**
+ * Maps one semantic terminal character to a CHIP-8 keypad key.
+ */
+export type TerminalKeyMapping = (character: string) => Key | undefined;
+
+/**
  * Maps a terminal keyboard character to the corresponding CHIP-8 hexadecimal
  * keypad key.
  *

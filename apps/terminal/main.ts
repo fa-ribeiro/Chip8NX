@@ -23,23 +23,16 @@ import {
   Timer,
   VerticalBlank,
 } from "@chip8nx/core";
-
-import { StdoutTerminalOutput } from "./src/display/stdout-terminal-output.ts";
-import { TerminalDisplay } from "./src/display/terminal-display.ts";
-import { TerminalScreenSession } from "./src/display/terminal-screen-session.ts";
-import { StdinTerminalInput } from "./src/keyboard/stdin-terminal-input.ts";
-import { TerminalInputSession } from "./src/keyboard/terminal-input-session.ts";
-import { TerminalKeyEventParser } from "./src/keyboard/terminal-key-event-parser.ts";
-import { TerminalKeyboard } from "./src/keyboard/terminal-keyboard.ts";
+import { StandardTerminalHost } from "./src/standard-terminal-host.ts";
 
 const CPU_FREQUENCY = Frequency.fromInteger(500n);
 
 /**
  * Host presentation frequency.
  *
- * This controls only how often the terminal observes DisplayBuffer. It does
- * not define CHIP-8 display timing; emulated display timing remains owned by
- * Chip8Runtime and the machine profile.
+ * This controls only how often the terminal observes the framebuffer.
+ * Emulated CHIP-8 display timing remains owned by Chip8Runtime and the
+ * configured machine profile.
  */
 const HOST_RENDER_INTERVAL_MS = 1_000 / 60;
 
@@ -78,13 +71,10 @@ const context: ExecutionContext = {
 };
 
 const initializer = new MachineInitializer(new MemoryImageLoader());
-
 initializer.initialize(context, profile, program);
 
 const cpu = new Cpu(context, new Decoder(), new InstructionExecutor());
-
 const scheduler = new Scheduler(new PerformanceClock());
-
 const runtime = new Chip8Runtime(
   cpu,
   delayTimer,
@@ -98,46 +88,27 @@ const runtime = new Chip8Runtime(
   profile.display.refreshFrequency,
 );
 
-const output = new StdoutTerminalOutput();
+const terminal = new StandardTerminalHost(keyboardState);
 
-const display = new TerminalDisplay(output);
+const inputTask = terminal.start();
 
-const screenSession = new TerminalScreenSession(output);
-
-const terminalKeyboard = new TerminalKeyboard(keyboardState);
-
-const inputSession = new TerminalInputSession(
-  new StdinTerminalInput(),
-  output,
-  new TerminalKeyEventParser(),
-  terminalKeyboard,
-);
-
-screenSession.start();
+runtime.resume();
 
 try {
-  const inputTask = inputSession.start();
+  while (!terminal.quitRequested) {
+    runtime.tick();
 
-  runtime.resume();
+    terminal.tick();
 
-  try {
-    while (!inputSession.quitRequested) {
-      runtime.tick();
+    terminal.render(displayBuffer);
 
-      terminalKeyboard.tick();
-
-      display.render(displayBuffer);
-
-      await sleep(HOST_RENDER_INTERVAL_MS);
-    }
-  } finally {
-    await inputSession.stop();
+    await sleep(HOST_RENDER_INTERVAL_MS);
   }
-
-  await inputTask;
 } finally {
-  screenSession.stop();
+  await terminal.stop();
 }
+
+await inputTask;
 
 function sleep(milliseconds: number): Promise<void> {
   return new Promise((resolve) => {
