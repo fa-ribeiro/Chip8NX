@@ -24,6 +24,8 @@ import {
   VerticalBlank,
 } from "@chip8nx/core";
 import { CanvasDisplay } from "./display/canvas-display.ts";
+import { BrowserKeyboard } from "./keyboard/browser-keyboard.ts";
+
 import "./style.css";
 
 const CPU_FREQUENCY = Frequency.fromInteger(500n);
@@ -37,6 +39,8 @@ interface WebMachineSession {
 
   readonly runtime: Chip8Runtime;
   readonly displayBuffer: DisplayBuffer;
+
+  readonly browserKeyboard: BrowserKeyboard;
 }
 
 const romInput = requireElement<HTMLInputElement>("#rom-input");
@@ -85,6 +89,8 @@ async function loadAndRun(rom: File): Promise<void> {
   stopHostLoop();
 
   machine?.runtime.pause();
+  machine?.browserKeyboard.stop();
+
   machine = undefined;
 
   updateControls();
@@ -95,6 +101,8 @@ async function loadAndRun(rom: File): Promise<void> {
     const program = new MemoryImage(new Uint8Array(await rom.arrayBuffer()));
 
     machine = createMachine(rom.name, program);
+
+    machine.browserKeyboard.start();
 
     machine.runtime.resume();
 
@@ -132,10 +140,9 @@ function createMachine(romName: string, program: MemoryImage): WebMachineSession
 
   const displayBuffer = new DisplayBuffer(profile.display.width, profile.display.height);
 
-  /*
-   * Browser keyboard input is intentionally deferred to a later milestone.
-   */
   const keyboard = new KeyboardState();
+
+  const browserKeyboard = new BrowserKeyboard(keyboard);
 
   const context: ExecutionContext = {
     registers: new Registers(),
@@ -189,6 +196,7 @@ function createMachine(romName: string, program: MemoryImage): WebMachineSession
     initializer,
     runtime,
     displayBuffer,
+    browserKeyboard,
   };
 }
 
@@ -296,6 +304,8 @@ function runHostLoop(session: WebMachineSession): void {
       animationFrameId = undefined;
 
       session.runtime.pause();
+
+      session.browserKeyboard.stop();
 
       setStatus(`Emulation stopped: ${describeError(error)}`, true);
 
