@@ -12,6 +12,62 @@ During the `0.x` development phase:
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-03 - Interactive Terminal Host
+
+### Added
+
+- First interactive Chip8NX host application under `apps/terminal`.
+- Terminal framebuffer rendering using Unicode block characters to represent two vertical CHIP-8 pixels per terminal cell.
+- Terminal presentation lifecycle using an alternate screen, hidden cursor, and clean terminal-state restoration.
+- Retro ANSI green standard terminal presentation.
+- Interactive terminal keyboard input using the conventional CHIP-8 keypad mapping.
+- Enhanced CSI-u / Kitty keyboard handling with explicit press, repeat, and release events where supported.
+- Legacy terminal-input fallback using host-time synthetic key releases.
+- `Escape` as the standard terminal exit command, while retaining `Ctrl+C` as an alternative exit path.
+- Public `KeyboardState` Core component for deterministic pressed-key state and Classic `FX0A` press-then-release semantics.
+- Level-2 `StandardTerminalPresentation` composition.
+- Level-2 `StandardTerminalInput` composition.
+- Level-3 `StandardTerminalHost` ready-to-use terminal composition.
+- Three runnable examples demonstrating terminal composition at:
+  - Level 1 — individual components;
+  - Level 2 — standard subsystem compositions;
+  - Level 3 — standard terminal host.
+
+- Mermaid architecture diagrams covering Core components, CPU execution, runtime/display timing, machine lifecycle, terminal components, and terminal composition levels.
+- Terminal composition guide documenting the Level-1 / Level-2 / Level-3 case study.
+
+### Changed
+
+- Promoted deterministic keyboard state from test infrastructure into the reusable Core as `KeyboardState`.
+- Updated Core, integration, and conformance tests to use the production keyboard-state component where appropriate.
+- Added `apps/terminal` to the Deno workspace.
+- Extended project-level checking and testing to cover terminal source, tests, and runnable examples.
+- Updated the Core embedding guide to match the current `ExecutionContext` and `Chip8Runtime` contracts, including `VerticalBlank` and display refresh frequency.
+- Updated architecture and lifecycle documentation to describe emulated vertical-blank scheduling, debugger stepping, keyboard-state ownership, and the host-rendering boundary.
+- Expanded project documentation with visual component and dependency diagrams.
+
+### Milestone
+
+`v0.3.0` introduces the first complete Chip8NX host application.
+
+The terminal frontend can load and run Classic CHIP-8 programs with framebuffer presentation, interactive keyboard input, display-synchronized Core execution, and clean host lifecycle management.
+
+The terminal application also completes the first case study for layered composition:
+
+```text
+Level 1 — Components
+        ↓
+Level 2 — Standard compositions
+        ↓
+Level 3 — Ready-to-use host
+```
+
+All three levels are built from the same underlying components and preserve the ability to mix standard and custom subsystems.
+
+This provides concrete evidence for the layered-composition model without yet generalizing it to the reusable Core. The pattern will be evaluated again while developing a second, substantially different host before any project-wide composition abstraction is adopted.
+
+Terminal feature development is considered complete for this milestone. Further terminal changes should be limited to bug fixes, documentation corrections, or architectural issues revealed by future hosts.
+
 ## [0.2.0] - 2026-09-02 - Classic CHIP-8 Baseline
 
 ### Added
