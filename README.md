@@ -1,10 +1,8 @@
 # Chip8NX
 
-```text
-Chip8NX = CHIP-8 + N(ext) / e(X)tensible
-```
+`Chip8NX = CHIP-8 + N(ext) / e(X)tensible`
 
-**A modular, profile-driven CHIP-8 emulator in TypeScript.**
+A modular, profile-driven CHIP-8 emulator in TypeScript.
 
 Chip8NX is a CHIP-8 emulator/interpreter built as a hands-on exercise in TypeScript, object-oriented design, emulator architecture, testing, and software engineering.
 
@@ -14,24 +12,20 @@ The project focuses first on accurate **Classic CHIP-8** behavior while keeping 
 
 **Current release: `v0.2.0` — Classic CHIP-8 Baseline**
 
-The `v0.2.0` milestone establishes a complete Classic CHIP-8 opcode baseline for Chip8NX.
-
-Every Classic opcode family is now intentionally handled, with direct unit coverage for executable CHIP-8 semantics and an explicit policy for the historical `0mmm` native COSMAC system call.
-
-The Classic implementation passes the project's current external conformance stack:
+The Classic core now has intentional coverage for the complete Classic opcode set and passes the project's current external conformance baseline:
 
 - IBM Logo;
-- original corax89 opcode test;
+- Original corax89 opcode test;
 - Timendus Corax+;
 - Timendus Flags;
-- Timendus Quirks;
+- Timendus Quirks in Classic CHIP-8 mode;
 - Timendus Keypad.
 
-This conformance work validated and, where necessary, corrected Classic behavior around arithmetic flags, shift-source semantics, memory transfer, keyboard input, sprite clipping, and vertical-blank-synchronized drawing.
+`0mmm` is recognized and decoded but intentionally rejected because it transfers execution to native CDP1802 code outside the generic CHIP-8 virtual machine.
 
-Additional Classic conformance tests may still be added when they provide useful new evidence, but they no longer block feature development.
+Additional Classic conformance remains useful when it provides new behavioral evidence, but it no longer blocks feature development.
 
-The next phase of Chip8NX can therefore focus on using and refining the emulator core through real host applications before additional CHIP-8-family profiles are introduced.
+Current post-`v0.2.0` development is focused on the first real host application: an interactive terminal frontend with rendering, keyboard input, and a layered-composition case study.
 
 ## Goals
 
@@ -49,53 +43,41 @@ The main goals are to:
 
 ## Architecture
 
-The emulator separates machine definition, application composition, initialization, execution, and runtime orchestration.
+Chip8NX separates machine definition, application composition, initialization, execution, and runtime orchestration.
 
-```text
-     Chip8Profile
-    "What machine?"
-          |
-          v
- Application composition
-"Which implementations?"
-          |
-          v
-  MachineInitializer
-   "Establish state"
-          |
-   +------+------+
-   |             |
-   v             v
-  Cpu       Chip8Runtime
-   |             |
-   |             v
-   |         Scheduler
-   |             |
-   |             v
-   |           Clock
-   |
-   +--> ExecutionContext
-          |
-          +--> machine state
-          +--> DisplayBuffer
-          +--> VerticalBlank
+```mermaid
+flowchart TB
+    Profile["Chip8Profile<br/>What machine?"]
+    App["Application composition<br/>Which implementations?"]
+    Init["MachineInitializer<br/>Establish state"]
+    Cpu["Cpu"]
+    Runtime["Chip8Runtime"]
+    Scheduler["Scheduler"]
+    Context["ExecutionContext"]
+
+    Profile --> App
+    App --> Init
+    Init --> Context
+    App --> Cpu
+    App --> Runtime
+    Cpu --> Context
+    Runtime --> Cpu
+    Runtime --> Scheduler
 ```
 
-A `Chip8Profile` describes the machine being emulated, including memory layout, display geometry, display refresh frequency, timer frequency, and font placement.
+A `Chip8Profile` describes the emulated machine, including memory layout, display geometry, display refresh frequency, timer frequency, and font placement.
 
-The application is responsible for selecting concrete implementations such as memory, keyboard, random-number generation, clock, and host-specific presentation.
+The application selects concrete implementations and host adapters.
 
-`MachineInitializer` establishes a clean machine state, installs profile data, resets transient machine state such as vertical-blank availability, and loads a program.
+`MachineInitializer` validates and establishes machine state, reinstalls profile system data, resets transient state such as vertical-blank availability, and loads a program.
 
-`Cpu` owns the CHIP-8 fetch/decode/execute cycle.
+`Cpu` owns the fetch/decode/execute cycle.
 
-`Chip8Runtime` coordinates CPU execution, CHIP-8 timers, and emulated display-frame boundaries.
+`Chip8Runtime` coordinates CPU execution, CHIP-8 timer countdown, and emulated display-frame boundaries.
 
-`VerticalBlank` models display synchronization as emulated machine state. Classic `Dxyn` waits for an available vertical-blank interval rather than depending on a terminal, browser, or desktop renderer.
+Host rendering remains outside Core. A terminal, browser, or desktop host observes `DisplayBuffer` without defining CHIP-8 display timing.
 
-The generic deadline-driven `Scheduler` maintains exact chronological ordering between periodic tasks.
-
-Host rendering remains outside the emulator runtime. A terminal, browser, or desktop application can observe `DisplayBuffer` independently without affecting CHIP-8 timing semantics.
+For diagrams and more detail, see [Architecture](./docs/architecture/README.md).
 
 ## Quick start
 
@@ -117,9 +99,7 @@ This performs TypeScript checking, formatting validation, and linting.
 deno task test
 ```
 
-This runs colocated unit tests and the integration test suite.
-
-Third-party conformance ROMs are intentionally not included in the repository, so conformance tests are kept separate from the default test task.
+Third-party conformance ROMs are intentionally not included in the repository, so conformance tests remain separate from the default test task.
 
 ### Run conformance tests
 
@@ -129,25 +109,33 @@ After installing the required external ROM fixtures as documented in [`packages/
 deno task test:conformance
 ```
 
-### Run all tests
-
-```bash
-deno task test:all
-```
-
 ### Run the CI contract locally
 
 ```bash
 deno task ci
 ```
 
-The CI task runs the project checks plus unit and integration tests. It does not require locally installed third-party conformance ROMs.
-
-### Watch tests
+### Run the terminal application
 
 ```bash
-deno task test:watch
+deno task terminal <rom-path>
 ```
+
+The terminal host presents the 64×32 Classic framebuffer using Unicode block characters and accepts the conventional CHIP-8 keyboard mapping.
+
+### Compare terminal composition levels
+
+The terminal application is also being used as a case study for layered composition.
+
+The same terminal host is available as three runnable examples:
+
+```text
+apps/terminal/examples/01-components.ts
+apps/terminal/examples/02-standard-compositions.ts
+apps/terminal/examples/03-standard-host.ts
+```
+
+See [Terminal composition levels](./docs/guides/terminal-composition-levels.md).
 
 ### Generate API documentation
 
@@ -167,8 +155,6 @@ build/docs/api/
 deno task docs:check
 ```
 
-Documentation linting is being introduced incrementally while the public API is still evolving.
-
 ## Repository structure
 
 ```text
@@ -180,6 +166,7 @@ Documentation linting is being introduced incrementally while the public API is 
 │       └── tests/
 │
 ├── apps/
+│   └── terminal/
 ├── docs/
 ├── CHANGELOG.md
 ├── LICENSE
@@ -192,7 +179,7 @@ Documentation linting is being introduced incrementally while the public API is 
 
 The reusable **Chip8NX Core** package (`@chip8nx/core`).
 
-It contains machine components, profiles, CPU execution, initialization, runtime orchestration, scheduling, and core tests.
+It contains machine components, profiles, CPU execution, initialization, runtime orchestration, scheduling, and Core tests.
 
 Its intended public API is exposed through:
 
@@ -200,42 +187,33 @@ Its intended public API is exposed through:
 packages/core/mod.ts
 ```
 
-### `apps`
+### `apps/terminal`
 
-Host applications belong here.
+The first concrete Chip8NX host application.
 
-Planned examples include:
+It adapts the reusable Core to terminal-specific presentation and input while keeping terminal concerns out of the emulator package.
 
-- terminal application;
-- web application;
-- desktop application;
-- debugging or visualization tools.
+The terminal application is also the current proof of concept for three composition depths:
 
-Applications may choose different host implementations while sharing the same emulator core.
+1. individual components;
+2. standard subsystem compositions;
+3. a ready-to-use standard terminal host.
 
 ### `docs`
 
-Long-form project documentation that does not naturally belong in source-level JSDoc.
+Long-form architecture, guides, reference material, and Architecture Decision Records.
 
 ## Documentation
 
-Documentation is split into two layers.
-
-### API documentation
-
-Public TypeScript APIs are documented directly in the source with JSDoc and generated with Deno's documentation tooling.
-
-### Project documentation
-
-Architecture, guides, and design decisions belong under `docs/`:
-
+- [Documentation index](./docs/README.md)
 - [Architecture](./docs/architecture/README.md)
 - [Guides](./docs/guides/README.md)
+- [Reference](./docs/reference/README.md)
 - [Architecture Decision Records](./docs/decisions/README.md)
 
-Source comments explain individual APIs; project documentation explains how the larger system fits together and why major design decisions were made.
+Source-level API behavior belongs close to TypeScript implementation in JSDoc. Project documentation explains how larger pieces collaborate and why major decisions were made.
 
-## Conformance roadmap
+## Classic conformance baseline
 
 ### `v0.0.1` — IBM Logo POC ✓
 
@@ -243,85 +221,29 @@ A real CHIP-8 ROM executes end-to-end and produces the expected framebuffer.
 
 ### `v0.1.0` — corax89 Opcode Conformance ✓
 
-The original corax89 CHIP-8 opcode test ROM produces its expected successful result screen through the normal Chip8NX initialization, CPU, runtime, scheduler, and display pipeline.
-
-### Timendus Corax+ ✓
-
-Extends opcode coverage beyond the original corax89 ROM, including call/return behavior, `8XY7`, `FX1E`, `FX65`, BCD edge cases, and register-width behavior.
-
-### Timendus Flags ✓
-
-Validates arithmetic and logical results, carry and borrow semantics, shifted-out flags, operand ordering, and use of `VF` as an instruction operand.
-
-### Timendus Quirks — Classic CHIP-8 ✓
-
-Validates Classic behavior for:
-
-- logical-operation `VF` reset;
-- `FX55` / `FX65` index-register increment;
-- vertical-blank-synchronized drawing;
-- sprite clipping;
-- `Vy`-based shifting;
-- `V0`-based `BNNN` jumping.
-
-### Timendus Keypad ✓
-
-Validates all three Classic CHIP-8 keyboard instructions:
-
-- `EX9E` skips when the key identified by `VX` is pressed;
-- `EXA1` skips when the key identified by `VX` is not pressed;
-- `FX0A` waits for a key press followed by release while CHIP-8 timers continue to advance.
-
-The full automated Keypad test passes without requiring additional production-code changes.
+The original corax89 opcode test succeeds through the normal Chip8NX machine pipeline.
 
 ### `v0.2.0` — Classic CHIP-8 Baseline ✓
 
-The Classic opcode coverage audit confirms that every Classic opcode family is intentionally handled.
+The Classic implementation passes the relevant Timendus Corax+, Flags, Quirks, and Keypad tests and has an explicit opcode-family coverage audit.
 
-The release incorporates successful Classic-mode coverage from:
+See [Classic CHIP-8 opcode coverage audit](./docs/reference/classic-opcode-audit.md).
 
-- Timendus Corax+;
-- Timendus Flags;
-- Timendus Quirks;
-- Timendus Keypad.
+## Future work
 
-Together with IBM Logo and the original corax89 opcode test, this establishes the current Classic CHIP-8 conformance baseline.
+Post-baseline work can proceed in parallel across areas such as:
 
-The historical `0mmm` native COSMAC system call is explicitly recognized but intentionally unsupported because executing it would require emulation of native CDP1802 machine code outside the CHIP-8 virtual-machine boundary.
-
-Further Classic conformance tests are no longer blockers for feature development.
-
-### Next
-
-Exercise the reusable core through a real host application.
-
-This will put practical pressure on application composition, the public Core API, rendering, input integration, timing, and eventual sound presentation before the machine model is complicated by additional CHIP-8-family profiles.
-
-### Future work
-
-After the first host application has helped validate the Core integration boundaries:
-
-- refine the public Core API based on real application usage;
-- add host audio integration for the CHIP-8 sound timer;
-- add debugging and inspection tooling;
-- introduce additional CHIP-8-family profiles when concrete variant behavior justifies profile-driven compatibility options.
-
-## External conformance fixtures
-
-Third-party ROM images are not distributed with Chip8NX.
-
-The conformance-test documentation describes how to obtain the external fixtures locally and pins the exact filenames, sizes, and checksums used by the project.
-
-See:
-
-- [`packages/core/tests/conformance/README.md`](./packages/core/tests/conformance/README.md)
-- [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md)
+- terminal host refinement, including sound integration;
+- public API and composition ergonomics;
+- web and desktop hosts;
+- debugging and inspection tooling;
+- additional CHIP-8-family profiles when the project is ready to model variant differences explicitly.
 
 ## References
 
 The project is developed with reference to:
 
-- CHIP-8 Variant Database — Classic CHIP-8;
+- CHIP-8 Variant Database / CHIP-8-KB — Classic CHIP-8;
 - Matthew Mikolay's CHIP-8 technical reference;
 - Tobias V. Langhoff's CHIP-8 emulator guide;
 - corax89 CHIP-8 test ROM;
@@ -333,7 +255,11 @@ When references disagree, Classic CHIP-8 behavior is currently resolved primaril
 
 The project follows Semantic Versioning.
 
-During `0.x`, minor versions represent meaningful capability or conformance milestones and may include API changes.
+During `0.x`:
+
+- PATCH releases contain fixes, refactors, documentation improvements, and other changes that do not represent a new emulator capability milestone;
+- MINOR releases represent meaningful capability or conformance milestones and may include breaking API changes;
+- `1.0.0` will mark the first stable Classic CHIP-8 public API and agreed conformance contract.
 
 See [CHANGELOG.md](./CHANGELOG.md) for release history.
 
@@ -341,4 +267,4 @@ See [CHANGELOG.md](./CHANGELOG.md) for release history.
 
 Chip8NX source code is licensed under the [MIT License](./LICENSE).
 
-Third-party conformance ROMs and other external materials remain subject to their respective upstream licenses and are not covered by the Chip8NX MIT license. See [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md) for details.
+Third-party conformance ROMs and other external materials remain subject to their respective upstream licenses and are not covered by the Chip8NX MIT license. See [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md).
