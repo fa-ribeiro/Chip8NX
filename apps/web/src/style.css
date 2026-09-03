@@ -99,3 +99,56 @@ header p {
   opacity: 0.45;
   cursor: default;
 }
+
+.keypad {
+  margin-top: 2rem;
+}
+
+.keypad h2 {
+  font-size: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.virtual-keypad {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(3rem, 1fr));
+
+  gap: 0.5rem;
+
+  width: min(100%, 24rem);
+
+  touch-action: none;
+  user-select: none;
+}
+
+.virtual-keypad button {
+  aspect-ratio: 1;
+
+  min-width: 3rem;
+
+  font: inherit;
+  font-size: 1.1rem;
+  font-weight: 700;
+
+  color: #f5f5f5;
+  background: #2a2a2a;
+
+  border: 1px solid #555;
+  border-radius: 0.4rem;
+
+  cursor: pointer;
+}
+
+.virtual-keypad button:hover:not(:disabled) {
+  background: #383838;
+}
+
+.virtual-keypad button[data-pressed="true"] {
+  background: #555;
+  transform: translateY(1px);
+}
+
+.virtual-keypad button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}

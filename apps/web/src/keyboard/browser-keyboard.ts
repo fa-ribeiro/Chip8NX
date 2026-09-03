@@ -1,4 +1,4 @@
-import { KeyboardState } from "@chip8nx/core";
+import type { KeyboardInput } from "./keyboard-input.ts";
 import { mapBrowserCodeToChip8Key } from "./browser-key-mapping.ts";
 
 /**
@@ -11,7 +11,7 @@ export class BrowserKeyboard {
   private started = false;
 
   public constructor(
-    private readonly keyboard: KeyboardState,
+    private readonly keyboard: KeyboardInput,
     private readonly target: Window = window,
   ) {}
 

@@ -25,6 +25,8 @@ import {
 } from "@chip8nx/core";
 import { CanvasDisplay } from "./display/canvas-display.ts";
 import { BrowserKeyboard } from "./keyboard/browser-keyboard.ts";
+import { KeyboardInputHub } from "./keyboard/keyboard-input-hub.ts";
+import { VirtualKeypad } from "./keyboard/virtual-keypad.ts";
 
 import "./style.css";
 
@@ -41,15 +43,20 @@ interface WebMachineSession {
   readonly displayBuffer: DisplayBuffer;
 
   readonly browserKeyboard: BrowserKeyboard;
+
+  readonly virtualKeypad: VirtualKeypad;
 }
 
 const romInput = requireElement<HTMLInputElement>("#rom-input");
 const canvas = requireElement<HTMLCanvasElement>("#chip8-display");
 const status = requireElement<HTMLElement>("#status");
+
 const startButton = requireElement<HTMLButtonElement>("#start-button");
 const pauseButton = requireElement<HTMLButtonElement>("#pause-button");
 const stepButton = requireElement<HTMLButtonElement>("#step-button");
 const resetButton = requireElement<HTMLButtonElement>("#reset-button");
+
+const virtualKeypadElement = requireElement<HTMLElement>("#virtual-keypad");
 
 const display = new CanvasDisplay(canvas);
 
@@ -90,6 +97,7 @@ async function loadAndRun(rom: File): Promise<void> {
 
   machine?.runtime.pause();
   machine?.browserKeyboard.stop();
+  machine?.virtualKeypad.stop();
 
   machine = undefined;
 
@@ -103,6 +111,7 @@ async function loadAndRun(rom: File): Promise<void> {
     machine = createMachine(rom.name, program);
 
     machine.browserKeyboard.start();
+    machine.virtualKeypad.start();
 
     machine.runtime.resume();
 
@@ -142,7 +151,11 @@ function createMachine(romName: string, program: MemoryImage): WebMachineSession
 
   const keyboard = new KeyboardState();
 
-  const browserKeyboard = new BrowserKeyboard(keyboard);
+  const keyboardInput = new KeyboardInputHub(keyboard);
+
+  const browserKeyboard = new BrowserKeyboard(keyboardInput.createSource());
+
+  const virtualKeypad = new VirtualKeypad(virtualKeypadElement, keyboardInput.createSource());
 
   const context: ExecutionContext = {
     registers: new Registers(),
@@ -197,6 +210,7 @@ function createMachine(romName: string, program: MemoryImage): WebMachineSession
     runtime,
     displayBuffer,
     browserKeyboard,
+    virtualKeypad,
   };
 }
 
@@ -306,6 +320,7 @@ function runHostLoop(session: WebMachineSession): void {
       session.runtime.pause();
 
       session.browserKeyboard.stop();
+      session.virtualKeypad.stop();
 
       setStatus(`Emulation stopped: ${describeError(error)}`, true);
 
