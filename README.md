@@ -10,11 +10,17 @@ The project focuses first on accurate **Classic CHIP-8** behavior while keeping 
 
 ## Status
 
-**Current release: `v0.3.0` — Interactive Terminal Host**
+### Current release: `v0.4.0` — Interactive Web Host
 
-`v0.3.0` adds the first complete Chip8NX host application: an interactive terminal frontend with framebuffer presentation, keyboard input, clean terminal lifecycle management, and three documented composition levels.
+`v0.4.0` adds the second complete Chip8NX host application: a browser frontend with Canvas framebuffer presentation, physical and virtual keyboard input, execution lifecycle controls, ROM loading, and Web Audio sound presentation.
 
-The terminal application also completes the first case study for layered composition. That design will be tested again with a substantially different host before it is considered for broader use in the reusable Core.
+The Web application also completes the second host-composition case study.
+
+Comparison with the Terminal host confirms that the existing Core boundaries work across substantially different environments while host-level composition should remain application-specific.
+
+The Terminal Level 1 / Level 2 / Level 3 model therefore remains a terminal-specific composition model, while application-owned composition remains the project-wide rule.
+
+See [Host composition evaluation](./docs/architecture/composition-evaluation.md).
 
 The Classic CHIP-8 Core remains at the `v0.2.0` conformance baseline, with intentional coverage for the complete Classic opcode set and the project's current external conformance suite:
 
@@ -27,24 +33,7 @@ The Classic CHIP-8 Core remains at the `v0.2.0` conformance baseline, with inten
 
 `0mmm` is recognized and decoded but intentionally rejected because it transfers execution to native CDP1802 code outside the generic CHIP-8 virtual machine.
 
-Current development is moving toward a web host while preserving the terminal application as the completed first-host reference implementation.
-
-**`v0.2.0` — Classic CHIP-8 Baseline**
-
-The Classic core now has intentional coverage for the complete Classic opcode set and passes the project's current external conformance baseline:
-
-- IBM Logo;
-- Original corax89 opcode test;
-- Timendus Corax+;
-- Timendus Flags;
-- Timendus Quirks in Classic CHIP-8 mode;
-- Timendus Keypad.
-
-`0mmm` is recognized and decoded but intentionally rejected because it transfers execution to native CDP1802 code outside the generic CHIP-8 virtual machine.
-
 Additional Classic conformance remains useful when it provides new behavioral evidence, but it no longer blocks feature development.
-
-Current post-`v0.2.0` development is focused on the first real host application: an interactive terminal frontend with rendering, keyboard input, and a layered-composition case study.
 
 ## Goals
 
@@ -146,7 +135,7 @@ Press `Escape` to exit. `Ctrl+C` remains available as an alternative exit path.
 
 ### Compare terminal composition levels
 
-The terminal application is also being used as a case study for layered composition.
+The terminal application provides the first Chip8NX composition case study.
 
 The same terminal host is available as three runnable examples:
 
@@ -156,7 +145,27 @@ apps/terminal/examples/02-standard-compositions.ts
 apps/terminal/examples/03-standard-host.ts
 ```
 
-See [Terminal composition levels](./docs/guides/terminal-composition-levels.md).
+The model has now been evaluated against the Web host and remains a terminal-specific composition model rather than a mandatory project-wide framework.
+
+See [Terminal composition levels](./docs/guides/terminal-composition-levels.md) and [Host composition evaluation](./docs/architecture/composition-evaluation.md).
+
+### Run the Web application
+
+Start the Vite development server:
+
+```bash
+deno task web
+```
+
+Open the URL reported by Vite in a browser, select a CHIP-8 ROM file, and the Web host will load and run it.
+
+The Web host provides Canvas framebuffer rendering, physical and virtual keyboard input, execution controls, and Web Audio sound presentation.
+
+To verify the production Web build:
+
+```bash
+deno task web:build
+```
 
 ### Generate API documentation
 
@@ -187,7 +196,8 @@ deno task docs:check
 │       └── tests/
 │
 ├── apps/
-│   └── terminal/
+│   ├── terminal/
+│   └── web/
 ├── docs/
 ├── CHANGELOG.md
 ├── LICENSE
@@ -221,6 +231,16 @@ The terminal application also serves as the completed first case study for three
 3. a ready-to-use standard terminal host.
 
 The three levels use the same underlying components and demonstrate how convenience can reduce assembly burden without removing the manual, fully customizable path.
+
+### `apps/web`
+
+The second concrete Chip8NX host application.
+
+It adapts the same reusable Core to browser-specific presentation, input, audio, and application lifecycle concerns.
+
+The current Web host includes Canvas rendering, physical and virtual keyboard input, execution controls, ROM loading, and Web Audio sound presentation.
+
+It also serves as the second composition case study used to evaluate which architectural patterns belong in Core and which should remain host-specific.
 
 ### `docs`
 
@@ -256,16 +276,20 @@ See [Classic CHIP-8 opcode coverage audit](./docs/reference/classic-opcode-audit
 
 The first complete Chip8NX host provides terminal framebuffer presentation, interactive keyboard input, clean terminal lifecycle management, and runnable examples demonstrating Level-1, Level-2, and Level-3 composition.
 
+### `v0.4.0` — Interactive Web Host ✓
+
+The second complete Chip8NX host provides browser ROM loading, Canvas framebuffer presentation, physical and virtual keyboard input, execution lifecycle controls, and Web Audio sound presentation.
+
+The Web host also completes the second application-composition case study, validating the current Core host boundaries while keeping host-level composition application-specific.
+
 ## Future work
 
-Post-`v0.3.0` development can proceed across areas such as:
+Post-`v0.4.0` development can proceed across areas such as:
 
-- a web host used as a second application and architectural case study;
-- evaluation of layered composition across multiple host environments;
-- public Core API and composition ergonomics after additional architectural evidence;
+- continued Web-host refinement where new use cases justify it;
+- public Core API and composition ergonomics when additional architectural evidence creates concrete pressure for change;
 - desktop hosts;
 - debugging and inspection tooling;
-- sound integration in host environments where it provides a useful implementation model;
 - additional CHIP-8-family profiles when the project is ready to model variant differences explicitly.
 
 ## References

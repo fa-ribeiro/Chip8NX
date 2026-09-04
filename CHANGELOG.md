@@ -12,6 +12,45 @@ During the `0.x` development phase:
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-04 - Interactive Web Host
+
+### Added
+
+- Second interactive Chip8NX host application under `apps/web`, using Vite and vanilla TypeScript.
+- Browser ROM-file loading and Classic CHIP-8 execution.
+- `CanvasDisplay` for browser framebuffer presentation.
+- Start/resume, pause, single-step, and reset-to-paused execution controls.
+- Persistent `WebMachineSession` application-state aggregate for the currently loaded ROM.
+- `BrowserKeyboard` physical-keyboard adapter using `KeyboardEvent.code`.
+- Browser-keyboard key release on browser focus loss to prevent stuck input.
+- Virtual 4×4 CHIP-8 keypad.
+- `KeyboardInputHub` for combining independent physical and virtual keyboard input sources without losing per-source key ownership.
+- `WebAudioBeeper` for simple CHIP-8 sound presentation through the Web Audio API.
+- Focused tests for the Web display, keyboard, virtual keypad, input hub, and audio components.
+- Web application guide documenting browser-host architecture, input composition, Canvas presentation, Web Audio, runtime lifecycle, and host composition.
+
+### Changed
+
+- Added `apps/web` to the Deno workspace and project-wide checking and testing.
+- Extended the project CI contract to verify the Web production build.
+- Evaluated the Terminal Level 1 / Level 2 / Level 3 composition experiment against the Web host as a second, substantially different application.
+- Retained application-owned composition and host-local composition structures rather than introducing a mandatory Core composition framework.
+- Updated architecture and project documentation with the results of the Terminal-versus-Web composition evaluation.
+
+### Milestone
+
+`v0.4.0` introduces the second complete Chip8NX host application.
+
+The Web frontend can load and run Classic CHIP-8 programs with Canvas framebuffer presentation, physical and virtual keyboard input, execution lifecycle controls, and Web Audio sound presentation.
+
+The Web application also completes the second-host composition case study.
+
+Comparison with the Terminal host validates the existing Core host boundaries while showing that host-level composition structures should be allowed to differ according to platform responsibilities.
+
+The Terminal Level 1 / Level 2 / Level 3 model therefore remains a terminal-specific composition model, while application-owned composition remains the project-wide rule.
+
+No new Core composition abstraction is introduced as part of this milestone.
+
 ## [0.3.0] - 2026-09-03 - Interactive Terminal Host
 
 ### Added
