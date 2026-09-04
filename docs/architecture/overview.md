@@ -315,9 +315,14 @@ The application remains the composition root.
 
 A terminal application can choose terminal-specific adapters while a browser application can choose browser-specific adapters, with both sharing the same Core semantics.
 
-The current terminal application is also testing optional higher-level composition helpers. This does not change the Core dependency rule: those helpers live in the host application and assemble the same lower-level components.
+The terminal application provides optional higher-level composition helpers through its Level 1 / Level 2 / Level 3 model. Evaluation against the Web application showed that this structure is useful for Terminal but does not need to become a mandatory Core or project-wide composition framework.
 
-See [Terminal composition levels](../guides/terminal-composition-levels.md).
+Different hosts may develop different host-local composition structures around the same Core boundaries.
+
+See:
+
+- [Terminal composition levels](../guides/terminal-composition-levels.md)
+- [Host composition evaluation](./composition-evaluation.md)
 
 ## Dependency direction
 

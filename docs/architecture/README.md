@@ -8,7 +8,8 @@ Source-level JSDoc explains individual classes, interfaces, methods, and types. 
 
 - [Overview](./overview.md) — global Core component diagram, CPU execution pipeline, runtime/timing relationships, host boundaries, and application composition.
 - [Machine lifecycle](./machine-lifecycle.md) — construction, initialization, execution, pause/resume, display synchronization, single stepping, and reset.
+- [Host composition evaluation](./composition-evaluation.md) — comparison of the Terminal and Web composition case studies and the resulting project-wide conclusions.
 
 For the rationale behind major architectural choices, see the [Architecture Decision Records](../decisions/README.md).
 
-Host-specific architecture belongs with the relevant host documentation. The terminal application's Level-1/2/3 composition case study is documented in [Terminal composition levels](../guides/terminal-composition-levels.md).
+Host-specific architecture belongs with the relevant host documentation. The terminal application's Level-1/2/3 composition model is documented in [Terminal composition levels](../guides/terminal-composition-levels.md).
