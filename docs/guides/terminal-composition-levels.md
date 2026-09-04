@@ -249,25 +249,34 @@ Likewise, an application may use standard presentation while manually composing 
 
 This is central to the experiment: simplification should hide complexity by default, not eliminate capability.
 
-## Current evaluation status
+## Evaluation result
 
-The display and keyboard Level-2 case studies have demonstrated that:
+The terminal composition model has now been evaluated against the Web application as a second, substantially different host.
 
-- the standard path can be materially simpler;
+The comparison confirms that:
+
+- the standard terminal path can be materially simpler;
 - meaningful customization can remain easy;
 - the manual Level-1 path remains intact;
 - existing specialized components remain the implementation foundation;
-- a giant all-purpose options object is not required.
+- a giant all-purpose options object is not required;
+- the three-level structure arises naturally from terminal-specific resource and lifecycle ownership.
 
-The Level-3 host demonstrates that the two standard subsystems can be composed around shared terminal resources without leaking their internal details back into the application root.
+The Web host did not naturally reproduce the same Level 1 / Level 2 / Level 3 structure.
 
-The three terminal composition levels now provide enough implementation evidence to evaluate whether the pattern should be generalized beyond the terminal application.
+Instead, it developed different host-local compositions around the same Core boundaries, including multiple input sources combined through `KeyboardInputHub`, Canvas presentation, Web Audio presentation, and browser-specific lifecycle orchestration.
 
-The result should be evaluated before this model is generalized to Core composition or formalized in a new project-wide ADR.
+The result is therefore:
+
+> The Level 1 / Level 2 / Level 3 model remains a useful terminal-host composition model, but it is not generalized into a mandatory Core or project-wide composition framework.
+
+The broader composition principle remains applicable: convenience abstractions should emerge from concrete responsibilities while preserving access to the lower-level components they compose.
+
+See [Host composition evaluation](../architecture/composition-evaluation.md) for the Terminal-versus-Web comparison and its architectural conclusions.
 
 ## Design invariant
 
-The current hypothesis is:
+The composition principle retained from the experiment is:
 
 > A convenience layer may hide complexity, but it must not remove functionality.
 
