@@ -32,14 +32,9 @@ const profile = CLASSIC_CHIP8_PROFILE;
 const memory = new Ram(profile.memorySize);
 const registers = new Registers();
 const stack = new Stack(profile.stackCapacity);
-const programCounter = new ProgramCounter(
-  profile.programStartAddress,
-);
+const programCounter = new ProgramCounter(profile.programStartAddress);
 
-const displayBuffer = new DisplayBuffer(
-  profile.display.width,
-  profile.display.height,
-);
+const displayBuffer = new DisplayBuffer(profile.display.width, profile.display.height);
 
 const verticalBlank = new VerticalBlank();
 const keyboard = new KeyboardState();

@@ -138,10 +138,7 @@ const presentation = new StandardTerminalPresentation({
   output,
 });
 
-const input = new StandardTerminalInput(
-  machine.keyboard,
-  output,
-);
+const input = new StandardTerminalInput(machine.keyboard, output);
 ```
 
 This level intentionally exposes only meaningful subsystem customization seams.
@@ -149,13 +146,9 @@ This level intentionally exposes only meaningful subsystem customization seams.
 For example, use the standard input stack with a custom key mapping:
 
 ```ts
-const input = new StandardTerminalInput(
-  machine.keyboard,
-  output,
-  {
-    mapKey: myCustomKeyMapping,
-  },
-);
+const input = new StandardTerminalInput(machine.keyboard, output, {
+  mapKey: myCustomKeyMapping,
+});
 ```
 
 Or retain standard presentation lifecycle with a custom display implementation:
@@ -180,9 +173,7 @@ Runnable example:
 Level 3 provides a ready-to-use standard terminal environment.
 
 ```ts
-const terminal = new StandardTerminalHost(
-  machine.keyboard,
-);
+const terminal = new StandardTerminalHost(machine.keyboard);
 ```
 
 `StandardTerminalHost` owns the terminal resource shared by the standard presentation and input subsystems and coordinates their host-level lifecycle.

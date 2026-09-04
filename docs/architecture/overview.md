@@ -131,10 +131,7 @@ new Stack(profile.stackCapacity);
 
 new ProgramCounter(profile.programStartAddress);
 
-new DisplayBuffer(
-  profile.display.width,
-  profile.display.height,
-);
+new DisplayBuffer(profile.display.width, profile.display.height);
 ```
 
 The profile supplies machine-specific values while the components remain reusable.

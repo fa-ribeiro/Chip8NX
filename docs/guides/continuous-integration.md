@@ -151,7 +151,7 @@ This keeps the validation rules in the project instead of making either hosting 
 
 ## Further reading
 
-- Deno: GitHub Actions — https://docs.deno.com/examples/deno_github_actions_tutorial/
-- Deno: `deno ci` — https://docs.deno.com/runtime/reference/cli/ci/
-- Forgejo Actions quick start — https://forgejo.org/docs/latest/user/actions/quick-start/
-- Forgejo Actions and GitHub Actions differences — https://forgejo.org/docs/latest/user/actions/github-actions/
+- Deno: GitHub Actions — <https://docs.deno.com/examples/deno_github_actions_tutorial/>
+- Deno: `deno ci` — <https://docs.deno.com/runtime/reference/cli/ci/>
+- Forgejo Actions quick start — <https://forgejo.org/docs/latest/user/actions/quick-start/>
+- Forgejo Actions and GitHub Actions differences — <https://forgejo.org/docs/latest/user/actions/github-actions/>

@@ -51,25 +51,18 @@ import {
 const registers = new Registers();
 const memory = new Ram(profile.memorySize);
 const stack = new Stack(profile.stackCapacity);
-const programCounter = new ProgramCounter(
-  profile.programStartAddress,
-);
+const programCounter = new ProgramCounter(profile.programStartAddress);
 const indexRegister = new IndexRegister();
 
 const delayTimer = new Timer();
 const soundTimer = new Timer();
 
-const displayBuffer = new DisplayBuffer(
-  profile.display.width,
-  profile.display.height,
-);
+const displayBuffer = new DisplayBuffer(profile.display.width, profile.display.height);
 
 const verticalBlank = new VerticalBlank();
 const keyboard = new KeyboardState();
 
-const font = new ClassicFont(
-  profile.fontBaseAddress,
-);
+const font = new ClassicFont(profile.fontBaseAddress);
 
 const randomNumberGenerator = new DefaultRandomNumberGenerator();
 ```
@@ -129,19 +122,13 @@ Create a `MachineInitializer`:
 ```ts
 import { MachineInitializer, MemoryImageLoader } from "@chip8nx/core";
 
-const initializer = new MachineInitializer(
-  new MemoryImageLoader(),
-);
+const initializer = new MachineInitializer(new MemoryImageLoader());
 ```
 
 Then initialize:
 
 ```ts
-initializer.initialize(
-  context,
-  profile,
-  program,
-);
+initializer.initialize(context, profile, program);
 ```
 
 Initialization validates the complete memory layout before mutation.
@@ -155,11 +142,7 @@ The random-number generator is not reset by initialization.
 ```ts
 import { Cpu, Decoder, InstructionExecutor } from "@chip8nx/core";
 
-const cpu = new Cpu(
-  context,
-  new Decoder(),
-  new InstructionExecutor(),
-);
+const cpu = new Cpu(context, new Decoder(), new InstructionExecutor());
 ```
 
 The CPU owns one CHIP-8 instruction cycle:
@@ -193,9 +176,7 @@ Create a scheduler using a monotonic clock:
 ```ts
 import { PerformanceClock, Scheduler } from "@chip8nx/core";
 
-const scheduler = new Scheduler(
-  new PerformanceClock(),
-);
+const scheduler = new Scheduler(new PerformanceClock());
 ```
 
 Then create the runtime:
