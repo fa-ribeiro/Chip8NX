@@ -7,5 +7,11 @@ import type { Instruction } from "../instruction/instruction.ts";
  * changing instruction decoding or disassembly.
  */
 export interface InstructionFormatter {
+  /**
+   * Formats a decoded instruction.
+   *
+   * @param instruction - Instruction to format.
+   * @returns The human-readable instruction representation.
+   */
   format(instruction: Instruction): string;
 }

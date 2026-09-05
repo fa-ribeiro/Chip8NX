@@ -13,6 +13,13 @@ import type { InstructionFormatter } from "./instruction-formatter.ts";
  * presentation is delegated to the configured {@link InstructionFormatter}.
  */
 export class Disassembler {
+  /**
+   * Creates a disassembler using the supplied decoding and formatting
+   * collaborators.
+   *
+   * @param decoder - Decoder used to translate opcodes into typed instructions.
+   * @param formatter - Formatter used to produce human-readable instruction text.
+   */
   public constructor(
     private readonly decoder: Decoder,
     private readonly formatter: InstructionFormatter,

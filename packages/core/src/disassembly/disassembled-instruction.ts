@@ -9,7 +9,18 @@ import type { Instruction } from "../instruction/instruction.ts";
  * selected by the configured instruction formatter.
  */
 export interface DisassembledInstruction {
+  /**
+   * Memory address of the instruction's first byte.
+   */
   readonly address: Address;
+
+  /**
+   * Typed instruction produced by opcode decoding.
+   */
   readonly instruction: Instruction;
+
+  /**
+   * Human-readable representation produced by the configured formatter.
+   */
   readonly text: string;
 }

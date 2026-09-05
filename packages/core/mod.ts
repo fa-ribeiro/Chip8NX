@@ -50,6 +50,12 @@ export type { Font } from "./src/font/font.ts";
 export { Decoder, InvalidOpcodeError } from "./src/instruction/decoder.ts";
 export * from "./src/instruction/instruction.ts";
 
+// Disassembly
+export { ClassicInstructionFormatter } from "./src/disassembly/classic-instruction-formatter.ts";
+export type { DisassembledInstruction } from "./src/disassembly/disassembled-instruction.ts";
+export { Disassembler } from "./src/disassembly/disassembler.ts";
+export type { InstructionFormatter } from "./src/disassembly/instruction-formatter.ts";
+
 // Keyboard
 export type { Keyboard } from "./src/keyboard/keyboard.ts";
 export { KeyboardState } from "./src/keyboard/keyboard-state.ts";

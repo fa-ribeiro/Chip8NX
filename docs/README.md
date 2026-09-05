@@ -25,7 +25,9 @@ Current topics include:
 - the Core architecture and component relationships;
 - CPU fetch/decode/execute flow;
 - runtime, timer, and vertical-blank timing;
-- machine lifecycle.
+- machine lifecycle;
+- disassembly, instruction inspection, and formatting boundaries;
+- host composition across the Terminal and Web applications.
 
 ### Guides
 
@@ -36,8 +38,10 @@ See [Guides](./guides/README.md).
 Current topics include:
 
 - embedding the CHIP-8 Core in an application;
+- disassembling CHIP-8 programs and customizing instruction formatting;
 - terminal composition levels and terminal component diagrams;
-- continuous integration.
+- continuous integration;
+- the Web application and browser-host composition.
 
 ### Reference
 

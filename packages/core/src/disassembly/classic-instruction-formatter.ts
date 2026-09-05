@@ -9,6 +9,9 @@ import type { InstructionFormatter } from "./instruction-formatter.ts";
  * notation.
  */
 export class ClassicInstructionFormatter implements InstructionFormatter {
+  /**
+   * {@inheritDoc InstructionFormatter.format}
+   */
   public format(instruction: Instruction): string {
     switch (instruction.kind) {
       case "clear-screen":

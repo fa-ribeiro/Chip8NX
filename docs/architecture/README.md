@@ -4,10 +4,11 @@ This directory documents the high-level architecture of the reusable Chip8NX Cor
 
 Source-level JSDoc explains individual classes, interfaces, methods, and types. The documents here instead explain how larger parts of the system collaborate, their dependency direction, and important lifecycle/timing boundaries.
 
-## Documents
+### Documents
 
 - [Overview](./overview.md) — global Core component diagram, CPU execution pipeline, runtime/timing relationships, host boundaries, and application composition.
 - [Machine lifecycle](./machine-lifecycle.md) — construction, initialization, execution, pause/resume, display synchronization, single stepping, and reset.
+- [Disassembly](./disassembly.md) — read-only instruction inspection, decoding and formatting boundaries, dependency direction, range semantics, lifecycle, and future extension points.
 - [Host composition evaluation](./composition-evaluation.md) — comparison of the Terminal and Web composition case studies and the resulting project-wide conclusions.
 
 For the rationale behind major architectural choices, see the [Architecture Decision Records](../decisions/README.md).

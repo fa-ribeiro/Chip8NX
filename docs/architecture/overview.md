@@ -120,7 +120,9 @@ The emulator is composed from narrow components such as:
 - `Keyboard`;
 - `Font`;
 - `RandomNumberGenerator`;
-- `Cpu`.
+- `Cpu`;
+
+- `Disassembler`;
 
 Generic components do not hide Classic-specific defaults.
 
@@ -170,6 +172,50 @@ Instruction decoding and instruction execution are deliberately separate respons
 - `InstructionExecutor` applies instruction semantics to `ExecutionContext`.
 
 The executor is stateless.
+
+### Disassembly and inspection
+
+Decoded instructions are also available to read-only inspection tools.
+
+Disassembly shares the same `Decoder` and typed `Instruction` model used by CPU execution, but diverges after decoding:
+
+```mermaid
+flowchart LR
+    Opcode["Opcode"]
+    Decoder["Decoder"]
+    Instruction["Typed Instruction"]
+
+    Executor["InstructionExecutor"]
+    Context["ExecutionContext"]
+
+    Formatter["InstructionFormatter"]
+    Result["DisassembledInstruction"]
+
+    Opcode --> Decoder
+    Decoder --> Instruction
+
+    Instruction --> Executor
+    Executor -->|"apply semantics"| Context
+
+    Instruction --> Formatter
+    Formatter -->|"present"| Result
+```
+
+The two paths have different responsibilities:
+
+```text
+execution:
+Opcode → Decoder → Instruction → InstructionExecutor → machine-state changes
+
+inspection:
+Opcode → Decoder → Instruction → InstructionFormatter → human-readable result
+```
+
+Inspection does not execute the instruction or mutate machine state. The shared typed `Instruction` boundary keeps opcode interpretation centralized in `Decoder` while allowing execution and tooling to consume the same semantic model.
+
+`Disassembler` coordinates memory reads, decoding, formatting, and sequential range traversal. Presentation remains outside Core, so the resulting structured data can be consumed by command-line tools, debuggers, tracers, or graphical hosts.
+
+See [Disassembly architecture](./disassembly.md) for the detailed component boundaries, composition model, range semantics, and extension strategy.
 
 ## Machine initialization
 
