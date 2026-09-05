@@ -1,13 +1,13 @@
 import {
+  address,
   CLASSIC_CHIP8_PROFILE,
   ClassicInstructionFormatter,
   Decoder,
   Disassembler,
+  InvalidOpcodeError,
   MemoryImage,
   MemoryImageLoader,
   Ram,
-  InvalidOpcodeError,
-  address,
 } from "@chip8nx/core";
 
 const romPath = Deno.args[0];

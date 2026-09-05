@@ -6,9 +6,11 @@ A disassembler reads instruction bytes from memory, decodes them using the same 
 
 This guide uses the standard Classic CHIP-8 formatter, but applications can provide their own formatting policy.
 
-## Disassemble a ROM
+## Load a ROM into Memory
 
-A host application is responsible for obtaining the ROM bytes. For example, a Deno program can read a file from the filesystem:
+A host application is responsible for obtaining the ROM bytes.
+
+For example, a Deno program can read a file from the filesystem:
 
 ```ts
 const bytes = await Deno.readFile(path);
@@ -27,9 +29,13 @@ const program = new MemoryImage(bytes);
 new MemoryImageLoader().load(memory, profile.programStartAddress, program);
 ```
 
-`MemoryImage` represents the ROM contents independently of where they are placed. `MemoryImageLoader` performs the actual copy into memory.
+`MemoryImage` represents the ROM contents independently of where they are placed.
 
-Next, compose a disassembler:
+`MemoryImageLoader` performs the actual copy into memory.
+
+## Create a Disassembler
+
+Compose a disassembler using the standard Classic CHIP-8 formatter:
 
 ```ts
 import { ClassicInstructionFormatter, Decoder, Disassembler } from "@chip8nx/core";
@@ -50,14 +56,20 @@ Disassembler
     → reads memory and coordinates decoding and formatting
 ```
 
-Disassemble the range occupied by the ROM:
+The `Disassembler` does not execute instructions or modify CPU or machine state.
+
+## Disassemble a Known Instruction Range
+
+`disassemble()` performs strict linear disassembly over a range that is expected to contain CHIP-8 instructions:
 
 ```ts
-const instructions = disassembler.disassemble(
-  memory,
-  profile.programStartAddress,
-  program.bytes.length,
-);
+const instructions = disassembler.disassemble(memory, startAddress, byteLength);
+```
+
+For example, if an application knows that a region beginning at the Classic program start contains 42 bytes of executable instructions:
+
+```ts
+const instructions = disassembler.disassemble(memory, profile.programStartAddress, 42);
 ```
 
 Each result contains the instruction's source address, its typed semantic representation, and its formatted text:
@@ -68,7 +80,7 @@ for (const entry of instructions) {
 }
 ```
 
-For a small program, the formatted instructions might represent code such as:
+A listing may contain instructions such as:
 
 ```text
 CLS
@@ -78,7 +90,28 @@ ADD V0, V1
 JP 0x200
 ```
 
-The disassembler only inspects memory. It does not execute these instructions or modify CPU or machine state.
+### Do not assume an entire ROM is one code range
+
+Real CHIP-8 ROMs may contain executable code mixed with other data such as:
+
+```text
+sprites
+lookup tables
+strings
+constants
+```
+
+Data may appear after executable code or between code regions.
+
+Some data words may fail to decode, while others may coincidentally resemble valid CHIP-8 opcodes.
+
+Therefore:
+
+> Successful decoding does not prove that a word represents executable code.
+
+Use `disassemble()` when the caller already knows that the supplied range contains instructions.
+
+If any complete word in the range is not a valid supported instruction, the operation fails with `InvalidOpcodeError`.
 
 ## Inspect a Single Instruction
 
@@ -100,13 +133,17 @@ entry.text; // "CLS"
 
 `disassembleAt()` reads exactly one two-byte CHIP-8 instruction beginning at the supplied address.
 
-This is useful when a tool already knows which location it wants to inspect. For example, a debugger can later use the CPU's current program counter as the source address:
+This is useful when a tool already knows which location it wants to inspect.
+
+For example, a debugger can later use the CPU's current program counter as the source address:
 
 ```ts
 const currentInstruction = disassembler.disassembleAt(memory, cpu.snapshot().programCounter);
 ```
 
-The debugger owns the relationship between CPU state and memory inspection. The `Disassembler` itself remains independent of the CPU and simply inspects the address supplied by its caller.
+The debugger owns the relationship between CPU state and memory inspection.
+
+The `Disassembler` itself remains independent of the CPU and simply inspects the address supplied by its caller.
 
 ### Structured results
 
@@ -211,9 +248,99 @@ format(instruction: Instruction): string;
 
 Higher-level tools may eventually want additional information such as descriptions, comments, symbols, or debugger metadata.
 
-Those concerns do not need to be forced into the formatter contract. Because `DisassembledInstruction` retains the typed `Instruction`, applications can build richer representations around the base result without parsing the formatted text.
+Those concerns do not need to be forced into the formatter contract.
+
+Because `DisassembledInstruction` retains the typed `Instruction`, applications can build richer representations around the base result without parsing the formatted text.
 
 This keeps the formatting seam small while leaving higher-level inspection tools room to grow.
+
+## Whole-ROM Exploratory Inspection
+
+A tool that wants to inspect an entire ROM can choose a more tolerant policy at the application level.
+
+A simple approach is a linear sweep:
+
+```text
+ROM
+ ↓
+read next two-byte word
+ ↓
+disassembleAt()
+ ├── valid instruction → print decoded instruction
+ └── invalid opcode    → print UNKNOWN
+ ↓
+continue
+```
+
+Example output:
+
+```text
+0x200  124E  JP 0x24E
+0x202  EAAC  UNKNOWN
+0x204  AAEA  LD I, 0xAEA
+0x206  CEAA  RND VE, 0xAA
+```
+
+`UNKNOWN` means that the two-byte word is not recognized as a supported Classic CHIP-8 instruction.
+
+A successfully decoded word is not necessarily executable code. Arbitrary ROM data can have the same bit pattern as a valid instruction.
+
+This kind of linear sweep therefore provides an inspection aid rather than a definitive code map.
+
+It does not perform control-flow analysis or automatically distinguish code from data.
+
+## Use the Disassembler CLI
+
+The repository includes a small command-line application for exploratory whole-ROM inspection:
+
+```bash
+deno task disassemble path/to/program.ch8
+```
+
+For example:
+
+```bash
+deno task disassemble \
+  packages/core/tests/conformance/roms/test_opcode.ch8
+```
+
+The CLI prints one complete two-byte word per line:
+
+```text
+0x200  124E  JP 0x24E
+0x202  EAAC  UNKNOWN
+0x204  AAEA  LD I, 0xAEA
+0x206  CEAA  RND VE, 0xAA
+```
+
+The columns contain:
+
+```text
+source address
+opcode word
+decoded instruction or UNKNOWN
+```
+
+The CLI walks through the ROM two bytes at a time and calls `disassembleAt()` for each word.
+
+When decoding raises `InvalidOpcodeError`, the CLI prints `UNKNOWN` and continues with the next word.
+
+This behavior is an application policy:
+
+```text
+Disassembler.disassemble()
+    → strict known instruction range
+    → invalid opcode stops the operation
+
+disassembler CLI
+    → exploratory whole-ROM linear sweep
+    → invalid opcode becomes UNKNOWN
+    → traversal continues
+```
+
+The CLI does not perform control-flow analysis or identify code and data automatically.
+
+Its output should therefore be interpreted as a linear view of the ROM rather than a definitive map of executable instructions.
 
 ## Range and Error Behavior
 
@@ -239,8 +366,6 @@ const instructions = disassembler.disassemble(memory, profile.programStartAddres
 
 // instructions.length === 2
 ```
-
-This is useful when the inspected data contains a trailing byte that does not belong to a complete instruction.
 
 ### Invalid byte lengths
 
@@ -273,7 +398,7 @@ The disassembler uses `Decoder` to interpret each complete two-byte word.
 
 If the decoder encounters an invalid opcode, it throws `InvalidOpcodeError`.
 
-Range disassembly is currently fail-fast:
+Range disassembly is fail-fast:
 
 ```text
 0x200  6001   valid
@@ -283,29 +408,25 @@ Range disassembly is currently fail-fast:
 
 The operation stops at the invalid instruction and does not return a partial listing.
 
-Applications that use the disassembler should therefore handle `InvalidOpcodeError` when processing untrusted or potentially malformed data:
+Applications that use strict range disassembly should therefore handle `InvalidOpcodeError` when processing untrusted or potentially malformed data:
 
 ```ts
 import { InvalidOpcodeError } from "@chip8nx/core";
 
 try {
-  const instructions = disassembler.disassemble(
-    memory,
-    profile.programStartAddress,
-    program.bytes.length,
-  );
+  const instructions = disassembler.disassemble(memory, startAddress, byteLength);
 
   // use instructions
 } catch (error) {
   if (error instanceof InvalidOpcodeError) {
-    console.error("The ROM contains an invalid CHIP-8 opcode.");
+    console.error("The range contains an invalid CHIP-8 opcode.");
   } else {
     throw error;
   }
 }
 ```
 
-The base disassembler does not replace invalid words with placeholder entries or silently skip them.
+The base range API does not replace invalid words with placeholder entries or silently skip them.
 
 ### Memory boundaries
 
@@ -332,7 +453,7 @@ The same rule applies during range traversal if a requested complete instruction
 
 ### Error summary
 
-The errors exposed by the disassembly API follow the component that owns the violated contract:
+The errors exposed by the strict Core disassembly API follow the component that owns the violated contract:
 
 ```text
 invalid byte length
@@ -358,26 +479,7 @@ That document explains:
 - why formatting is a replacement point;
 - how dependency injection and dependency inversion are applied;
 - why the subsystem remains stateless;
+- how strict Core traversal differs from tolerant application-level inspection;
 - which future extension points are intentionally deferred.
-
-A small command-line disassembler is a natural example consumer of this API:
-
-```text
-ROM file
-   ↓
-host file I/O
-   ↓
-MemoryImage
-   ↓
-Memory
-   ↓
-Disassembler
-   ↓
-formatted listing
-   ↓
-stdout
-```
-
-Such a tool belongs outside Core. Core provides the reusable inspection components, while the application owns argument parsing, filesystem access, output formatting, and process exit behavior.
 
 The same Core API can later support debugger, tracer, and graphical inspection features without coupling the disassembly subsystem to any one host.

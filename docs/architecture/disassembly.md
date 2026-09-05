@@ -8,7 +8,7 @@ Disassembly does not execute instructions or mutate emulated machine state.
 
 At a high level:
 
-```text id="lyj2a7"
+```text
 Memory
   ↓
 Opcode
@@ -42,7 +42,7 @@ Disassembly reuses the same decoding model as instruction execution.
 
 A CHIP-8 instruction is stored as two bytes in memory. The `Disassembler` reads those bytes in big-endian order, constructs an `Opcode`, delegates decoding to `Decoder`, and then passes the resulting typed `Instruction` to the configured `InstructionFormatter`.
 
-```mermaid id="jfkagh"
+```mermaid
 flowchart LR
     Memory["Memory"]
     Disassembler["Disassembler"]
@@ -74,7 +74,7 @@ This pipeline intentionally avoids decoding opcode fields inside the formatter o
 
 Conceptually:
 
-```text id="588g03"
+```text
 encoded bytes
     ↓
 Opcode
@@ -94,7 +94,7 @@ Instruction execution and disassembly share the same decoding path.
 
 Both begin with encoded instruction bytes, assemble an `Opcode`, and delegate semantic decoding to `Decoder`. They diverge only after a valid typed `Instruction` has been produced.
 
-```mermaid id="rxa528"
+```mermaid
 flowchart LR
     Memory["Memory"]
     Opcode["Opcode"]
@@ -126,7 +126,7 @@ flowchart LR
 
 The CPU follows an execution-oriented pipeline:
 
-```text id="am82fc"
+```text
 Memory
   ↓
 Opcode
@@ -142,7 +142,7 @@ machine-state changes
 
 The disassembler follows an inspection-oriented pipeline:
 
-```text id="y89fbp"
+```text
 Memory
   ↓
 Opcode
@@ -189,7 +189,7 @@ It does not execute instructions, load ROMs, own a particular memory instance, o
 
 `InstructionFormatter` defines the formatting capability required by the disassembler:
 
-```ts id="cnl1v8"
+```ts
 interface InstructionFormatter {
   format(instruction: Instruction): string;
 }
@@ -207,7 +207,7 @@ Formatting is an explicit replacement point because different consumers may reas
 
 It renders Classic CHIP-8 instructions using conventional CHIP-8 assembly notation, for example:
 
-```text id="048lm7"
+```text
 CLS
 LD V0, 0x01
 ADD VA, VB
@@ -221,7 +221,7 @@ It is a default implementation, not a requirement of the disassembler. Applicati
 
 `DisassembledInstruction` is the immutable result produced for one successfully decoded instruction:
 
-```ts id="r7gwtd"
+```ts
 interface DisassembledInstruction {
   readonly address: Address;
   readonly instruction: Instruction;
@@ -243,7 +243,7 @@ The result deliberately remains small. Concerns such as descriptions, comments, 
 
 `Disassembler` receives its decoding and formatting collaborators through constructor injection:
 
-```ts id="lq1pmf"
+```ts
 const disassembler = new Disassembler(new Decoder(), new ClassicInstructionFormatter());
 ```
 
@@ -251,7 +251,7 @@ The disassembler therefore does not decide how those collaborators are construct
 
 The two dependencies deliberately use different forms of coupling:
 
-```text id="uwbvjv"
+```text
 Disassembler
     │
     ├── Decoder
@@ -273,7 +273,7 @@ Introducing an interface solely in anticipation of possible CHIP-48, SCHIP, or o
 
 The current design therefore creates the seam without prematurely defining the abstraction:
 
-```text id="okz820"
+```text
 composition
     │
     └── Decoder
@@ -292,11 +292,11 @@ Core provides `ClassicInstructionFormatter`, while applications are intentionall
 
 The dependency therefore targets the required capability rather than one concrete formatter:
 
-```text id="fz1nk7"
-               InstructionFormatter
-                    ▲         ▲
-                    │         │
-ClassicInstructionFormatter  Custom formatter
+```text
+                         InstructionFormatter
+                              ▲         ▲
+                              │         │
+          ClassicInstructionFormatter  Custom formatter
 ```
 
 This allows presentation policy to vary independently from memory traversal and opcode decoding.
@@ -324,7 +324,7 @@ CHIP-8 instructions are always two bytes wide.
 
 `Disassembler.disassemble()` therefore traverses the requested range in two-byte instruction-sized steps:
 
-```text id="d4wnce"
+```text
 start
   ↓
 0x200  [byte] [byte]  instruction 1
@@ -334,11 +334,11 @@ start
 
 The range is expressed as a starting address and a byte length:
 
-```ts id="65uv08"
+```ts
 disassembler.disassemble(memory, address(0x200), byteLength);
 ```
 
-Using a byte length avoids ambiguity about whether an end address would be inclusive or exclusive and maps naturally to values such as a loaded ROM's byte length.
+Using a byte length avoids ambiguity about whether an end address would be inclusive or exclusive and maps naturally to known instruction-region lengths.
 
 ### Complete instructions only
 
@@ -346,7 +346,7 @@ Only complete two-byte instruction words are disassembled.
 
 For an even byte length:
 
-```text id="iobi9e"
+```text
 byteLength = 6
 
 [byte byte] [byte byte] [byte byte]
@@ -357,7 +357,7 @@ three instructions are processed.
 
 For an odd byte length:
 
-```text id="ubcjpe"
+```text
 byteLength = 5
 
 [byte byte] [byte byte] [byte]
@@ -380,7 +380,7 @@ rather than requiring every supplied byte to belong to an instruction.
 
 Values such as the following are rejected with `RangeError`:
 
-```text id="cjm5gm"
+```text
 -1
 1.5
 NaN
@@ -399,7 +399,7 @@ If any complete two-byte word does not represent a valid instruction, `Decoder` 
 
 For example:
 
-```text id="o5tslt"
+```text
 0x200  6001   valid
 0x202  8AB8   invalid
 0x204  7001   valid
@@ -407,9 +407,13 @@ For example:
 
 range disassembly fails when it reaches `0x202`.
 
-The first implementation deliberately uses fail-fast behavior. It does not return partial results, invent placeholder instructions, or skip invalid words.
+The Core range API deliberately uses fail-fast behavior. It does not return partial results, invent placeholder instructions, or skip invalid words.
 
-A future binary-analysis tool may require tolerant traversal, but that would be a distinct policy and should be introduced only when a concrete consumer requires it.
+Applications may layer a different traversal policy over `disassembleAt()` without changing this Core contract.
+
+For example, the command-line disassembler performs an exploratory linear sweep of a ROM, catches `InvalidOpcodeError` for individual words, renders them as `UNKNOWN`, and continues with the next word.
+
+That behavior remains application policy rather than part of the strict range-disassembly API.
 
 ### Memory boundaries
 
@@ -419,7 +423,7 @@ If either byte required for a complete instruction lies outside the memory addre
 
 For example, in a 4096-byte memory:
 
-```text id="p3yjva"
+```text
 0xFFF   first byte   valid
 0x1000  second byte  outside memory
 ```
@@ -434,7 +438,7 @@ The disassembler does not currently translate this into a disassembly-specific e
 
 The error model follows component responsibilities:
 
-```text id="f0jaw2"
+```text
 invalid byteLength
       ↓
 Disassembler
@@ -468,7 +472,7 @@ They may hold collaborators or immutable configuration, but they do not own muta
 
 `Memory` is passed to disassembly operations:
 
-```ts id="hi63e4"
+```ts
 disassembler.disassembleAt(memory, address(0x200));
 ```
 
@@ -480,7 +484,7 @@ The decoder and formatter define how the service performs its work, while memory
 
 As a result, the same disassembler instance can inspect different memory implementations or machine instances:
 
-```ts id="4vq7jm"
+```ts
 disassembler.disassemble(memoryA, address(0x200), lengthA);
 disassembler.disassemble(memoryB, address(0x300), lengthB);
 ```
@@ -495,7 +499,7 @@ A disassembly call does not modify later calls.
 
 The subsystem does not store values such as:
 
-```text id="vs78en"
+```text
 current address
 last instruction
 selected range
@@ -513,7 +517,7 @@ A service may still hold immutable configuration without becoming stateful in th
 
 For example, a future formatter could reasonably be configured when constructed:
 
-```ts id="ln0f6q"
+```ts
 const formatter = new SomeFormatter({
   uppercaseHex: true,
 });
@@ -523,7 +527,7 @@ That configuration defines formatting policy but does not change as instructions
 
 The distinction is:
 
-```text id="pph81c"
+```text
 immutable configuration
     → defines service behavior
 
@@ -537,7 +541,7 @@ The former can belong to a reusable service. The latter should normally belong t
 
 A future debugger will need state that the disassembler deliberately does not own, such as:
 
-```text id="19l4su"
+```text
 running machine
 selected address
 breakpoints
@@ -548,7 +552,7 @@ step history
 
 That suggests an ownership relationship such as:
 
-```mermaid id="d9m3ve"
+```mermaid
 flowchart TD
     Debugger["Debugger / Debugger Session"]
 
@@ -568,7 +572,7 @@ flowchart TD
 
 The debugger may use the current CPU program counter to request disassembly:
 
-```ts id="30gmli"
+```ts
 const current = disassembler.disassembleAt(memory, cpu.snapshot().programCounter);
 ```
 
@@ -582,7 +586,7 @@ The same ownership rule applies to presentation.
 
 Core produces structured disassembly results:
 
-```text id="bso19p"
+```text
 DisassembledInstruction[]
 ```
 
@@ -590,14 +594,14 @@ A higher-level application decides how those results are presented.
 
 For example:
 
-```text id="pjia5m"
-      Disassembler
-           │
-           ▼
-DisassembledInstruction[]
-     /        |        \
-    /         |         \
- CLI       Web UI     Debugger
+```text
+                  Disassembler
+                       │
+                       ▼
+            DisassembledInstruction[]
+                 /        |        \
+                /         |         \
+             CLI       Web UI     Debugger
 ```
 
 Core does not print to stdout, manipulate the DOM, or maintain terminal presentation state.
@@ -622,7 +626,7 @@ Several likely future needs are visible, but their exact shape is not yet proven
 
 Higher-level tools may eventually want output such as:
 
-```text id="uyr90k"
+```text
 0x200  00E0  CLS          ; Clear the display
 0x202  F00A  LD V0, K     ; Wait for a key press and store it in V0
 ```
@@ -633,7 +637,7 @@ That is deliberate. A description is additional inspection metadata rather than 
 
 TypeScript's structural typing allows a richer result to extend the base contract later:
 
-```ts id="aj5vy9"
+```ts
 interface DescribedInstruction extends DisassembledInstruction {
   readonly description: string;
 }
@@ -645,21 +649,32 @@ The exact enrichment API is intentionally deferred until a real consumer demonst
 
 ### Tolerant binary analysis
 
-The current range API is fail-fast.
+The command-line disassembler already demonstrates a minimal tolerant policy at the application level: unsupported words are rendered as `UNKNOWN` and traversal continues.
 
-An invalid opcode stops disassembly with `InvalidOpcodeError`.
+This is sufficient for exploratory linear inspection, but it cannot reliably distinguish executable code from data that happens to decode as a valid opcode.
 
-A future ROM-analysis tool may instead need to continue through malformed or unknown data and produce results such as:
+For example:
 
-```text id="x4c6z5"
-0x200  6001  LD V0, 0x01
-0x202  FFFF  <invalid>
-0x204  7001  ADD V0, 0x01
+```text
+0x200  124E  JP 0x24E
+0x202  EAAC  UNKNOWN
+0x204  AAEA  LD I, 0xAEA
 ```
 
-That behavior would represent a different traversal policy rather than a correction to the current one.
+The `AAEA` word decodes successfully, but that alone does not prove it represents executable code.
 
-Possible future designs might include explicit invalid-entry result types or configurable error handling, but no such abstraction is introduced until a concrete tool requires tolerant analysis.
+A future debugger, analyzer, or ROM-inspection tool may require richer tolerant behavior such as:
+
+```text
+invalid-word result types
+code/data classification
+control-flow analysis
+labels and references
+```
+
+If multiple consumers require the same policy, that repeated need may justify promoting an abstraction or richer result model into Core.
+
+Until then, tolerant traversal remains an application concern layered over the strict `disassembleAt()` primitive.
 
 ### Decoder variation
 
@@ -678,7 +693,7 @@ However, Core does not yet introduce an `InstructionDecoder` interface or generi
 
 Variant implementation should first reveal whether decoder variation is best represented by:
 
-```text id="afo6ch"
+```text
 multiple decoder implementations
 variant configuration
 different instruction unions
@@ -693,7 +708,7 @@ The abstraction should follow that evidence rather than predict it.
 
 The current API deliberately avoids types such as:
 
-```ts id="9scv1a"
+```ts
 Disassembler<TInstruction>;
 DisassembledInstruction<TInstruction>;
 VariantDisassembler;
@@ -708,7 +723,7 @@ If future variants require genuinely distinct instruction types, the type relati
 
 `InstructionFormatter` currently returns a plain string:
 
-```ts id="vl447q"
+```ts
 format(instruction: Instruction): string;
 ```
 
@@ -716,7 +731,7 @@ This is sufficient for conventional assembly output.
 
 A future graphical debugger might want separately structured data such as:
 
-```text id="i7zpke"
+```text
 mnemonic
 operands
 comment
@@ -742,7 +757,7 @@ The duplication is visible, but no shared fetching abstraction is introduced yet
 
 The two consumers use the operation for different responsibilities:
 
-```text id="knr4dl"
+```text
 CPU
   → fetch as part of fetch-decode-execute
 
@@ -772,7 +787,7 @@ The project instead follows this rule:
 
 When extending the subsystem, prefer the following order:
 
-```text id="bxq12u"
+```text
 real consumer need
       ↓
 identify repeated or varying responsibility
