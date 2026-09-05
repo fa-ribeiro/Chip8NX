@@ -3,7 +3,7 @@
   "tasks": {
     "terminal": "deno run --allow-read apps/terminal/main.ts",
     "test": "deno test --allow-read packages/core/src/ packages/core/tests/integration/ apps/terminal/src/ apps/web/src/",
-    "test:watch": "deno test --watch --allow-read packages/core/src/ packages/core/tests/integration/ apps/terminal/src/, apps/web/src/",
+    "test:watch": "deno test --watch --allow-read packages/core/src/ packages/core/tests/integration/ apps/terminal/src/ apps/web/src/",
     "test:conformance": "deno test --allow-read packages/core/tests/conformance/",
     "test:all": "deno task test && deno task test:conformance",
     "check": "deno check packages/core/mod.ts packages/core/src/ packages/core/tests/ apps/terminal/ apps/web/ && deno fmt --check && deno lint",
