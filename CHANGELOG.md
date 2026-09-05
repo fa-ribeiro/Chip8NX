@@ -12,6 +12,68 @@ During the `0.x` development phase:
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-09-05 - Disassembly and Inspection
+
+### Added
+
+- Reusable Core disassembly subsystem for read-only CHIP-8 instruction inspection.
+- `DisassembledInstruction` result model preserving the source address, typed `Instruction`, and formatted human-readable text.
+- Pluggable `InstructionFormatter` formatting boundary.
+- `ClassicInstructionFormatter` using conventional Classic CHIP-8 assembly notation.
+- `Disassembler.disassembleAt()` for inspecting a single instruction at an arbitrary memory address.
+- `Disassembler.disassemble()` for strict linear disassembly of known instruction ranges.
+- Exhaustive Classic instruction-formatting coverage, including all register-operation forms.
+- Unit coverage for single-instruction decoding, formatting delegation, sequential range traversal, invalid opcodes, memory boundaries, invalid byte lengths, and unmatched trailing bytes.
+- Public-API integration coverage exercising ROM loading, memory composition, decoding, formatting, and disassembly through `packages/core/mod.ts`.
+- Command-line disassembler application under `apps/disassembler`.
+- Root `disassemble` task for exploratory ROM inspection:
+
+  ```text
+  deno task disassemble <rom-path>
+  ```
+
+- Tolerant application-level whole-ROM linear traversal that reports unsupported Classic CHIP-8 words as `UNKNOWN` and continues with subsequent words.
+- Dedicated disassembly architecture documentation covering responsibility boundaries, dependency direction, lifecycle, error ownership, extension points, and the relationship between inspection and execution.
+- Practical disassembly guide covering known instruction ranges, single-instruction inspection, custom formatters, error behavior, and the exploratory CLI.
+
+### Changed
+
+- Added `apps/disassembler` to the Deno workspace.
+- Extended the public `@chip8nx/core` API with the disassembly and instruction-formatting types and implementations.
+- Extended the Core architecture overview with the read-only inspection path branching from the existing typed `Instruction` model.
+- Updated architecture, guide, and top-level documentation indexes to include the new disassembly subsystem and CLI.
+- Updated the root README with the `v0.5.0` capability milestone, CLI quick start, repository structure, and post-disassembly future-work direction.
+- Clarified the distinction between strict Core range disassembly and tolerant application-level ROM inspection.
+- Clarified that CHIP-8 ROMs may mix executable code with sprites, strings, tables, constants, or other data, so successful opcode decoding does not by itself prove that a ROM word represents executable code.
+- Retained `Decoder` as an injected concrete dependency while keeping `InstructionFormatter` abstract, reflecting demonstrated formatter variation without prematurely introducing a decoder abstraction.
+- Kept tolerant traversal, code/data interpretation, control-flow analysis, descriptions, symbols, and richer inspection metadata outside the Core disassembly contract until additional consumers justify shared abstractions.
+
+### Milestone
+
+`v0.5.0` introduces the first reusable instruction-inspection capability in Chip8NX Core.
+
+Disassembly reuses the same `Decoder` and typed `Instruction` model used by CPU execution, then deliberately diverges into a read-only formatting path rather than executing or mutating machine state:
+
+```text
+encoded bytes
+    ↓
+Opcode
+    ↓
+Decoder
+    ↓
+Instruction
+   /           \
+execution    inspection
+```
+
+The Core API supports both single-instruction inspection and strict linear disassembly of ranges known to contain instructions. Human-readable presentation is separated through the `InstructionFormatter` boundary, with `ClassicInstructionFormatter` supplied as the standard Classic CHIP-8 implementation.
+
+A minimal command-line application validates the Core API as a real external consumer. During real-ROM testing, the CLI exposed an important distinction between instruction ranges and arbitrary ROM contents: CHIP-8 programs may contain code mixed with embedded data, and data can either fail decoding or coincidentally resemble valid instructions.
+
+The CLI therefore keeps tolerant whole-ROM traversal as an application policy. Unsupported words are rendered as `UNKNOWN` and inspection continues, while the strict Core range-disassembly contract remains unchanged.
+
+This milestone establishes the inspection foundation needed for later debugger, tracer, and analysis tooling without prematurely introducing control-flow analysis, code/data classification, generic plugin infrastructure, or variant-specific decoding abstractions.
+
 ## [0.4.0] - 2026-09-04 - Interactive Web Host
 
 ### Added

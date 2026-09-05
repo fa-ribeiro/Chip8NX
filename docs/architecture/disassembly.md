@@ -293,10 +293,10 @@ Core provides `ClassicInstructionFormatter`, while applications are intentionall
 The dependency therefore targets the required capability rather than one concrete formatter:
 
 ```text
-                         InstructionFormatter
-                              ▲         ▲
-                              │         │
-          ClassicInstructionFormatter  Custom formatter
+               InstructionFormatter
+                    ▲         ▲
+                    │         │
+ClassicInstructionFormatter  Custom formatter
 ```
 
 This allows presentation policy to vary independently from memory traversal and opcode decoding.
@@ -595,13 +595,13 @@ A higher-level application decides how those results are presented.
 For example:
 
 ```text
-                  Disassembler
-                       │
-                       ▼
-            DisassembledInstruction[]
-                 /        |        \
-                /         |         \
-             CLI       Web UI     Debugger
+      Disassembler
+           │
+           ▼
+DisassembledInstruction[]
+     /        |        \
+    /         |         \
+ CLI       Web UI     Debugger
 ```
 
 Core does not print to stdout, manipulate the DOM, or maintain terminal presentation state.

@@ -10,17 +10,17 @@ The project focuses first on accurate **Classic CHIP-8** behavior while keeping 
 
 ## Status
 
-### Current release: `v0.4.0` — Interactive Web Host
+### Current release: `v0.5.0` — Disassembly and Inspection
 
-`v0.4.0` adds the second complete Chip8NX host application: a browser frontend with Canvas framebuffer presentation, physical and virtual keyboard input, execution lifecycle controls, ROM loading, and Web Audio sound presentation.
+`v0.5.0` adds the first reusable instruction-inspection capability to Chip8NX Core.
 
-The Web application also completes the second host-composition case study.
+The new disassembly subsystem reads CHIP-8 instruction words from memory, reuses the existing typed `Decoder`, and delegates human-readable presentation through the pluggable `InstructionFormatter` boundary. Core includes a conventional `ClassicInstructionFormatter` and exposes both single-instruction inspection and strict known-range disassembly.
 
-Comparison with the Terminal host confirms that the existing Core boundaries work across substantially different environments while host-level composition should remain application-specific.
+A small command-line application under `apps/disassembler` provides exploratory whole-ROM inspection. It performs a linear sweep of ROM words, prints supported Classic CHIP-8 instructions, reports unsupported words as `UNKNOWN`, and continues without claiming to distinguish executable code from embedded data.
 
-The Terminal Level 1 / Level 2 / Level 3 model therefore remains a terminal-specific composition model, while application-owned composition remains the project-wide rule.
+The implementation establishes a reusable inspection boundary for later debugger, tracer, and analysis work without coupling those concerns to CPU execution or host presentation.
 
-See [Host composition evaluation](./docs/architecture/composition-evaluation.md).
+See [Disassembly architecture](./docs/architecture/disassembly.md) and [Disassembling CHIP-8 programs](./docs/guides/disassembling-programs.md).
 
 The Classic CHIP-8 Core remains at the `v0.2.0` conformance baseline, with intentional coverage for the complete Classic opcode set and the project's current external conformance suite:
 
@@ -84,6 +84,8 @@ The application selects concrete implementations and host adapters.
 `Chip8Runtime` coordinates CPU execution, CHIP-8 timer countdown, and emulated display-frame boundaries.
 
 Host rendering remains outside Core. A terminal, browser, or desktop host observes `DisplayBuffer` without defining CHIP-8 display timing.
+
+Core also exposes a read-only disassembly path for instruction inspection. `Disassembler` reuses the same typed `Decoder` used by CPU execution, while `InstructionFormatter` keeps human-readable presentation replaceable. Inspection remains independent of execution state and host presentation.
 
 For diagrams and more detail, see [Architecture](./docs/architecture/README.md).
 
@@ -167,6 +169,34 @@ To verify the production Web build:
 deno task web:build
 ```
 
+### Disassemble a ROM
+
+The disassembler CLI provides an exploratory linear view of a CHIP-8 ROM:
+
+```bash
+deno task disassemble <rom-path>
+```
+
+For example:
+
+```bash
+deno task disassemble packages/core/tests/conformance/roms/test_opcode.ch8
+```
+
+Output contains the source address, opcode word, and decoded Classic CHIP-8 instruction:
+
+```text
+0x200  124E  JP 0x24E
+0x202  EAAC  UNKNOWN
+0x204  AAEA  LD I, 0xAEA
+```
+
+Unsupported words are reported as `UNKNOWN` and traversal continues.
+
+The CLI performs a linear sweep and does not attempt to distinguish executable code from embedded data. A word that decodes successfully may therefore still represent sprite, table, string, or other non-executable data.
+
+See [Disassembling CHIP-8 programs](./docs/guides/disassembling-programs.md).
+
 ### Generate API documentation
 
 ```bash
@@ -196,6 +226,7 @@ deno task docs:check
 │       └── tests/
 │
 ├── apps/
+│   ├── disassembler/
 │   ├── terminal/
 │   └── web/
 ├── docs/
@@ -210,13 +241,21 @@ deno task docs:check
 
 The reusable **Chip8NX Core** package (`@chip8nx/core`).
 
-It contains machine components, profiles, CPU execution, initialization, runtime orchestration, scheduling, and Core tests.
+It contains machine components, profiles, CPU execution, initialization, runtime orchestration, scheduling, disassembly and instruction-inspection capabilities, and Core tests.
 
 Its intended public API is exposed through:
 
 ```text
 packages/core/mod.ts
 ```
+
+### `apps/disassembler`
+
+A small command-line consumer of the Core disassembly API.
+
+It reads a CHIP-8 ROM, performs an exploratory two-byte linear sweep, prints supported Classic CHIP-8 instructions, reports unsupported words as `UNKNOWN`, and continues through the remainder of the file.
+
+The application deliberately owns filesystem access, command-line arguments, output formatting, and tolerant traversal policy rather than pushing those concerns into Core.
 
 ### `apps/terminal`
 
@@ -282,15 +321,25 @@ The second complete Chip8NX host provides browser ROM loading, Canvas framebuffe
 
 The Web host also completes the second application-composition case study, validating the current Core host boundaries while keeping host-level composition application-specific.
 
+### `v0.5.0` — Disassembly and Inspection ✓
+
+Core gains a reusable read-only instruction-inspection path built on the existing typed decoder, together with a pluggable instruction-formatting boundary and a conventional Classic CHIP-8 formatter.
+
+The release also adds a small command-line disassembler for exploratory whole-ROM inspection. Unsupported words are rendered as `UNKNOWN` without changing the strict Core range-disassembly contract.
+
+The implementation and application are documented through dedicated architecture and usage guides and validated against real CHIP-8 ROMs containing mixed code and data.
+
 ## Future work
 
-Post-`v0.4.0` development can proceed across areas such as:
+Post-`v0.5.0` development can proceed across areas such as:
 
-- continued Web-host refinement where new use cases justify it;
+- richer debugger, tracer, and inspection tooling built on the completed disassembly boundary;
+- Web-host refinement where interactive debugging or other new use cases justify it;
 - public Core API and composition ergonomics when additional architectural evidence creates concrete pressure for change;
 - desktop hosts;
-- debugging and inspection tooling;
 - additional CHIP-8-family profiles when the project is ready to model variant differences explicitly.
+
+The current disassembler intentionally remains a small foundation rather than a full static-analysis system. Features such as control-flow analysis, code/data classification, labels, descriptions, and richer tolerant-disassembly models should be introduced only when concrete consumers justify them.
 
 ## References
 
