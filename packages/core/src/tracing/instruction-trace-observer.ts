@@ -1,14 +1,19 @@
 import type { InstructionTrace } from "./instruction-trace.ts";
 
 /**
- * Observes CHIP-8 instruction traces without participating in execution.
+ * Observes CPU instruction attempts.
  *
  * @remarks
- * Observers are notified only after an instruction attempt returns normally.
- * The CPU isolates exceptions thrown by an observer so tracing cannot turn an
- * otherwise successful instruction attempt into an emulation failure.
+ * Observers may receive successful or failed instruction attempts.
+ *
+ * Observation is purely diagnostic. Errors raised while observing a trace
+ * must not alter CPU execution behavior or replace an execution failure.
  */
 export interface InstructionTraceObserver {
-  /** Receives one immutable instruction trace. */
+  /**
+   * Observes one CPU instruction attempt.
+   *
+   * @param trace - Successful or failed instruction trace.
+   */
   observe(trace: InstructionTrace): void;
 }
