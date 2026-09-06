@@ -31,7 +31,6 @@ The Classic profile supplies characteristics such as:
 - font location.
 
 A profile describes the machine itself. It does not select host-specific implementations.
-
 Future profiles may describe different machine characteristics or compatibility behavior when CHIP-8-family variants genuinely require different semantics.
 
 ## Core component overview
@@ -53,7 +52,6 @@ flowchart TB
     Cpu["Cpu"]
     Decoder["Decoder"]
     Executor["InstructionExecutor"]
-
     Context["ExecutionContext"]
 
     subgraph State["Machine state and capabilities"]
@@ -70,7 +68,6 @@ flowchart TB
         Font["Font"]
         RNG["RandomNumberGenerator"]
     end
-
     Profile --> Initializer
     Program --> Initializer
     Loader --> Initializer
@@ -86,7 +83,6 @@ flowchart TB
     Runtime --> Delay
     Runtime --> Sound
     Runtime --> VBlank
-
     Context --> Memory
     Context --> Registers
     Context --> Stack
@@ -102,7 +98,6 @@ flowchart TB
 ```
 
 `ExecutionContext` is an explicit aggregate of the mutable state and capabilities required by instruction execution.
-
 The context does not make these components a monolith. The individual components remain independently constructed, replaceable, and testable.
 
 ## Focused components
@@ -121,7 +116,6 @@ The emulator is composed from narrow components such as:
 - `Font`;
 - `RandomNumberGenerator`;
 - `Cpu`;
-
 - `Disassembler`;
 
 Generic components do not hide Classic-specific defaults.
@@ -132,7 +126,6 @@ For example:
 new Stack(profile.stackCapacity);
 
 new ProgramCounter(profile.programStartAddress);
-
 new DisplayBuffer(profile.display.width, profile.display.height);
 ```
 
@@ -140,7 +133,7 @@ The profile supplies machine-specific values while the components remain reusabl
 
 ## CPU execution pipeline
 
-The CPU owns the CHIP-8 fetch/decode/execute cycle.
+The CPU owns one CHIP-8 fetch/decode/execute cycle.
 
 ```mermaid
 flowchart LR
@@ -160,18 +153,13 @@ flowchart LR
     Decoder -->|"decode"| Instruction
     Instruction --> Executor
     Context --> Executor
-    Executor -->|"apply semantics"| Context
 ```
 
-The cycle advances the normal program counter before execution. Instructions that must wait, such as Classic `FX0A` or a display-synchronized `Dxyn`, can rewind the program counter so the same instruction is retried later.
+The CPU fetches the two-byte instruction word, advances the normal program counter, decodes the opcode into a typed `Instruction`, and delegates semantic effects to the stateless `InstructionExecutor` through `ExecutionContext`.
 
-Instruction decoding and instruction execution are deliberately separate responsibilities:
+The typed `Instruction` is the central boundary between encoded representation and instruction semantics. Control-flow instructions override the already-advanced program counter when required, while retry-style instructions such as Classic `Fx0A` and vblank-gated `Dxyn` restore the current instruction address so it can be attempted again later.
 
-- `Decoder` understands opcode encoding;
-- the typed `Instruction` representation carries decoded meaning;
-- `InstructionExecutor` applies instruction semantics to `ExecutionContext`.
-
-The executor is stateless.
+See [Instruction execution architecture](./instruction-execution.md) for the detailed fetch/decode/execute model, typed instruction representation, execution semantics, invariant ownership, and verification strategy.
 
 ### Disassembly and inspection
 
@@ -190,7 +178,6 @@ flowchart LR
 
     Formatter["InstructionFormatter"]
     Result["DisassembledInstruction"]
-
     Opcode --> Decoder
     Decoder --> Instruction
 
@@ -231,67 +218,50 @@ It:
 6. loads the program image.
 
 It does not construct components, perform external I/O, or drive execution.
-
 The random-number generator is intentionally not reset by machine initialization because CHIP-8 does not define an RNG seeding lifecycle.
 
 ## Runtime and timing
 
-`Chip8Runtime` coordinates emulated work over time through the generic deadline-driven `Scheduler`.
-
-It schedules three categories of work:
-
-- CPU instructions at the runtime-configured CPU frequency;
-- both CHIP-8 timers at the profile timer frequency;
-- display-frame boundaries at the profile display refresh frequency.
+`Chip8Runtime` maps generic periodic scheduling onto CHIP-8 execution.
 
 ```mermaid
-flowchart TB
+flowchart LR
     Clock["Clock"]
     Scheduler["Scheduler"]
     Runtime["Chip8Runtime"]
 
-    VBlankTask["Display-frame task"]
-    TimerTask["Timer task"]
-    CpuTask["CPU task"]
-
+    Cpu["CPU"]
+    Timers["Delay / Sound Timers"]
     VBlank["VerticalBlank"]
-    Delay["Delay Timer"]
-    Sound["Sound Timer"]
-    Cpu["Cpu"]
-
-    Draw["Dxyn"]
-    Buffer["DisplayBuffer"]
-    Host["Host renderer"]
 
     Clock --> Scheduler
-    Runtime --> Scheduler
+    Scheduler --> Runtime
 
-    Scheduler --> VBlankTask
-    Scheduler --> TimerTask
-    Scheduler --> CpuTask
-
-    VBlankTask -->|"signal()"| VBlank
-    TimerTask -->|"tick()"| Delay
-    TimerTask -->|"tick()"| Sound
-    CpuTask -->|"step()"| Cpu
-
-    VBlank -->|"consume()"| Draw
-    Draw -->|"draw pixels"| Buffer
-
-    Buffer -. "observe / present" .-> Host
+    Runtime -->|"CPU frequency"| Cpu
+    Runtime -->|"timer frequency"| Timers
+    Runtime -->|"display frequency"| VBlank
 ```
 
-### Deadline ordering
+The layers have distinct responsibilities:
 
-The runtime registers vertical blank before timers and CPU.
+- `Clock` provides monotonic time;
+- `Scheduler` owns exact periodic deadlines, catch-up, suspension, and global chronological ordering;
+- `Chip8Runtime` maps those generic deadlines to CPU, timer, and vertical-blank work;
+- timed state such as `Timer` and `VerticalBlank` remains independent of scheduling.
 
-This makes exact deadline ties deterministic:
+When deadlines are equal, runtime registration order makes the result deterministic:
 
-1. a new display interval becomes available;
-2. timer boundaries are processed;
-3. the CPU executes the instruction scheduled at the same instant.
+```text
+vertical blank
+    ↓
+timers
+    ↓
+CPU
+```
 
-The scheduler itself contains no CHIP-8-specific logic. It owns globally chronological deadline ordering.
+Pausing suspends scheduled progression without accumulating execution debt. Manual single stepping remains a separate paused operation: it executes one CPU attempt without advancing scheduled timer or display time.
+
+See [Runtime and timing architecture](./runtime-and-timing.md) for deadline representation, catch-up, equal-deadline policy, pause/resume rebasing, timed machine state, and single-step semantics.
 
 ## Display boundary
 
@@ -312,7 +282,6 @@ flowchart LR
     Canvas["Canvas renderer"]
     Desktop["Desktop renderer"]
     Tests["Tests / inspection"]
-
     Runtime -->|"display frame"| VBlank
     VBlank -->|"permission consumed by Dxyn"| Cpu
     Cpu --> Buffer
@@ -326,7 +295,6 @@ flowchart LR
 A renderer observes the buffer and presents it using host-specific technology.
 
 Host rendering does **not** generate CHIP-8 vertical blank and does not need to run at the exact emulated display refresh frequency.
-
 This separation allows a terminal host, browser host, desktop host, and deterministic tests to share the same display semantics.
 
 ## Keyboard boundary
@@ -360,7 +328,6 @@ The reusable Core deliberately does not require a dependency-injection container
 The application remains the composition root.
 
 A terminal application can choose terminal-specific adapters while a browser application can choose browser-specific adapters, with both sharing the same Core semantics.
-
 The terminal application provides optional higher-level composition helpers through its Level 1 / Level 2 / Level 3 model. Evaluation against the Web application showed that this structure is useful for Terminal but does not need to become a mandatory Core or project-wide composition framework.
 
 Different hosts may develop different host-local composition structures around the same Core boundaries.

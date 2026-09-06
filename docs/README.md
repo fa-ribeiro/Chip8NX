@@ -23,8 +23,8 @@ See [Architecture](./architecture/README.md).
 Current topics include:
 
 - the Core architecture and component relationships;
-- CPU fetch/decode/execute flow;
-- runtime, timer, and vertical-blank timing;
+- [instruction execution](./architecture/instruction-execution.md), including fetch/decode/execute orchestration, the typed `Instruction` boundary, execution semantics, invariant ownership, and verification;
+- [runtime and timing](./architecture/runtime-and-timing.md), including monotonic time, exact deadline scheduling, catch-up, pause/resume semantics, timer and vertical-blank state, equal-deadline ordering, and single stepping;
 - machine lifecycle;
 - disassembly, instruction inspection, formatting boundaries, and application-level traversal policy;
 - host composition across the Terminal and Web applications.
@@ -89,4 +89,6 @@ Documentation diagnostics can be run with:
 deno task docs:check
 ```
 
-Documentation linting is treated as a public-API audit: exported symbols should either be intentionally public and documented or removed from the public package entrypoint.
+`docs:check` runs Deno's documentation linter against the public Core entrypoint. It is currently used as a public-API documentation audit rather than as a repository CI or release gate, because the existing API still contains historical `missing-jsdoc` diagnostics.
+
+New or substantially changed public APIs should include useful JSDoc describing their contract, semantics, invariants, or lifecycle where those details are not obvious from the type signature. The longer-term goal is to reduce the existing documentation backlog without adding ceremonial comments solely to satisfy the linter.
