@@ -1,18 +1,24 @@
 # Terminal Composition Levels
 
-The terminal application is being used as a case study for a layered composition model: provide convenient known-good assemblies without sacrificing the specialized components that make Chip8NX modular and testable.
+The Terminal application provides three composition depths so applications can trade convenience for control without losing access to the underlying components.
 
-The experiment currently has three levels:
+The model is Terminal-specific. The later Web-host evaluation confirmed that it should **not** be generalized into a mandatory Core or project-wide hierarchy.
 
-1. **Components** — assemble individual parts manually.
-2. **Standard compositions** — use known-good subsystem kits.
-3. **Standard host** — use a ready-to-run terminal environment.
+See [Host composition evaluation](../architecture/composition-evaluation.md).
 
-Higher levels are built from lower levels. They do not replace them with a separate simplified implementation.
+## The three levels
 
-## Terminal architecture overview
+1. **Components** — assemble Terminal pieces manually.
+2. **Standard compositions** — use known-good input/presentation subsystem kits.
+3. **Standard host** — use a ready-to-run standard Terminal environment.
 
-The terminal host adapts Core `KeyboardState` and `DisplayBuffer` to terminal-specific input and presentation.
+Higher levels are built from lower levels; they do not replace them with a separate implementation.
+
+> Customize at the highest meaningful boundary. Descend to a lower level only when that boundary is insufficient.
+
+## Terminal architecture
+
+The Terminal host adapts Core `KeyboardState` and `DisplayBuffer` through Terminal-specific input and presentation components.
 
 ```mermaid
 flowchart TB
@@ -23,28 +29,25 @@ flowchart TB
 
     Host["StandardTerminalHost"]
     Output["TerminalOutput"]
-
     Presentation["StandardTerminalPresentation"]
-    InputKit["StandardTerminalInput"]
+    Input["StandardTerminalInput"]
 
     Host --> Output
     Host --> Presentation
-    Host --> InputKit
+    Host --> Input
 
     Presentation --> Buffer
-    InputKit --> KeyboardState
+    Input --> KeyboardState
 
     Presentation --> Output
-    InputKit --> Output
+    Input --> Output
 ```
 
-The shared `TerminalOutput` dependency is significant: both presentation and input-session protocol negotiation write to the same terminal.
-
-The Level-3 host is therefore the natural owner of that shared host resource.
+The shared `TerminalOutput` is significant: presentation and Terminal input-session protocol negotiation both write to the same host resource. `StandardTerminalHost` is therefore a natural owner of that shared Terminal lifecycle.
 
 ## Presentation subsystem
 
-The standard presentation composition groups the renderer and terminal-screen lifecycle.
+`StandardTerminalPresentation` groups rendering with Terminal screen-session lifecycle:
 
 ```mermaid
 flowchart LR
@@ -54,25 +57,24 @@ flowchart LR
     Screen["TerminalScreenSession"]
     Output["TerminalOutput"]
 
+    Buffer -->|"render(buffer)"| Presentation
     Presentation --> Display
     Presentation --> Screen
-
-    Buffer -->|"render(buffer)"| Presentation
     Display --> Output
     Screen --> Output
 ```
 
-`TerminalDisplay` remains independently available for applications that want full control or a custom lifecycle.
+`TerminalDisplay` remains independently available when an application wants direct control.
 
 A custom renderer can also be injected while retaining the standard presentation lifecycle.
 
 ## Input subsystem
 
-Terminal input contains more host-specific mechanics than display presentation.
+Terminal input has more host-specific mechanics than framebuffer presentation:
 
 ```mermaid
 flowchart LR
-    Stdin["TerminalInput<br/>StdinTerminalInput"]
+    Stdin["TerminalInput / StdinTerminalInput"]
     Session["TerminalInputSession"]
     Parser["TerminalKeyEventParser"]
     Adapter["TerminalKeyboard"]
@@ -84,37 +86,39 @@ flowchart LR
     Adapter -->|"press / release"| State
 ```
 
-The responsibilities are intentionally separated:
+Responsibilities remain separate:
 
 - `TerminalInput` abstracts the byte source and raw-mode control;
-- `TerminalInputSession` owns terminal input lifecycle and keyboard-protocol negotiation;
-- `TerminalKeyEventParser` converts bytes into semantic terminal key events;
-- `TerminalKeyboard` maps semantic terminal events into CHIP-8 key state;
-- `KeyboardState` owns CHIP-8-facing pressed state and `FX0A` semantics.
+- `TerminalInputSession` owns Terminal input lifecycle and keyboard-protocol negotiation;
+- `TerminalKeyEventParser` converts bytes into semantic Terminal key events;
+- `TerminalKeyboard` maps Terminal events to CHIP-8 keys;
+- `KeyboardState` owns CHIP-8-facing pressed state and `Fx0A` semantics.
 
-### Exact and legacy key release
+### Exact and synthetic key release
 
-Where the terminal supports CSI-u/Kitty-style events, explicit press/repeat/release transitions can be preserved.
+Where a terminal supports CSI-u/Kitty-style events, explicit press/repeat/release transitions can be preserved.
 
-Legacy terminal input generally reports only press-like bytes. `TerminalKeyboard` therefore uses a short host-time synthetic release deadline for those keys.
+Legacy terminal input often reports only press-like bytes. `TerminalKeyboard` therefore uses a short **host-time** synthetic-release deadline for those keys.
 
-That host-time policy belongs in the terminal adapter, not in Core emulated time.
+That policy belongs to the Terminal adapter, not to Core emulated time.
 
 ## Level 1 — Components
 
 Level 1 provides maximum control.
 
-The terminal application is assembled from individual pieces such as:
+The application assembles pieces such as:
 
-- `StdoutTerminalOutput`;
-- `TerminalDisplay`;
-- `TerminalScreenSession`;
-- `StdinTerminalInput`;
-- `TerminalInputSession`;
-- `TerminalKeyEventParser`;
-- `TerminalKeyboard`.
+```text
+StdoutTerminalOutput
+TerminalDisplay
+TerminalScreenSession
+StdinTerminalInput
+TerminalInputSession
+TerminalKeyEventParser
+TerminalKeyboard
+```
 
-Use this level when an application needs to replace or directly configure individual terminal components.
+Use this level when replacing or configuring individual Terminal components.
 
 Runnable example:
 
@@ -122,12 +126,12 @@ Runnable example:
 
 ## Level 2 — Standard compositions
 
-Level 2 groups components that naturally work together into known-good subsystem kits.
+Level 2 groups components that naturally work together:
 
-The terminal application currently provides:
-
-- `StandardTerminalPresentation`;
-- `StandardTerminalInput`.
+```text
+StandardTerminalPresentation
+StandardTerminalInput
+```
 
 A typical assembly is:
 
@@ -141,9 +145,9 @@ const presentation = new StandardTerminalPresentation({
 const input = new StandardTerminalInput(machine.keyboard, output);
 ```
 
-This level intentionally exposes only meaningful subsystem customization seams.
+Level 2 keeps meaningful subsystem seams available.
 
-For example, use the standard input stack with a custom key mapping:
+For example, retain the standard input stack with a custom key mapping:
 
 ```ts
 const input = new StandardTerminalInput(machine.keyboard, output, {
@@ -151,7 +155,7 @@ const input = new StandardTerminalInput(machine.keyboard, output, {
 });
 ```
 
-Or retain standard presentation lifecycle with a custom display implementation:
+Or retain the standard presentation lifecycle with a custom display:
 
 ```ts
 const presentation = new StandardTerminalPresentation({
@@ -160,130 +164,67 @@ const presentation = new StandardTerminalPresentation({
 });
 ```
 
-The principle is:
-
-> Customize at the highest meaningful boundary. Descend to a lower level only when that boundary is insufficient.
-
 Runnable example:
 
 [`apps/terminal/examples/02-standard-compositions.ts`](../../apps/terminal/examples/02-standard-compositions.ts)
 
 ## Level 3 — Standard host
 
-Level 3 provides a ready-to-use standard terminal environment.
+Level 3 provides the ready-to-use standard Terminal environment:
 
 ```ts
 const terminal = new StandardTerminalHost(machine.keyboard);
 ```
 
-`StandardTerminalHost` owns the terminal resource shared by the standard presentation and input subsystems and coordinates their host-level lifecycle.
+`StandardTerminalHost` owns the Terminal resource shared by standard input and presentation and coordinates their host-level lifecycle.
 
 ```mermaid
 flowchart TB
     L3["Level 3<br/>StandardTerminalHost"]
-
     Presentation["Level 2<br/>StandardTerminalPresentation"]
     Input["Level 2<br/>StandardTerminalInput"]
-
-    Display["Level 1<br/>TerminalDisplay"]
-    Screen["Level 1<br/>TerminalScreenSession"]
     Output["Level 1<br/>TerminalOutput"]
-
-    Keyboard["Level 1<br/>TerminalKeyboard"]
-    Parser["Level 1<br/>TerminalKeyEventParser"]
-    Source["Level 1<br/>TerminalInput"]
-    Mapping["Level 1<br/>Key mapping"]
 
     L3 --> Presentation
     L3 --> Input
     L3 --> Output
-
-    Presentation --> Display
-    Presentation --> Screen
-
-    Input --> Keyboard
-    Input --> Parser
-    Input --> Source
-    Input --> Mapping
-
-    Display --> Output
-    Screen --> Output
-    Input --> Output
 ```
 
 Runnable example:
 
 [`apps/terminal/examples/03-standard-host.ts`](../../apps/terminal/examples/03-standard-host.ts)
 
-## The three examples
-
-The examples intentionally share the same Classic machine construction.
-
-Only the terminal assembly depth changes.
+## Choosing a level
 
 | Example                       | Terminal assembly         | Best for                                             |
 | ----------------------------- | ------------------------- | ---------------------------------------------------- |
 | `01-components.ts`            | individual components     | maximum control and learning component relationships |
 | `02-standard-compositions.ts` | presentation + input kits | normal customization at subsystem boundaries         |
-| `03-standard-host.ts`         | one standard host         | quickest standard terminal integration               |
+| `03-standard-host.ts`         | one standard host         | quickest standard Terminal integration               |
 
-This makes the examples useful as an architectural experiment: the observable emulator behavior should remain equivalent while composition burden changes.
+The observable emulator behavior should remain equivalent; only the Terminal composition burden changes.
 
 ## Mixed composition
 
-The three levels are not exclusive application modes.
+The levels are not exclusive modes.
 
-An application can use different depths for different subsystems.
+An application can use standard input while composing custom presentation, or standard presentation with specialized input.
 
-```mermaid
-flowchart LR
-    App["My terminal app"]
-    StandardInput["StandardTerminalInput"]
-    CustomPresentation["Custom presentation"]
-
-    App --> StandardInput
-    App --> CustomPresentation
-```
-
-Likewise, an application may use standard presentation while manually composing a specialized input path.
-
-This is central to the experiment: simplification should hide complexity by default, not eliminate capability.
-
-## Evaluation result
-
-The terminal composition model has now been evaluated against the Web application as a second, substantially different host.
-
-The comparison confirms that:
-
-- the standard terminal path can be materially simpler;
-- meaningful customization can remain easy;
-- the manual Level-1 path remains intact;
-- existing specialized components remain the implementation foundation;
-- a giant all-purpose options object is not required;
-- the three-level structure arises naturally from terminal-specific resource and lifecycle ownership.
-
-The Web host did not naturally reproduce the same Level 1 / Level 2 / Level 3 structure.
-
-Instead, it developed different host-local compositions around the same Core boundaries, including multiple input sources combined through `KeyboardInputHub`, Canvas presentation, Web Audio presentation, and browser-specific lifecycle orchestration.
-
-The result is therefore:
-
-> The Level 1 / Level 2 / Level 3 model remains a useful terminal-host composition model, but it is not generalized into a mandatory Core or project-wide composition framework.
-
-The broader composition principle remains applicable: convenience abstractions should emerge from concrete responsibilities while preserving access to the lower-level components they compose.
-
-See [Host composition evaluation](../architecture/composition-evaluation.md) for the Terminal-versus-Web comparison and its architectural conclusions.
-
-## Design invariant
-
-The composition principle retained from the experiment is:
+That flexibility is central to the design:
 
 > A convenience layer may hide complexity, but it must not remove functionality.
 
-Higher levels should therefore:
+## Evaluation result
 
-- assemble the same lower-level components;
-- provide safe defaults;
-- expose only meaningful customization seams;
-- reduce normal composition burden;
-- allow applications to descend to a lower level when more control is required.
+The Web application provided a second, substantially different host case study.
+
+The comparison confirmed that:
+
+- the standard Terminal path materially reduces composition burden;
+- meaningful customization remains available;
+- the manual Level-1 path remains intact;
+- specialized components remain the implementation foundation;
+- the three levels arise from Terminal-specific resource/lifecycle ownership;
+- another host need not reproduce the same hierarchy.
+
+The retained project-wide rule is therefore application-owned composition around stable Core boundaries, not a universal three-level host framework.

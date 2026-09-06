@@ -1,21 +1,17 @@
 # Embedding the Chip8NX Core
 
-The CHIP-8 Core is designed to be hosted by different applications without depending on a particular UI or platform.
+The CHIP-8 Core is designed to be hosted by applications without depending on a particular UI or platform.
 
-This guide shows the explicit/manual composition path. It intentionally exposes the individual Core pieces so an embedding application can replace components at meaningful boundaries.
+This guide shows the explicit/manual composition path. It exposes the Core pieces so an application can select implementations at meaningful boundaries.
 
-An application is responsible for:
+For the architectural rationale behind these steps, see:
 
-1. selecting a machine profile;
-2. choosing concrete component implementations;
-3. constructing the machine;
-4. loading a program;
-5. initializing the machine;
-6. driving the runtime;
-7. presenting display and sound state;
-8. translating host input into Core keyboard state.
+- [Machine state and capabilities](../architecture/machine-state-and-capabilities.md)
+- [Machine initialization](../architecture/machine-initialization.md)
+- [Instruction execution](../architecture/instruction-execution.md)
+- [Runtime and timing](../architecture/runtime-and-timing.md)
 
-## Select a profile
+## 1. Select a profile
 
 For Classic CHIP-8:
 
@@ -25,13 +21,9 @@ import { CLASSIC_CHIP8_PROFILE } from "@chip8nx/core";
 const profile = CLASSIC_CHIP8_PROFILE;
 ```
 
-The profile supplies the machine characteristics needed by generic components.
+The profile supplies machine characteristics such as memory size, program start address, stack capacity, display geometry/timing, timer frequency, and font definition.
 
-For Classic this includes memory layout, display geometry, display refresh frequency, timer frequency, and font placement.
-
-## Construct the machine state
-
-A complete Classic execution context needs explicit display state **and** display-timing state.
+## 2. Construct machine state and capabilities
 
 ```ts
 import {
@@ -58,24 +50,16 @@ const delayTimer = new Timer();
 const soundTimer = new Timer();
 
 const displayBuffer = new DisplayBuffer(profile.display.width, profile.display.height);
-
 const verticalBlank = new VerticalBlank();
+
 const keyboard = new KeyboardState();
-
 const font = new ClassicFont(profile.fontBaseAddress);
-
 const randomNumberGenerator = new DefaultRandomNumberGenerator();
 ```
 
-`DisplayBuffer` stores pixels.
+`DisplayBuffer` stores emulated pixels. `VerticalBlank` stores the display-synchronization opportunity consumed by Classic `Dxyn`. Host rendering is a separate responsibility.
 
-`VerticalBlank` stores the emulated display-synchronization opportunity used by Classic `Dxyn`.
-
-They are deliberately separate responsibilities.
-
-## Create the execution context
-
-The machine components used by instruction execution are grouped into an `ExecutionContext`.
+## 3. Create the execution context
 
 ```ts
 import type { ExecutionContext } from "@chip8nx/core";
@@ -96,9 +80,9 @@ const context: ExecutionContext = {
 };
 ```
 
-`ExecutionContext` is an aggregate of dependencies, not a factory and not an ownership container.
+`ExecutionContext` groups resources required by instruction execution. It is not a factory and does not take ownership of their construction/lifecycle.
 
-## Load a program
+## 4. Obtain a program image
 
 External I/O belongs to the application.
 
@@ -111,33 +95,24 @@ const bytes = await Deno.readFile(path);
 const program = new MemoryImage(bytes);
 ```
 
-A browser could obtain the same bytes from a file picker, network request, embedded asset, or drag-and-drop operation.
+A browser may obtain the same bytes from a file picker, network request, embedded asset, or drag-and-drop operation. Core initialization begins once those bytes have become a `MemoryImage`.
 
-All of those sources ultimately become a `MemoryImage`.
-
-## Initialize the machine
-
-Create a `MachineInitializer`:
+## 5. Initialize the machine
 
 ```ts
 import { MachineInitializer, MemoryImageLoader } from "@chip8nx/core";
 
 const initializer = new MachineInitializer(new MemoryImageLoader());
-```
-
-Then initialize:
-
-```ts
 initializer.initialize(context, profile, program);
 ```
 
-Initialization validates the complete memory layout before mutation.
+Initialization validates known memory-layout relationships before mutation, resets the existing machine state, installs profile-provided font data, and loads the program.
 
-It then resets machine state, including `VerticalBlank` and transient keyboard wait state, installs profile system data, and loads the program.
+It does not start runtime execution.
 
-The random-number generator is not reset by initialization.
+For reset scope and failure guarantees, see [Machine initialization architecture](../architecture/machine-initialization.md).
 
-## Create the CPU
+## 6. Create the CPU
 
 ```ts
 import { Cpu, Decoder, InstructionExecutor } from "@chip8nx/core";
@@ -145,7 +120,7 @@ import { Cpu, Decoder, InstructionExecutor } from "@chip8nx/core";
 const cpu = new Cpu(context, new Decoder(), new InstructionExecutor());
 ```
 
-The CPU owns one CHIP-8 instruction cycle:
+One CPU cycle is:
 
 ```text
 fetch
@@ -157,11 +132,11 @@ decode
 execute
 ```
 
-It does not control real-time scheduling.
+The CPU does not own real-time scheduling.
 
-## Create the runtime
+## 7. Create the runtime
 
-Choose a CPU execution frequency appropriate for the host:
+Choose a CPU execution frequency:
 
 ```ts
 import { Frequency } from "@chip8nx/core";
@@ -196,30 +171,28 @@ const runtime = new Chip8Runtime(
 );
 ```
 
-The constructor has two distinct profile timing inputs:
+The two profile frequencies have distinct semantics:
 
 - `profile.timerFrequency` controls delay/sound timer countdown;
 - `profile.display.refreshFrequency` controls emulated display-frame boundaries.
 
 The runtime starts paused.
 
-## Start execution
+## 8. Start and service execution
 
 ```ts
 runtime.resume();
 ```
 
-The host should then call:
+Then call:
 
 ```ts
 runtime.tick();
 ```
 
-regularly from its own event loop.
+regularly from the host event loop.
 
-The host does not need to call `tick()` at the CPU frequency or display refresh frequency.
-
-The deadline-driven scheduler determines which display-frame, timer, and CPU events are due and executes them in chronological order.
+The host does **not** need to call `tick()` at the CPU or display frequency. The deadline-driven scheduler decides which CPU, timer, and display events are due and preserves their emulated chronological order.
 
 ## Pause and resume
 
@@ -228,13 +201,7 @@ runtime.pause();
 runtime.resume();
 ```
 
-Pause suspends scheduled:
-
-- display-frame boundaries;
-- timer ticks;
-- CPU steps.
-
-Host time spent paused is discarded rather than accumulated as execution debt.
+Pause suspends scheduled CPU, timer, and display progression. Host time spent paused does not accumulate as execution debt.
 
 ## Single-step execution
 
@@ -244,73 +211,44 @@ While paused:
 runtime.step();
 ```
 
-executes one CPU instruction.
+performs one CPU **attempt**.
 
-Timers and scheduled time remain unchanged.
+That distinction matters: `Fx0A` or a waiting draw may retry rather than complete a logical instruction on that attempt.
 
-For a display-synchronized draw, stepping may use a temporary vertical-blank opportunity so the instruction can complete without advancing emulated time.
+Timers and normal scheduled display time do not advance. A display-synchronized draw may receive a temporary vertical-blank opportunity so debugger-style stepping can make useful progress without advancing scheduled time.
 
 ## Rendering
 
 `DisplayBuffer` is emulated machine state, not a host renderer.
 
-Applications should observe it and present it independently:
+Applications observe and present it independently:
 
-```mermaid
-flowchart LR
-    Buffer["DisplayBuffer"]
-    Terminal["Terminal renderer"]
-    Canvas["Canvas renderer"]
-    Desktop["Desktop renderer"]
-    Tests["Inspection / tests"]
-
-    Buffer -.-> Terminal
-    Buffer -.-> Canvas
-    Buffer -.-> Desktop
-    Buffer -.-> Tests
+```text
+DisplayBuffer
+    ├── Terminal renderer
+    ├── Canvas renderer
+    ├── Desktop renderer
+    └── tests / inspection
 ```
 
-Host presentation frequency is independent of emulated display timing.
-
-In particular, rendering the buffer does **not** signal `VerticalBlank`.
+Host presentation frequency does not define CHIP-8 display timing, and rendering the buffer does not signal `VerticalBlank`.
 
 ## Keyboard input
 
-The Core-facing state can be a `KeyboardState`:
-
-```ts
-const keyboard = new KeyboardState();
-```
-
-A host adapter translates platform input events into state transitions:
+A host adapter translates platform input into Core key transitions:
 
 ```ts
 keyboard.press(chip8Key);
 keyboard.release(chip8Key);
 ```
 
-`KeyboardState` owns:
-
-- currently pressed CHIP-8 keys;
-- the `FX0A` press-then-release state machine;
-- transient reset behavior required by machine initialization.
-
-The host adapter owns:
-
-- physical/terminal/browser event collection;
-- host key mapping;
-- protocol decoding;
-- any synthetic release policy needed by the platform.
-
-This keeps platform mechanics out of CHIP-8 instruction semantics.
+`KeyboardState` owns CHIP-8-facing pressed state and `Fx0A` wait semantics. The host owns platform event collection, key mapping, protocol decoding, and any platform-specific synthetic-release policy.
 
 ## Sound
 
-The sound timer is machine state.
+The sound timer is machine state. Actual sound output is a host concern.
 
-Actual audio output is a host concern.
-
-A host can observe the sound timer and produce terminal, browser, desktop, or other audio behavior without making the timer itself responsible for sound generation.
+A host may observe `soundTimer.getValue()` and drive terminal, browser, desktop, or other audio without making `Timer` responsible for presentation.
 
 ## Application responsibility summary
 
@@ -321,9 +259,10 @@ profile selection
 component implementation selection
 ROM I/O
 composition
+runtime lifecycle calls
 host event loop
 rendering
-sound output
+audio output
 host input translation
 ```
 
@@ -338,12 +277,10 @@ runtime timing coordination
 scheduling
 ```
 
-This separation allows several frontends to share one emulator implementation.
+## Why the manual path remains useful
 
-## Why this guide remains explicit
+The Terminal host provides higher-level convenience compositions, but the Web-host evaluation showed that those host-local layers should not be generalized into a mandatory Core hierarchy.
 
-The terminal application is currently experimenting with higher-level standard compositions.
+This guide therefore remains the maximum-control Core composition path.
 
-That experiment has not yet been generalized to the Core.
-
-For now, this guide deliberately documents the maximum-control Core assembly path. If a standard Core composition is adopted later, this manual path should remain available as the advanced/customizable level rather than being removed.
+See [Host composition evaluation](../architecture/composition-evaluation.md).

@@ -2,11 +2,11 @@
 
 This directory records stable implementation and conformance facts about Chip8NX.
 
-Reference documents differ from architecture documentation and ADRs:
+Reference documents differ from other documentation:
 
-- architecture documentation explains how larger parts of the system collaborate;
+- architecture documents explain how larger parts of the system collaborate;
 - ADRs preserve important design choices and their rationale;
-- reference documents record the behavior and coverage that the implementation currently claims to support.
+- reference documents record behavior and coverage the implementation currently claims to support.
 
 ## Documents
 

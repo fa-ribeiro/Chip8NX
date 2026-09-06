@@ -2,12 +2,14 @@
 
 This directory contains task-oriented documentation for developers using, embedding, or extending Chip8NX.
 
-Architecture documents explain how the system is structured. Guides instead explain how to accomplish a concrete task or how to choose among supported composition approaches.
+Architecture documents explain **how the system is structured**. Guides explain **how to accomplish a concrete task** or how to choose among supported host-level composition approaches.
 
 ## Current guides
 
 - [Embedding the Core](./embedding-the-core.md) — manually assemble, initialize, and drive a CHIP-8 machine from an application.
-- [Disassembling CHIP-8 programs](./disassembling-programs.md) — disassemble known instruction ranges, inspect individual instructions, customize formatting, handle disassembly errors, and use the exploratory whole-ROM CLI.
-- [Terminal composition levels](./terminal-composition-levels.md) — compare component-level, standard-subsystem, and ready-to-use terminal composition with visual component diagrams and runnable examples.
-- [Continuous integration](./continuous-integration.md) — understand and run the repository CI contract locally.
-- [Web application](./web-application.md) — understand the browser host architecture, including Canvas presentation, physical and virtual input, multi-source keyboard composition, Web Audio, and runtime lifecycle.
+- [Disassembling CHIP-8 programs](./disassembling-programs.md) — inspect known instruction ranges, customize formatting, handle errors, and use exploratory whole-ROM traversal.
+- [Web application](./web-application.md) — understand the browser host, including Canvas presentation, physical and virtual input, Web Audio, execution controls, and ROM lifecycle.
+- [Terminal composition levels](./terminal-composition-levels.md) — choose between component-level, standard-subsystem, and ready-to-use Terminal composition.
+- [Continuous integration](./continuous-integration.md) — reproduce the repository CI contract locally and understand the separate documentation/conformance audits.
+
+For design rationale and responsibility boundaries, see the [Architecture documentation](../architecture/README.md).

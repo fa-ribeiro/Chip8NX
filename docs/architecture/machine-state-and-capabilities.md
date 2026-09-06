@@ -1257,7 +1257,10 @@ Applications use profile values when constructing compatible components:
 ```ts
 const memory = new Ram(profile.memorySize);
 const stack = new Stack(profile.stackCapacity);
-const displayBuffer = new DisplayBuffer(profile.display.width, profile.display.height);
+const displayBuffer = new DisplayBuffer(
+  profile.display.width,
+  profile.display.height,
+);
 ```
 
 The profile supplies required characteristics; the application chooses concrete implementations.

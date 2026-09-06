@@ -1,31 +1,49 @@
 # Continuous Integration
 
-Chip8NX keeps CI deliberately thin: the repository defines the validation logic, while the hosting service only provides a machine on which to run it.
+Chip8NX keeps CI deliberately thin: the repository defines the validation contract, while the hosting service only provides a machine on which to run it.
 
-The project-level contract is:
+The project-level command is:
 
 ```bash
 deno task ci
 ```
 
-That task runs:
+It runs the repository's check, test, and Web production-build tasks rather than duplicating their individual commands in the hosting workflow.
+
+## Repository validation contract
+
+Conceptually:
 
 ```text
+deno task ci
+    ↓
 deno task check
-        |
-        +--> deno check
-        +--> deno fmt --check
-        +--> deno lint
-
-then
-
+    ├── deno check
+    ├── deno fmt --check
+    └── deno lint
+    ↓
 deno task test
-        |
-        +--> unit tests
-        +--> integration tests
+    ├── unit tests
+    └── integration tests
+    ↓
+deno task web:build
+    └── production Web bundle
 ```
 
-External conformance ROMs are intentionally not distributed with Chip8NX, so `deno task ci` does not run `test:conformance`. Conformance tests remain available locally after the documented third-party fixtures are installed.
+External conformance ROMs are not distributed with Chip8NX, so `deno task ci` does not execute `test:conformance`.
+
+Conformance test source is still type-checked by the normal repository checks; only execution requiring absent third-party fixtures is separate.
+
+## Reproduce CI locally
+
+Use the committed lockfile and then run the same project command as the hosted workflow:
+
+```bash
+deno ci
+deno task ci
+```
+
+`deno ci` installs exactly what `deno.lock` describes and fails if the lockfile is missing or inconsistent with project configuration.
 
 ## GitHub Actions
 
@@ -35,9 +53,9 @@ The GitHub workflow lives at:
 .github/workflows/ci.yml
 ```
 
-It runs on both pushes and pull requests.
+It runs on pushes and pull requests and delegates project validation back to `deno task ci`.
 
-### Workflow structure
+The important structure is:
 
 ```yaml
 name: CI
@@ -45,18 +63,16 @@ name: CI
 on:
   push:
   pull_request:
-```
 
-`name` is the label shown in GitHub's Actions interface.
-
-The `on` section defines which repository events start the workflow. Here, every push and every pull-request update is validated.
-
-```yaml
 permissions:
   contents: read
 ```
 
-The workflow only needs permission to read the repository. Declaring that explicitly keeps the default token permissions narrow.
+The workflow needs only repository read access.
+
+### Runner and Deno version
+
+The current workflow uses an Ubuntu runner and pins the project development Deno version:
 
 ```yaml
 jobs:
@@ -65,79 +81,68 @@ jobs:
     runs-on: ubuntu-latest
 ```
 
-A workflow contains one or more jobs. Chip8NX currently needs only one.
+Deno is installed with the official setup action and dependency caching enabled.
 
-`runs-on: ubuntu-latest` asks GitHub to create a temporary Linux runner for the job.
+Pinning the version keeps local and hosted validation aligned.
 
-The job name also records the Deno version used by CI. Pinning it to the development version keeps local and hosted validation aligned.
+### Checkout and dependencies
 
-### Checkout
+A hosted runner starts without repository contents, so the workflow first checks out the commit being tested, then installs the locked dependencies:
 
 ```yaml
 - name: Check out repository
   uses: actions/checkout@v4
-```
 
-GitHub runners start without the repository contents. `actions/checkout` downloads the commit being tested into the runner workspace.
-
-### Install Deno
-
-```yaml
 - name: Set up Deno
   uses: denoland/setup-deno@v2
   with:
     deno-version: v2.9.5
     cache: true
-```
 
-`denoland/setup-deno` installs Deno on the temporary runner.
-
-The version is pinned to `2.9.5`, matching the current Chip8NX development environment.
-
-`cache: true` preserves Deno's dependency cache between successful workflow runs. The cache is keyed using the lockfile, so dependency changes naturally invalidate it.
-
-### Reproducible dependency installation
-
-```yaml
 - name: Install dependencies
   run: deno ci
 ```
 
-`deno ci` installs exactly what the committed `deno.lock` describes and fails if the lockfile is missing or inconsistent with the project configuration.
+### Run the repository contract
 
-This makes dependency resolution in CI reproducible instead of silently updating the lockfile.
-
-### Run project validation
+The final project-validation step is intentionally small:
 
 ```yaml
 - name: Check and test
   run: deno task ci
 ```
 
-The hosting workflow does not duplicate formatting, linting, type-checking, or testing commands. It delegates those decisions back to the repository's `deno.json`.
-
-That means the same validation can be reproduced locally with:
-
-```bash
-deno ci
-deno task ci
-```
+Formatting, linting, type-checking, and testing remain defined in `deno.json`, so contributors and hosted runners use the same entrypoint.
 
 ## Why conformance tests are separate
 
-The IBM Logo and future external test ROMs are not committed to the public repository.
+The IBM Logo and other external conformance ROMs are not committed to the public repository.
 
-If GitHub Actions ran `deno task test:conformance`, every public CI job would first need to download third-party binaries and make assumptions about their redistribution/licensing. Chip8NX instead keeps those fixtures explicit and local.
+Running them in public CI would require downloading third-party binaries and making redistribution/licensing assumptions that the repository intentionally avoids.
 
-The public workflow still type-checks the conformance test source through `deno task check`; it simply does not execute tests that require absent third-party files.
+Install the documented fixtures locally and run the conformance task when validating emulator compatibility.
 
 See [Conformance Tests](../../packages/core/tests/conformance/README.md) for fixture setup.
 
+## Documentation audit is also separate
+
+Documentation diagnostics are available through:
+
+```bash
+deno task docs:check
+```
+
+This currently runs Deno's documentation linter against the public Core entrypoint and is treated as a **public-API documentation audit**, not as a CI/release gate.
+
+The repository still has historical `missing-jsdoc` diagnostics. New or substantially changed public APIs should nevertheless receive useful JSDoc where contracts, semantics, invariants, or lifecycle are not obvious.
+
+The long-term goal is to reduce that backlog without adding ceremonial comments merely to satisfy a percentage or gate.
+
 ## Forgejo Actions
 
-Forgejo remains free to run its own workflow later.
+Forgejo may use its own workflow later.
 
-Forgejo Actions uses a GitHub-Actions-like workflow format, but it is not a guarantee of complete GitHub Actions compatibility. Rather than forcing one workflow file to serve both systems, Chip8NX keeps the important contract forge-independent:
+The important contract is hosting-platform independent:
 
 ```text
 GitHub Actions ----\
@@ -145,13 +150,4 @@ GitHub Actions ----\
 Forgejo Actions ---/
 ```
 
-When a Forgejo runner is configured, its workflow can be a small wrapper around the same command.
-
-This keeps the validation rules in the project instead of making either hosting platform part of the build architecture.
-
-## Further reading
-
-- Deno: GitHub Actions — <https://docs.deno.com/examples/deno_github_actions_tutorial/>
-- Deno: `deno ci` — <https://docs.deno.com/runtime/reference/cli/ci/>
-- Forgejo Actions quick start — <https://forgejo.org/docs/latest/user/actions/quick-start/>
-- Forgejo Actions and GitHub Actions differences — <https://forgejo.org/docs/latest/user/actions/github-actions/>
+A future Forgejo workflow can remain a small wrapper around the same repository command rather than becoming a second source of validation policy.

@@ -24,14 +24,11 @@ The decoder is:
 2. **Variant-independent.**
    - It identifies the instruction encoded by the opcode.
    - It does not apply interpreter-specific execution quirks.
-
 3. **Separate from execution semantics.**
    - The CPU/execution layer determines how an instruction affects machine state.
    - Variant-specific behavior belongs in execution semantics and may later be driven by the selected `Chip8Profile`, not by the decoder.
-
 4. **Reusable.**
    - The same decoder and instruction representation can be consumed by the CPU, debugger, disassembler, and future tooling.
-
 5. **Based on domain types.**
    - Decoded opcode fields are converted into existing domain types where appropriate.
 

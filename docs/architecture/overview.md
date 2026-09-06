@@ -296,7 +296,7 @@ flowchart LR
     State -->|"Keyboard capability"| Executor
 ```
 
-`KeyboardState` owns CHIP-8-facing pressed-state behavior and the `FX0A` press-then-release wait state machine.
+`KeyboardState` owns CHIP-8-facing pressed-state behavior and the `Fx0A` press-then-release wait state machine.
 
 The host adapter owns platform-specific concerns such as terminal escape-sequence parsing, browser event handling, or synthetic release behavior.
 

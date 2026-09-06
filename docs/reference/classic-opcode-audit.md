@@ -28,7 +28,7 @@ Of those:
 - `0mmm` is recognized and decoded but intentionally rejected during execution because it transfers control to native CDP1802 machine code;
 - no ordinary Classic CHIP-8 virtual-machine opcode remains unimplemented.
 
-The current Classic opcode implementation is therefore considered complete enough that further conformance work does not need to block new feature development.
+The Classic opcode baseline is therefore complete enough that further conformance work does not need to block new feature development.
 
 ## Opcode matrix
 
@@ -74,19 +74,19 @@ The current Classic opcode implementation is therefore considered complete enoug
 
 The original COSMAC VIP implementation allows `0mmm` to transfer execution to a native CDP1802 assembler subroutine.
 
-That behavior crosses the boundary from the CHIP-8 virtual machine into the underlying host processor.
+That crosses the boundary from the CHIP-8 virtual machine into its underlying processor.
 
-Chip8NX is a generic CHIP-8 emulator and does not emulate the COSMAC VIP's CDP1802 processor. The decoder therefore preserves `0mmm` as a distinct `system-call` instruction, while the instruction executor rejects it explicitly as unsupported.
+Chip8NX is a generic CHIP-8 emulator and does not emulate the COSMAC VIP's CDP1802. `Decoder` therefore preserves `0mmm` as a distinct `system-call` instruction, while `InstructionExecutor` rejects it explicitly as unsupported.
 
 This is intentional behavior rather than an incomplete CHIP-8 opcode implementation.
 
-Supporting real `0mmm` execution would require an additional native-machine emulation layer and is outside the current Chip8NX Core scope.
+Supporting real `0mmm` execution would require an additional native-machine emulation layer and is outside the current Core scope.
 
 ## `Dxyn` with zero height
 
 `Dxyn` includes the boundary case where `n` is zero.
 
-For Classic CHIP-8 this means:
+For Classic CHIP-8:
 
 - the instruction still waits for a display-frame opportunity;
 - the vertical-blank opportunity is consumed when execution proceeds;
@@ -94,15 +94,15 @@ For Classic CHIP-8 this means:
 - the framebuffer is unchanged;
 - no collision occurs, so `VF` is cleared.
 
-This must not be confused with later CHIP-8-family behavior where the same `Dxy0` encoding may acquire extended sprite semantics.
+This must not be confused with later CHIP-8-family behavior where `Dxy0` may acquire extended sprite semantics.
 
-Chip8NX keeps the Classic zero-height behavior today. Alternate semantics should only be introduced when a second machine profile that requires them is intentionally supported.
+Chip8NX keeps the Classic zero-height behavior today. Alternate semantics should be introduced only when a supported machine profile actually requires them.
 
 ## Classic behavior verified during conformance work
 
-The audit includes the variant-sensitive Classic semantics already exercised by the test suite:
+Variant-sensitive Classic semantics exercised by the suite include:
 
-- logical `8xy1`, `8xy2`, and `8xy3` operations clear `VF`, with the flag write occurring last;
+- logical `8xy1`, `8xy2`, and `8xy3` clear `VF`, with the flag write occurring last;
 - `8xy6` and `8xyE` use `Vy` as the shift source and store the result in `Vx`;
 - `Bmmm` uses `V0` as its offset;
 - `Fx55` and `Fx65` increment `I` by `x + 1`;
@@ -113,7 +113,7 @@ The audit includes the variant-sensitive Classic semantics already exercised by 
 
 ## External acceptance coverage
 
-The unit-level instruction audit is supplemented by end-to-end conformance tests using real CHIP-8 programs:
+End-to-end conformance coverage includes:
 
 - IBM Logo;
 - original corax89 opcode test;
@@ -122,23 +122,23 @@ The unit-level instruction audit is supplemented by end-to-end conformance tests
 - Timendus Quirks in Classic CHIP-8 mode;
 - Timendus Keypad.
 
-These tests exercise combinations of decoder, executor, machine state, runtime scheduling, timers, display synchronization, and keyboard behavior through the normal Chip8NX execution pipeline.
+These tests exercise combinations of decoder, executor, machine state, runtime scheduling, timers, display synchronization, and keyboard behavior through the normal execution pipeline.
 
 External conformance tests complement rather than replace focused unit tests.
 
 ## Deferred Timendus tests
 
-The remaining Timendus fixtures are not blockers for the Classic interpreter baseline:
+The remaining Timendus fixtures are not blockers for the Classic baseline:
 
-- **Splash screen** provides less coverage than the existing IBM Logo and opcode conformance tests;
-- **Beep** depends on host audio presentation, while Chip8NX Core currently models the sound timer without owning host audio output;
+- **Splash screen** provides less coverage than the existing IBM Logo and opcode tests;
+- **Beep** depends on host audio presentation, while Core models the sound timer without owning host audio output;
 - **Scrolling** targets SUPER-CHIP and XO-CHIP behavior rather than the current Classic profile.
 
-They may be revisited when their corresponding functionality becomes relevant.
+They may be revisited when the corresponding functionality becomes relevant.
 
 ## Exit criterion
 
-The Classic opcode implementation baseline is considered complete when:
+The Classic opcode baseline is complete when:
 
 - every Classic opcode family is intentionally decoded;
 - every CHIP-8 virtual-machine opcode has execution semantics;
@@ -148,4 +148,10 @@ The Classic opcode implementation baseline is considered complete when:
 
 At the time of this audit, those conditions are satisfied.
 
-Further Classic conformance tests remain welcome when they provide useful new evidence, but they no longer block work on applications, public API refinement, or future machine profiles.
+Further Classic conformance tests remain welcome when they provide useful new evidence, but they no longer block application work, public API refinement, or future machine profiles.
+
+## Related documentation
+
+- [Instruction execution architecture](../architecture/instruction-execution.md)
+- [Runtime and timing architecture](../architecture/runtime-and-timing.md)
+- [Machine state and capabilities architecture](../architecture/machine-state-and-capabilities.md)

@@ -219,7 +219,7 @@ advance the normal scheduled display task
 resume the runtime
 ```
 
-The word *attempt* matters because an instruction may deliberately wait and retry.
+The word _attempt_ matters because an instruction may deliberately wait and retry.
 
 Examples include:
 
@@ -387,34 +387,34 @@ State/capability components
 
 ## Lifecycle Design Rules
 
-1. **Construction does not start execution.**  
+1. **Construction does not start execution.**\
    Object creation and emulated progression remain separate.
 
-2. **Initialization does not construct the graph.**  
+2. **Initialization does not construct the graph.**\
    It establishes state in already-composed components.
 
-3. **The runtime starts paused.**  
+3. **The runtime starts paused.**\
    Applications explicitly decide when execution begins.
 
-4. **Pause preserves machine state.**  
+4. **Pause preserves machine state.**\
    It suspends progression without creating execution debt.
 
-5. **Single stepping is paused instruction execution, not scheduled time.**  
+5. **Single stepping is paused instruction execution, not scheduled time.**\
    One step performs one CPU attempt while timers and normal display scheduling remain still.
 
-6. **Instruction waits are not runtime pauses.**  
+6. **Instruction waits are not runtime pauses.**\
    `Fx0A` and retrying draw behavior remain instruction-level control flow.
 
-7. **Reset reuses initialization.**  
+7. **Reset reuses initialization.**\
    Re-establishing initial state does not require rebuilding the object graph.
 
-8. **Reset does not automatically resume.**  
+8. **Reset does not automatically resume.**\
    Post-reset execution policy belongs to the application.
 
-9. **ROM replacement is host/session policy.**  
+9. **ROM replacement is host/session policy.**\
    Applications may reuse or rebuild the machine graph.
 
-10. **Lifecycle ownership remains explicit.**  
+10. **Lifecycle ownership remains explicit.**\
     Application, initializer, runtime, and state components each own distinct transitions.
 
 These rules keep lifecycle sequencing understandable without making one class responsible for construction, initialization, timing, reset, and host-session behavior.

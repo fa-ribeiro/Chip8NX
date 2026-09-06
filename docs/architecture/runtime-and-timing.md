@@ -28,7 +28,7 @@ See also:
 - [Instruction execution architecture](./instruction-execution.md)
 - [Machine lifecycle](./machine-lifecycle.md)
 - [ADR 0006 — Timer boundary](../decisions/0006-timer-boundary.md)
-- [ADR 0011 — Global deadline-driven scheduler timeline](../decisions/0011-global-deadline-driven-scheduler-timeline.md)
+- [ADR 0011 — Deadline-driven scheduler](../decisions/0011-deadline-driven-scheduler.md)
 - [ADR 0013 — Emulated display timing](../decisions/0013-emulated-display-timing.md)
 
 ## Responsibility Model

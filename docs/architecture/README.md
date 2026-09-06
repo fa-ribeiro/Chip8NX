@@ -17,4 +17,4 @@ Source-level JSDoc explains individual classes, interfaces, methods, and types. 
 
 For the rationale behind major architectural choices, see the [Architecture Decision Records](../decisions/README.md).
 
-Host-specific architecture belongs with the relevant host documentation. The terminal application's Level-1/2/3 composition model is documented in [Terminal composition levels](../guides/terminal-composition-levels.md).
+Host-specific architecture belongs with the relevant host documentation. The Terminal application's Level-1/2/3 composition model is documented in [Terminal composition levels](../guides/terminal-composition-levels.md).
