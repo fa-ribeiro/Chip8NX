@@ -63,6 +63,7 @@ export { ClassicInstructionTraceFormatter } from "./src/tracing/classic-instruct
 export { StateChangeInstructionTraceFormatter } from "./src/tracing/state-change-instruction-trace-formatter.ts";
 export type { InstructionTraceFormatter } from "./src/tracing/instruction-trace-formatter.ts";
 export type { InstructionTraceObserver } from "./src/tracing/instruction-trace-observer.ts";
+export { InstructionTraceBuffer } from "./src/tracing/instruction-trace-buffer.ts";
 export type {
   FailedInstructionTrace,
   InstructionTrace,
