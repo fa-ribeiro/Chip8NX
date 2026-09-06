@@ -36,9 +36,7 @@ export class StateChangeInstructionTraceFormatter implements InstructionTraceFor
       }
 
       changes.push(
-        `V${index.toString(16).toUpperCase()}:${this.formatByte(
-          beforeValue,
-        )}${STATE_CHANGE_SEPARATOR}${this.formatByte(afterValue)}`,
+        `V${index.toString(16).toUpperCase()}:${this.formatByte(beforeValue)}${STATE_CHANGE_SEPARATOR}${this.formatByte(afterValue)}`,
       );
     }
 
@@ -50,9 +48,7 @@ export class StateChangeInstructionTraceFormatter implements InstructionTraceFor
 
     if (before.programCounter !== after.programCounter) {
       changes.push(
-        `PC:${this.formatAddress(before.programCounter)}${STATE_CHANGE_SEPARATOR}${this.formatAddress(
-          after.programCounter,
-        )}`,
+        `PC:${this.formatAddress(before.programCounter)}${STATE_CHANGE_SEPARATOR}${this.formatAddress(after.programCounter)}`,
       );
     }
 

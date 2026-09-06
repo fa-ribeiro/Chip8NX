@@ -1,19 +1,12 @@
 import type { InstructionTrace } from "./instruction-trace.ts";
 
-/**
- * Formats one instruction trace for presentation.
- *
- * @remarks
- * Formatting is independent from both trace observation and output. A
- * formatter returns one logical record and does not append output framing
- * such as a trailing newline.
- */
+/** Formats one CPU instruction trace for human-readable presentation. */
 export interface InstructionTraceFormatter {
   /**
-   * Formats one instruction trace.
+   * Formats one successful or failed CPU instruction attempt.
    *
-   * @param trace - Trace record to format.
-   * @returns The human-readable trace representation.
+   * @param trace - Trace to format.
+   * @returns Human-readable trace representation.
    */
   format(trace: InstructionTrace): string;
 }

@@ -1,7 +1,11 @@
 import { address } from "../core/types/address.ts";
-import { opcode } from "../core/types/opcode.ts";
+import { type Opcode, opcode } from "../core/types/opcode.ts";
 import { Decoder } from "../instruction/decoder.ts";
-import type { InstructionTrace } from "../tracing/instruction-trace.ts";
+import type { Instruction } from "../instruction/instruction.ts";
+import type {
+  FailedInstructionTrace,
+  SuccessfulInstructionTrace,
+} from "../tracing/instruction-trace.ts";
 import type { InstructionTraceObserver } from "../tracing/instruction-trace-observer.ts";
 import type { ExecutionContext } from "./execution-context.ts";
 import { InstructionExecutor } from "./instruction-executor.ts";
@@ -30,7 +34,7 @@ export class Cpu {
    * @param context - Machine resources used during instruction execution.
    * @param decoder - Decoder used to translate opcodes into instructions.
    * @param executor - Executor used to apply decoded instruction semantics.
-   * @param traceObserver - Optional observer notified after normally returned
+   * @param traceObserver - Optional observer of successful and failed CPU
    * instruction attempts.
    */
   public constructor(
@@ -45,29 +49,62 @@ export class Cpu {
    */
   public step(): void {
     const traceObserver = this.traceObserver;
-    const before = traceObserver === undefined ? undefined : this.snapshot();
 
-    const programCounter = this.context.programCounter.getValue();
+    let before: CpuState | undefined;
 
-    const highByte = this.context.memory.read(programCounter);
-    const lowByte = this.context.memory.read(address(programCounter + 1));
-
-    const fetchedOpcode = opcode((highByte << 8) | lowByte);
-
-    this.context.programCounter.advance();
-
-    const instruction = this.decoder.decode(fetchedOpcode);
-
-    this.executor.execute(instruction, this.context);
-
-    if (traceObserver !== undefined && before !== undefined) {
-      const trace: InstructionTrace = {
-        instruction,
-        before,
-        after: this.snapshot(),
-      };
-
+    if (traceObserver !== undefined) {
       try {
+        before = this.snapshot();
+      } catch {
+        // Trace observation must not affect emulation behavior.
+      }
+    }
+
+    let fetchedOpcode: Opcode | undefined;
+    let instruction: Instruction | undefined;
+
+    try {
+      const programCounter = this.context.programCounter.getValue();
+
+      const highByte = this.context.memory.read(programCounter);
+      const lowByte = this.context.memory.read(address(programCounter + 1));
+
+      fetchedOpcode = opcode((highByte << 8) | lowByte);
+
+      this.context.programCounter.advance();
+
+      instruction = this.decoder.decode(fetchedOpcode);
+      this.executor.execute(instruction, this.context);
+    } catch (error) {
+      if (traceObserver !== undefined && before !== undefined) {
+        try {
+          const trace: FailedInstructionTrace = {
+            outcome: "failure",
+            ...(fetchedOpcode === undefined ? {} : { opcode: fetchedOpcode }),
+            ...(instruction === undefined ? {} : { instruction }),
+            before,
+            after: this.snapshot(),
+            error,
+          };
+
+          traceObserver.observe(trace);
+        } catch {
+          // Trace observation must not affect emulation behavior.
+        }
+      }
+
+      throw error;
+    }
+
+    if (traceObserver !== undefined && before !== undefined && instruction !== undefined) {
+      try {
+        const trace: SuccessfulInstructionTrace = {
+          outcome: "success",
+          instruction,
+          before,
+          after: this.snapshot(),
+        };
+
         traceObserver.observe(trace);
       } catch {
         // Trace observation must not affect emulation behavior.

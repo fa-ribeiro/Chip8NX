@@ -53,7 +53,6 @@ export * from "./src/instruction/instruction.ts";
 // Instruction formatting
 export { ClassicInstructionFormatter } from "./src/instruction/formatting/classic-instruction-formatter.ts";
 export type { InstructionFormatter } from "./src/instruction/formatting/instruction-formatter.ts";
-export { StateChangeInstructionTraceFormatter } from "./src/tracing/state-change-instruction-trace-formatter.ts";
 
 // Disassembly
 export type { DisassembledInstruction } from "./src/disassembly/disassembled-instruction.ts";
@@ -61,9 +60,14 @@ export { Disassembler } from "./src/disassembly/disassembler.ts";
 
 // Tracing
 export { ClassicInstructionTraceFormatter } from "./src/tracing/classic-instruction-trace-formatter.ts";
-export type { InstructionTrace } from "./src/tracing/instruction-trace.ts";
+export { StateChangeInstructionTraceFormatter } from "./src/tracing/state-change-instruction-trace-formatter.ts";
 export type { InstructionTraceFormatter } from "./src/tracing/instruction-trace-formatter.ts";
 export type { InstructionTraceObserver } from "./src/tracing/instruction-trace-observer.ts";
+export type {
+  FailedInstructionTrace,
+  InstructionTrace,
+  SuccessfulInstructionTrace,
+} from "./src/tracing/instruction-trace.ts";
 
 // Keyboard
 export type { Keyboard } from "./src/keyboard/keyboard.ts";

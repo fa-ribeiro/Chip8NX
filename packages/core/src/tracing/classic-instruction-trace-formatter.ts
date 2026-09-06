@@ -1,7 +1,11 @@
 import type { Address } from "../core/types/address.ts";
 import type { Opcode } from "../core/types/opcode.ts";
 import type { InstructionFormatter } from "../instruction/formatting/instruction-formatter.ts";
-import type { InstructionTrace } from "./instruction-trace.ts";
+import type {
+  FailedInstructionTrace,
+  InstructionTrace,
+  SuccessfulInstructionTrace,
+} from "./instruction-trace.ts";
 import type { InstructionTraceFormatter } from "./instruction-trace-formatter.ts";
 
 /**
@@ -24,9 +28,35 @@ export class ClassicInstructionTraceFormatter implements InstructionTraceFormatt
    * {@inheritDoc InstructionTraceFormatter.format}
    */
   public format(trace: InstructionTrace): string {
+    return trace.outcome === "success" ? this.formatSuccess(trace) : this.formatFailure(trace);
+  }
+
+  private formatSuccess(trace: SuccessfulInstructionTrace): string {
     return `${this.formatAddress(trace.before.programCounter)} ${this.formatOpcode(
       trace.instruction.opcode,
     )} ${this.instructionFormatter.format(trace.instruction)}`;
+  }
+
+  private formatFailure(trace: FailedInstructionTrace): string {
+    const address = this.formatAddress(trace.before.programCounter);
+    const opcode = trace.opcode === undefined ? "????" : this.formatOpcode(trace.opcode);
+
+    const operation =
+      trace.instruction !== undefined
+        ? this.instructionFormatter.format(trace.instruction)
+        : trace.opcode === undefined
+          ? "<fetch failed>"
+          : "<decode failed>";
+
+    return `${address} ${opcode} ${operation} [${this.formatError(trace.error)}]`;
+  }
+
+  private formatError(error: unknown): string {
+    if (error instanceof Error) {
+      return `${error.name}: ${error.message}`;
+    }
+
+    return String(error);
   }
 
   private formatAddress(value: Address): string {

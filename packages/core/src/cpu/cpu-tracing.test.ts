@@ -1,4 +1,10 @@
-import { assertEquals } from "@std/assert";
+
+import {
+  assert,
+  assertEquals,
+  assertStrictEquals,
+  assertThrows,
+} from "@std/assert";
 import { address } from "../core/types/address.ts";
 import { byte } from "../core/types/byte.ts";
 import { key } from "../core/types/key.ts";
@@ -6,7 +12,7 @@ import { opcode } from "../core/types/opcode.ts";
 import { DisplayBuffer } from "../display/display-buffer.ts";
 import { VerticalBlank } from "../display/vertical-blank.ts";
 import { ClassicFont } from "../font/classic-font.ts";
-import { Decoder } from "../instruction/decoder.ts";
+import { Decoder, InvalidOpcodeError } from "../instruction/decoder.ts";
 import { KeyboardState } from "../keyboard/keyboard-state.ts";
 import { CLASSIC_CHIP8_PROFILE } from "../machine/classic/classic-chip8-profile.ts";
 import { Ram } from "../memory/ram.ts";
@@ -25,7 +31,6 @@ import { Stack } from "./stack/stack.ts";
 
 function createContext(overrides: Partial<ExecutionContext> = {}): ExecutionContext {
   const profile = CLASSIC_CHIP8_PROFILE;
-
   return {
     registers: new Registers(),
     memory: new Ram(profile.memorySize),
@@ -43,32 +48,26 @@ function createContext(overrides: Partial<ExecutionContext> = {}): ExecutionCont
   };
 }
 
-function createCpu(
-  context: ExecutionContext,
-  traceObserver?: InstructionTraceObserver,
-): Cpu {
-  return new Cpu(context, new Decoder(), new InstructionExecutor(), traceObserver);
+function createCpu(context: ExecutionContext, observer?: InstructionTraceObserver): Cpu {
+  return new Cpu(context, new Decoder(), new InstructionExecutor(), observer);
 }
 
-Deno.test("CPU emits an instruction trace after a normally returned attempt", () => {
+Deno.test("CPU emits a successful instruction trace", () => {
   const memory = new Ram(0x1000);
   const registers = new Registers();
   const traces: InstructionTrace[] = [];
-
   memory.write(address(0x200), byte(0x6a));
   memory.write(address(0x201), byte(0x42));
 
   const context = createContext({ memory, registers });
-  const cpu = createCpu(context, { observe: (trace) => traces.push(trace) });
+  createCpu(context, { observe: (trace) => traces.push(trace) }).step();
 
-  cpu.step();
-
-  assertEquals(traces.length, 1);
-
-  const trace = traces[0] as InstructionTrace;
+  const trace = traces[0];
+  assert(trace !== undefined);
+  assertEquals(trace.outcome, "success");
+  if (trace.outcome !== "success") throw new Error("Expected success trace");
   assertEquals(trace.instruction.opcode, opcode(0x6a42));
   assertEquals(trace.before.programCounter, address(0x200));
-  assertEquals(trace.before.registers[0xa], byte(0));
   assertEquals(trace.after.programCounter, address(0x202));
   assertEquals(trace.after.registers[0xa], byte(0x42));
 });
@@ -77,45 +76,102 @@ Deno.test("CPU traces a normally returned instruction attempt that retries", () 
   const memory = new Ram(0x1000);
   const keyboard = new KeyboardState();
   const traces: InstructionTrace[] = [];
-
   memory.write(address(0x200), byte(0xfa));
   memory.write(address(0x201), byte(0x0a));
 
   const context = createContext({ memory, keyboard });
   const cpu = createCpu(context, { observe: (trace) => traces.push(trace) });
-
   cpu.step();
 
-  assertEquals(traces.length, 1);
-  assertEquals(traces[0]?.instruction.opcode, opcode(0xfa0a));
-  assertEquals(traces[0]?.before.programCounter, address(0x200));
-  assertEquals(traces[0]?.after.programCounter, address(0x200));
+  const first = traces[0];
+  assert(first !== undefined && first.outcome === "success");
+  assertEquals(first.before.programCounter, address(0x200));
+  assertEquals(first.after.programCounter, address(0x200));
 
   keyboard.press(key(0xb));
   keyboard.release(key(0xb));
   cpu.step();
 
-  assertEquals(traces.length, 2);
-  assertEquals(traces[1]?.before.programCounter, address(0x200));
-  assertEquals(traces[1]?.after.programCounter, address(0x202));
+  const second = traces[1];
+  assert(second !== undefined && second.outcome === "success");
+  assertEquals(second.after.programCounter, address(0x202));
 });
 
-Deno.test("CPU isolates instruction trace observer failures from execution", () => {
+Deno.test("CPU isolates successful trace observer failures", () => {
   const memory = new Ram(0x1000);
   const registers = new Registers();
-
   memory.write(address(0x200), byte(0x6a));
   memory.write(address(0x201), byte(0x42));
 
   const context = createContext({ memory, registers });
-  const cpu = createCpu(context, {
-    observe(): void {
-      throw new Error("trace observer failure");
+  createCpu(context, { observe: () => { throw new Error("observer failed"); } }).step();
+  assertEquals(registers.get(registerIndex(0xa)), byte(0x42));
+  assertEquals(context.programCounter.getValue(), address(0x202));
+});
+
+Deno.test("CPU traces a fetch failure before a complete opcode exists", () => {
+  const memory = new Ram(0x201);
+  memory.write(address(0x200), byte(0x61));
+  const traces: InstructionTrace[] = [];
+  const cpu = createCpu(createContext({ memory }), { observe: (trace) => traces.push(trace) });
+
+  const thrown = assertThrows(() => cpu.step(), RangeError);
+  const trace = traces[0];
+  assert(trace !== undefined && trace.outcome === "failure");
+  assertEquals(trace.opcode, undefined);
+  assertEquals(trace.instruction, undefined);
+  assertEquals(trace.before.programCounter, address(0x200));
+  assertEquals(trace.after.programCounter, address(0x200));
+  assertStrictEquals(trace.error, thrown);
+});
+
+Deno.test("CPU traces a decode failure after advancing the program counter", () => {
+  const memory = new Ram(0x1000);
+  memory.write(address(0x200), byte(0xff));
+  memory.write(address(0x201), byte(0xff));
+  const traces: InstructionTrace[] = [];
+  const cpu = createCpu(createContext({ memory }), { observe: (trace) => traces.push(trace) });
+
+  const thrown = assertThrows(() => cpu.step(), InvalidOpcodeError);
+  const trace = traces[0];
+  assert(trace !== undefined && trace.outcome === "failure");
+  assertEquals(trace.opcode, opcode(0xffff));
+  assertEquals(trace.instruction, undefined);
+  assertEquals(trace.before.programCounter, address(0x200));
+  assertEquals(trace.after.programCounter, address(0x202));
+  assertStrictEquals(trace.error, thrown);
+});
+
+Deno.test("CPU traces an execution failure with the decoded instruction", () => {
+  const memory = new Ram(0x1000);
+  memory.write(address(0x200), byte(0x00));
+  memory.write(address(0x201), byte(0xee));
+  const traces: InstructionTrace[] = [];
+  const cpu = createCpu(createContext({ memory }), { observe: (trace) => traces.push(trace) });
+
+  const thrown = assertThrows(() => cpu.step(), RangeError);
+  const trace = traces[0];
+  assert(trace !== undefined && trace.outcome === "failure");
+  assertEquals(trace.opcode, opcode(0x00ee));
+  assertEquals(trace.instruction?.kind, "return");
+  assertEquals(trace.after.programCounter, address(0x202));
+  assertStrictEquals(trace.error, thrown);
+});
+
+Deno.test("CPU preserves the original failure when the trace observer throws", () => {
+  const memory = new Ram(0x1000);
+  memory.write(address(0x200), byte(0xff));
+  memory.write(address(0x201), byte(0xff));
+  let observed: InstructionTrace | undefined;
+
+  const cpu = createCpu(createContext({ memory }), {
+    observe(trace): void {
+      observed = trace;
+      throw new Error("trace observer failed");
     },
   });
 
-  cpu.step();
-
-  assertEquals(registers.get(registerIndex(0xa)), byte(0x42));
-  assertEquals(context.programCounter.getValue(), address(0x202));
+  const thrown = assertThrows(() => cpu.step(), InvalidOpcodeError);
+  assert(observed !== undefined && observed.outcome === "failure");
+  assertStrictEquals(thrown, observed.error);
 });
