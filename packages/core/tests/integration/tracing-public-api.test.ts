@@ -1,17 +1,17 @@
+import { assert, assertEquals, assertStrictEquals } from "@std/assert";
 import {
   address,
   byte,
   ClassicInstructionFormatter,
   ClassicInstructionTraceFormatter,
-  InstructionTraceBuffer,
-  opcode,
-  StateChangeInstructionTraceFormatter,
   type CpuState,
+  InstructionTraceBuffer,
   type InstructionTraceObserver,
-  type SuccessfulInstructionTrace,
+  opcode,
   registerIndex,
+  StateChangeInstructionTraceFormatter,
+  type SuccessfulInstructionTrace,
 } from "../../mod.ts";
-import { assertEquals, assertStrictEquals } from "@std/assert";
 
 function cpuState(programCounter: number, register0 = 0): CpuState {
   const registers = Array.from({ length: 16 }, (_, index) => byte(index === 0 ? register0 : 0));
@@ -49,12 +49,14 @@ Deno.test("public tracing API composes observation, history, and formatting", ()
   );
 
   const snapshot = history.snapshot();
+  const retainedTrace = snapshot[0];
 
   assertEquals(snapshot.length, 1);
-  assertStrictEquals(snapshot[0], trace);
+  assert(retainedTrace !== undefined);
+  assertStrictEquals(retainedTrace, trace);
 
   assertEquals(
-    formatter.format(trace),
+    formatter.format(retainedTrace),
     "0x200 6042 LD V0, 0x42       | " + "V0:0x00 → 0x42; PC:0x200 → 0x202",
   );
 });

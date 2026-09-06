@@ -49,7 +49,16 @@ function failedTrace(programCounter: number): FailedInstructionTrace {
 }
 
 Deno.test("InstructionTraceBuffer rejects invalid capacities", () => {
-  for (const capacity of [0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+  for (
+    const capacity of [
+      0,
+      -1,
+      1.5,
+      Number.NaN,
+      Number.POSITIVE_INFINITY,
+      Number.MAX_SAFE_INTEGER + 1,
+    ]
+  ) {
     assertThrows(() => new InstructionTraceBuffer(capacity), RangeError);
   }
 });

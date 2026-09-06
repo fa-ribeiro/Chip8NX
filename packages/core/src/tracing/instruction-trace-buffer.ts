@@ -28,7 +28,9 @@ export class InstructionTraceBuffer implements InstructionTraceObserver {
    */
   public constructor(capacity: number) {
     if (!Number.isSafeInteger(capacity) || capacity <= 0) {
-      throw new RangeError("Instruction trace buffer capacity must be a positive integer.");
+      throw new RangeError(
+        "Instruction trace buffer capacity must be a positive safe integer.",
+      );
     }
 
     this.maximumCapacity = capacity;

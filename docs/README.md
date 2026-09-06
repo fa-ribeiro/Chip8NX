@@ -29,6 +29,7 @@ Current topics include:
 - [machine initialization](./architecture/machine-initialization.md), including binary images, memory-layout validation, validate-before-mutate guarantees, reset/reload semantics, and ROM-replacement boundaries;
 - [machine lifecycle](./architecture/machine-lifecycle.md), including construction, initialization, paused/running transitions, single stepping, reset sequencing, and application/runtime ownership;
 - disassembly, instruction inspection, formatting boundaries, and application-level traversal policy;
+- [tracing](./architecture/tracing.md), including optional CPU-attempt observation, success/failure records, retry visibility, non-interference guarantees, formatting boundaries, and bounded history;
 - host composition across the Terminal and Web applications.
 
 ### Guides

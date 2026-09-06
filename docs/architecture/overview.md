@@ -46,6 +46,9 @@ flowchart TB
     Executor["InstructionExecutor"]
     Context["ExecutionContext"]
 
+    TraceObserver["InstructionTraceObserver"]
+    TraceBuffer["InstructionTraceBuffer"]
+
     subgraph State["Machine state and capabilities"]
         Memory["Memory / Ram"]
         Registers["Registers"]
@@ -68,6 +71,9 @@ flowchart TB
     Cpu --> Decoder
     Cpu --> Executor
     Cpu --> Context
+
+    Cpu -.->|"optional InstructionTrace"| TraceObserver
+    TraceBuffer -.->|"implements"| TraceObserver
 
     Runtime --> Scheduler
     Scheduler --> Clock
@@ -177,9 +183,73 @@ Opcode → Decoder → Instruction → InstructionFormatter → human-readable r
 
 Inspection does not execute the instruction or mutate machine state. The shared typed `Instruction` boundary keeps opcode interpretation centralized in `Decoder` while allowing execution and tooling to consume the same semantic model.
 
-`Disassembler` coordinates memory reads, decoding, formatting, and sequential range traversal. Presentation remains outside Core, so the resulting structured data can be consumed by command-line tools, debuggers, tracers, or graphical hosts.
+`Disassembler` coordinates memory reads, decoding, formatting, and sequential range traversal. Presentation remains outside Core, so the resulting structured data can be consumed by command-line tools, debuggers, or graphical hosts.
 
 See [Disassembly architecture](./disassembly.md) for the detailed component boundaries, composition model, range semantics, and extension strategy.
+
+### Tracing and execution observation
+
+Tracing observes actual CPU instruction attempts without participating in
+execution semantics.
+
+```mermaid
+flowchart LR
+    Cpu["Cpu.step()"]
+    Trace["InstructionTrace"]
+    Observer["InstructionTraceObserver"]
+    Formatter["InstructionTraceFormatter"]
+    History["InstructionTraceBuffer"]
+    Output["Application output / UI"]
+
+    Cpu -.->|"optional observation"| Trace
+    Trace --> Observer
+    Trace --> Formatter
+    History -.->|"implements"| Observer
+    Formatter --> Output
+```
+
+The important boundary is different from disassembly:
+
+```text
+disassembly
+    → inspect encoded instructions without executing them
+
+tracing
+    → observe instruction attempts that actually execute
+```
+
+`Cpu.step()` is the tracing producer because it owns the complete
+fetch/decode/execute attempt. `Chip8Runtime` determines when scheduled CPU
+attempts occur, but it does not own their instruction-level semantics.
+
+Each attempt produces either a successful or failed structured trace. Successful
+traces retain the decoded `Instruction`; failed traces preserve whatever semantic
+information was available before failure together with the original error and
+the actual before/after `CpuState`.
+
+Tracing is optional and non-interfering. With no observer configured, the CPU
+does not create trace snapshots. If an observer itself fails, that failure is
+isolated so observation cannot change emulated behavior or replace an execution
+error.
+
+Retry-style instructions remain visible as repeated CPU attempts. For example,
+a vblank-gated `Dxyn` or waiting `Fx0A` may restore its own instruction address
+and appear multiple times before a later attempt advances.
+
+Formatting, output, and retained history remain separate concerns:
+
+```text
+InstructionTrace
+    ├── formatter → human-readable text → application output
+    └── observer  → bounded history
+```
+
+`InstructionTraceBuffer` provides bounded chronological history using
+ring-buffer storage. It observes traces but never controls execution.
+
+See [Tracing architecture](./tracing.md) for the detailed trace data model,
+failure semantics, retry behavior, formatting boundaries, bounded history,
+testing strategy, and deliberately deferred debugger features.
 
 ## Machine initialization
 
@@ -274,6 +344,7 @@ flowchart LR
 A renderer observes the buffer and presents it using host-specific technology.
 
 Host rendering does **not** generate CHIP-8 vertical blank and does not need to run at the exact emulated display refresh frequency.
+
 This separation allows a terminal host, browser host, desktop host, and deterministic tests to share the same display semantics.
 
 ## Keyboard boundary

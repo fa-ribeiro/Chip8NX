@@ -13,6 +13,7 @@ Source-level JSDoc explains individual classes, interfaces, methods, and types. 
 - [Machine initialization](./machine-initialization.md) — binary images, memory layout validation, validate-before-mutate guarantees, reset/reload semantics, ROM replacement boundaries, and initialization verification.
 - [Machine lifecycle](./machine-lifecycle.md) — construction, initialization, paused/running transitions, single stepping, reset sequencing, and application/runtime ownership.
 - [Disassembly](./disassembly.md) — read-only instruction inspection, decoding and formatting boundaries, dependency direction, range semantics, lifecycle, application-level tolerant traversal, and future extension points.
+- [Tracing](./tracing.md) — optional CPU-attempt observation, success/failure trace records, non-interference guarantees, retry visibility, formatting boundaries, bounded history, and deferred debugger concerns.
 - [Host composition evaluation](./composition-evaluation.md) — comparison of the Terminal and Web composition case studies and the resulting project-wide conclusions.
 
 For the rationale behind major architectural choices, see the [Architecture Decision Records](../decisions/README.md).
