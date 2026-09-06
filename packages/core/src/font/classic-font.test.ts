@@ -6,14 +6,11 @@ import { ClassicFont } from "./classic-font.ts";
 
 const TEST_FONT_BASE_ADDRESS = address(0x100);
 
-Deno.test(
-  "ClassicFont resolves glyph addresses from a configurable base address",
-  () => {
-    const font = new ClassicFont(TEST_FONT_BASE_ADDRESS);
+Deno.test("ClassicFont resolves glyph addresses from a configurable base address", () => {
+  const font = new ClassicFont(TEST_FONT_BASE_ADDRESS);
 
-    assertEquals(font.getSpriteAddress(byte(0x03)), address(0x10f));
-  },
-);
+  assertEquals(font.getSpriteAddress(byte(0x03)), address(0x10f));
+});
 
 Deno.test("ClassicFont resolves hexadecimal glyphs above 9", () => {
   const font = new ClassicFont(TEST_FONT_BASE_ADDRESS);

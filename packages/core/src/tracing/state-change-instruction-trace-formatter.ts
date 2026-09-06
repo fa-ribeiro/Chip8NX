@@ -36,37 +36,61 @@ export class StateChangeInstructionTraceFormatter implements InstructionTraceFor
       }
 
       changes.push(
-        `V${index.toString(16).toUpperCase()}:${this.formatByte(beforeValue)}${STATE_CHANGE_SEPARATOR}${this.formatByte(afterValue)}`,
+        `V${index.toString(16).toUpperCase()}:${
+          this.formatByte(
+            beforeValue,
+          )
+        }${STATE_CHANGE_SEPARATOR}${this.formatByte(afterValue)}`,
       );
     }
 
     if (before.index !== after.index) {
       changes.push(
-        `I :${this.formatAddress(before.index)}${STATE_CHANGE_SEPARATOR}${this.formatAddress(after.index)}`,
+        `I :${this.formatAddress(before.index)}${STATE_CHANGE_SEPARATOR}${
+          this.formatAddress(
+            after.index,
+          )
+        }`,
       );
     }
 
     if (before.programCounter !== after.programCounter) {
       changes.push(
-        `PC:${this.formatAddress(before.programCounter)}${STATE_CHANGE_SEPARATOR}${this.formatAddress(after.programCounter)}`,
+        `PC:${this.formatAddress(before.programCounter)}${STATE_CHANGE_SEPARATOR}${
+          this.formatAddress(
+            after.programCounter,
+          )
+        }`,
       );
     }
 
     if (!this.areStacksEqual(before.stack, after.stack)) {
       changes.push(
-        `STACK:${this.formatStack(before.stack)}${STATE_CHANGE_SEPARATOR}${this.formatStack(after.stack)}`,
+        `STACK:${this.formatStack(before.stack)}${STATE_CHANGE_SEPARATOR}${
+          this.formatStack(
+            after.stack,
+          )
+        }`,
       );
     }
 
     if (before.delayTimer !== after.delayTimer) {
       changes.push(
-        `DT:${this.formatByte(before.delayTimer)}${STATE_CHANGE_SEPARATOR}${this.formatByte(after.delayTimer)}`,
+        `DT:${this.formatByte(before.delayTimer)}${STATE_CHANGE_SEPARATOR}${
+          this.formatByte(
+            after.delayTimer,
+          )
+        }`,
       );
     }
 
     if (before.soundTimer !== after.soundTimer) {
       changes.push(
-        `ST:${this.formatByte(before.soundTimer)}${STATE_CHANGE_SEPARATOR}${this.formatByte(after.soundTimer)}`,
+        `ST:${this.formatByte(before.soundTimer)}${STATE_CHANGE_SEPARATOR}${
+          this.formatByte(
+            after.soundTimer,
+          )
+        }`,
       );
     }
 

@@ -1,10 +1,4 @@
-
-import {
-  assert,
-  assertEquals,
-  assertStrictEquals,
-  assertThrows,
-} from "@std/assert";
+import { assert, assertEquals, assertStrictEquals, assertThrows } from "@std/assert";
 import { address } from "../core/types/address.ts";
 import { byte } from "../core/types/byte.ts";
 import { key } from "../core/types/key.ts";
@@ -104,7 +98,11 @@ Deno.test("CPU isolates successful trace observer failures", () => {
   memory.write(address(0x201), byte(0x42));
 
   const context = createContext({ memory, registers });
-  createCpu(context, { observe: () => { throw new Error("observer failed"); } }).step();
+  createCpu(context, {
+    observe: () => {
+      throw new Error("observer failed");
+    },
+  }).step();
   assertEquals(registers.get(registerIndex(0xa)), byte(0x42));
   assertEquals(context.programCounter.getValue(), address(0x202));
 });
@@ -113,7 +111,9 @@ Deno.test("CPU traces a fetch failure before a complete opcode exists", () => {
   const memory = new Ram(0x201);
   memory.write(address(0x200), byte(0x61));
   const traces: InstructionTrace[] = [];
-  const cpu = createCpu(createContext({ memory }), { observe: (trace) => traces.push(trace) });
+  const cpu = createCpu(createContext({ memory }), {
+    observe: (trace) => traces.push(trace),
+  });
 
   const thrown = assertThrows(() => cpu.step(), RangeError);
   const trace = traces[0];
@@ -130,7 +130,9 @@ Deno.test("CPU traces a decode failure after advancing the program counter", () 
   memory.write(address(0x200), byte(0xff));
   memory.write(address(0x201), byte(0xff));
   const traces: InstructionTrace[] = [];
-  const cpu = createCpu(createContext({ memory }), { observe: (trace) => traces.push(trace) });
+  const cpu = createCpu(createContext({ memory }), {
+    observe: (trace) => traces.push(trace),
+  });
 
   const thrown = assertThrows(() => cpu.step(), InvalidOpcodeError);
   const trace = traces[0];
@@ -147,7 +149,9 @@ Deno.test("CPU traces an execution failure with the decoded instruction", () => 
   memory.write(address(0x200), byte(0x00));
   memory.write(address(0x201), byte(0xee));
   const traces: InstructionTrace[] = [];
-  const cpu = createCpu(createContext({ memory }), { observe: (trace) => traces.push(trace) });
+  const cpu = createCpu(createContext({ memory }), {
+    observe: (trace) => traces.push(trace),
+  });
 
   const thrown = assertThrows(() => cpu.step(), RangeError);
   const trace = traces[0];

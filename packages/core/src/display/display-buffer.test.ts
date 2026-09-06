@@ -163,16 +163,13 @@ Deno.test("drawSprite XORs sprite pixels with the display", () => {
   assertEquals(displayBuffer.getPixel(2, 0), true);
 });
 
-Deno.test(
-  "drawSprite does not report collision when drawing on blank pixels",
-  () => {
-    const displayBuffer = new DisplayBuffer(8, 4);
+Deno.test("drawSprite does not report collision when drawing on blank pixels", () => {
+  const displayBuffer = new DisplayBuffer(8, 4);
 
-    const collision = displayBuffer.drawSprite(0, 0, [byte(0b1111_0000)]);
+  const collision = displayBuffer.drawSprite(0, 0, [byte(0b1111_0000)]);
 
-    assertEquals(collision, false);
-  },
-);
+  assertEquals(collision, false);
+});
 
 Deno.test("drawSprite wraps the initial X coordinate", () => {
   const displayBuffer = new DisplayBuffer(8, 4);

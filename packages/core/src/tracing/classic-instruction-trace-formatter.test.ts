@@ -28,7 +28,9 @@ function cpuState(overrides: Partial<CpuState> = {}): CpuState {
 const formatter = new ClassicInstructionTraceFormatter(new ClassicInstructionFormatter());
 
 Deno.test("formats source address, opcode, and delegated instruction text", () => {
-  const instructionFormatter: InstructionFormatter = { format: () => "FORMATTED" };
+  const instructionFormatter: InstructionFormatter = {
+    format: () => "FORMATTED",
+  };
   const delegated = new ClassicInstructionTraceFormatter(instructionFormatter);
   const trace: SuccessfulInstructionTrace = {
     outcome: "success",

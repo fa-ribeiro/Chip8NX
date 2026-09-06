@@ -43,25 +43,22 @@ Deno.test("Scheduler executes a task when its deadline is reached", () => {
   assertEquals(executions, 1);
 });
 
-Deno.test(
-  "Scheduler catches up every occurrence due by the current time",
-  () => {
-    const clock = new TestClock();
-    const scheduler = new Scheduler(clock);
+Deno.test("Scheduler catches up every occurrence due by the current time", () => {
+  const clock = new TestClock();
+  const scheduler = new Scheduler(clock);
 
-    let executions = 0;
+  let executions = 0;
 
-    scheduler.addTask("test", Frequency.fromInteger(100n), () => {
-      executions++;
-    });
+  scheduler.addTask("test", Frequency.fromInteger(100n), () => {
+    executions++;
+  });
 
-    advanceClock(clock, 50_000_000n);
+  advanceClock(clock, 50_000_000n);
 
-    scheduler.tick();
+  scheduler.tick();
 
-    assertEquals(executions, 5);
-  },
-);
+  assertEquals(executions, 5);
+});
 
 Deno.test("Scheduler schedules a task from its registration time", () => {
   const clock = new TestClock();
@@ -149,72 +146,66 @@ Deno.test("Scheduler preserves exact frequency over one second", () => {
   assertEquals(executions, 60);
 });
 
-Deno.test(
-  "Scheduler executes different-frequency tasks in chronological order",
-  () => {
-    const clock = new TestClock();
-    const scheduler = new Scheduler(clock);
+Deno.test("Scheduler executes different-frequency tasks in chronological order", () => {
+  const clock = new TestClock();
+  const scheduler = new Scheduler(clock);
 
-    const executionOrder: string[] = [];
+  const executionOrder: string[] = [];
 
-    scheduler.addTask("fast", Frequency.fromInteger(4n), () => {
-      executionOrder.push("fast");
-    });
+  scheduler.addTask("fast", Frequency.fromInteger(4n), () => {
+    executionOrder.push("fast");
+  });
 
-    scheduler.addTask("slow", Frequency.fromInteger(2n), () => {
-      executionOrder.push("slow");
-    });
+  scheduler.addTask("slow", Frequency.fromInteger(2n), () => {
+    executionOrder.push("slow");
+  });
 
-    advanceClock(clock, 1_000_000_000n);
+  advanceClock(clock, 1_000_000_000n);
 
-    scheduler.tick();
+  scheduler.tick();
 
-    assertEquals(executionOrder, [
-      "fast", // 250 ms
-      "fast", // 500 ms
-      "slow", // 500 ms
-      "fast", // 750 ms
-      "fast", // 1000 ms
-      "slow", // 1000 ms
-    ]);
-  },
-);
+  assertEquals(executionOrder, [
+    "fast", // 250 ms
+    "fast", // 500 ms
+    "slow", // 500 ms
+    "fast", // 750 ms
+    "fast", // 1000 ms
+    "slow", // 1000 ms
+  ]);
+});
 
-Deno.test(
-  "Scheduler chronologically interleaves 500 Hz and 60 Hz tasks",
-  () => {
-    const clock = new TestClock();
-    const scheduler = new Scheduler(clock);
+Deno.test("Scheduler chronologically interleaves 500 Hz and 60 Hz tasks", () => {
+  const clock = new TestClock();
+  const scheduler = new Scheduler(clock);
 
-    const executionOrder: string[] = [];
+  const executionOrder: string[] = [];
 
-    scheduler.addTask("cpu", Frequency.fromInteger(500n), () => {
-      executionOrder.push("cpu");
-    });
+  scheduler.addTask("cpu", Frequency.fromInteger(500n), () => {
+    executionOrder.push("cpu");
+  });
 
-    scheduler.addTask("timer", Frequency.fromInteger(60n), () => {
-      executionOrder.push("timer");
-    });
+  scheduler.addTask("timer", Frequency.fromInteger(60n), () => {
+    executionOrder.push("timer");
+  });
 
-    advanceClock(clock, 20_000_000n);
+  advanceClock(clock, 20_000_000n);
 
-    scheduler.tick();
+  scheduler.tick();
 
-    assertEquals(executionOrder, [
-      "cpu", // 2 ms
-      "cpu", // 4 ms
-      "cpu", // 6 ms
-      "cpu", // 8 ms
-      "cpu", // 10 ms
-      "cpu", // 12 ms
-      "cpu", // 14 ms
-      "cpu", // 16 ms
-      "timer", // 16.666... ms
-      "cpu", // 18 ms
-      "cpu", // 20 ms
-    ]);
-  },
-);
+  assertEquals(executionOrder, [
+    "cpu", // 2 ms
+    "cpu", // 4 ms
+    "cpu", // 6 ms
+    "cpu", // 8 ms
+    "cpu", // 10 ms
+    "cpu", // 12 ms
+    "cpu", // 14 ms
+    "cpu", // 16 ms
+    "timer", // 16.666... ms
+    "cpu", // 18 ms
+    "cpu", // 20 ms
+  ]);
+});
 
 Deno.test("Scheduler executes equal deadlines in registration order", () => {
   const clock = new TestClock();
@@ -303,39 +294,36 @@ Deno.test("Scheduler suspends one task without affecting others", () => {
   assertEquals(timerExecutions, 1);
 });
 
-Deno.test(
-  "Scheduler resume schedules a new full period from the resume time",
-  () => {
-    const clock = new TestClock();
-    const scheduler = new Scheduler(clock);
+Deno.test("Scheduler resume schedules a new full period from the resume time", () => {
+  const clock = new TestClock();
+  const scheduler = new Scheduler(clock);
 
-    let executions = 0;
+  let executions = 0;
 
-    scheduler.addTask("cpu", Frequency.fromInteger(100n), () => {
-      executions++;
-    });
+  scheduler.addTask("cpu", Frequency.fromInteger(100n), () => {
+    executions++;
+  });
 
-    advanceClock(clock, 5_000_000n);
+  advanceClock(clock, 5_000_000n);
 
-    scheduler.suspendTask("cpu");
+  scheduler.suspendTask("cpu");
 
-    advanceClock(clock, 1_000_000_000n);
+  advanceClock(clock, 1_000_000_000n);
 
-    scheduler.resumeTask("cpu");
+  scheduler.resumeTask("cpu");
 
-    advanceClock(clock, 5_000_000n);
+  advanceClock(clock, 5_000_000n);
 
-    scheduler.tick();
+  scheduler.tick();
 
-    assertEquals(executions, 0);
+  assertEquals(executions, 0);
 
-    advanceClock(clock, 5_000_000n);
+  advanceClock(clock, 5_000_000n);
 
-    scheduler.tick();
+  scheduler.tick();
 
-    assertEquals(executions, 1);
-  },
-);
+  assertEquals(executions, 1);
+});
 
 Deno.test(
   "Scheduler suspended tasks accumulate no execution debt without intermediate ticks",
@@ -393,22 +381,14 @@ Deno.test("Scheduler throws when suspending an unknown task", () => {
   const clock = new TestClock();
   const scheduler = new Scheduler(clock);
 
-  assertThrows(
-    () => scheduler.suspendTask("missing"),
-    Error,
-    "Unknown task: missing",
-  );
+  assertThrows(() => scheduler.suspendTask("missing"), Error, "Unknown task: missing");
 });
 
 Deno.test("Scheduler throws when resuming an unknown task", () => {
   const clock = new TestClock();
   const scheduler = new Scheduler(clock);
 
-  assertThrows(
-    () => scheduler.resumeTask("missing"),
-    Error,
-    "Unknown task: missing",
-  );
+  assertThrows(() => scheduler.resumeTask("missing"), Error, "Unknown task: missing");
 });
 
 Deno.test("Scheduler propagates callback errors", () => {
@@ -448,39 +428,36 @@ Deno.test(
   },
 );
 
-Deno.test(
-  "Scheduler consumes a scheduled occurrence before invoking its callback",
-  () => {
-    const clock = new TestClock();
-    const scheduler = new Scheduler(clock);
+Deno.test("Scheduler consumes a scheduled occurrence before invoking its callback", () => {
+  const clock = new TestClock();
+  const scheduler = new Scheduler(clock);
 
-    let failingExecutions = 0;
-    let secondExecutions = 0;
+  let failingExecutions = 0;
+  let secondExecutions = 0;
 
-    scheduler.addTask("failing", Frequency.fromInteger(1n), () => {
-      failingExecutions++;
+  scheduler.addTask("failing", Frequency.fromInteger(1n), () => {
+    failingExecutions++;
 
-      if (failingExecutions === 1) {
-        throw new Error("failure");
-      }
-    });
+    if (failingExecutions === 1) {
+      throw new Error("failure");
+    }
+  });
 
-    scheduler.addTask("second", Frequency.fromInteger(1n), () => {
-      secondExecutions++;
-    });
+  scheduler.addTask("second", Frequency.fromInteger(1n), () => {
+    secondExecutions++;
+  });
 
-    advanceClock(clock, 1_000_000_000n);
+  advanceClock(clock, 1_000_000_000n);
 
-    assertThrows(() => scheduler.tick(), Error, "failure");
+  assertThrows(() => scheduler.tick(), Error, "failure");
 
-    /*
-     * The failed occurrence was already consumed. At the same clock time the
-     * second task remains due, but the failing task is now scheduled for the
-     * next second.
-     */
-    scheduler.tick();
+  /*
+   * The failed occurrence was already consumed. At the same clock time the
+   * second task remains due, but the failing task is now scheduled for the
+   * next second.
+   */
+  scheduler.tick();
 
-    assertEquals(failingExecutions, 1);
-    assertEquals(secondExecutions, 1);
-  },
-);
+  assertEquals(failingExecutions, 1);
+  assertEquals(secondExecutions, 1);
+});

@@ -29,15 +29,12 @@ Deno.test("Program Counter advance moves to the next instruction", () => {
   assertEquals(pc.getValue(), address(0x202));
 });
 
-Deno.test(
-  "Program Counter advance increments by exactly one instruction",
-  () => {
-    const pc = new ProgramCounter(address(0x200));
+Deno.test("Program Counter advance increments by exactly one instruction", () => {
+  const pc = new ProgramCounter(address(0x200));
 
-    pc.advance();
-    pc.advance();
-    pc.advance();
+  pc.advance();
+  pc.advance();
+  pc.advance();
 
-    assertEquals(pc.getValue(), address(0x206));
-  },
-);
+  assertEquals(pc.getValue(), address(0x206));
+});

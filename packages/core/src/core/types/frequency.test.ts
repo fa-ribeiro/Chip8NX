@@ -38,19 +38,11 @@ Deno.test("preserves an already normalized ratio", () => {
 });
 
 Deno.test("rejects a zero numerator", () => {
-  assertThrows(
-    () => new Frequency(0n),
-    RangeError,
-    "Frequency numerator must be positive.",
-  );
+  assertThrows(() => new Frequency(0n), RangeError, "Frequency numerator must be positive.");
 });
 
 Deno.test("rejects a negative numerator", () => {
-  assertThrows(
-    () => new Frequency(-1n),
-    RangeError,
-    "Frequency numerator must be positive.",
-  );
+  assertThrows(() => new Frequency(-1n), RangeError, "Frequency numerator must be positive.");
 });
 
 Deno.test("rejects a zero denominator", () => {

@@ -26,9 +26,7 @@ export class Ram implements Memory {
    */
   constructor(public readonly size: number) {
     if (!Number.isInteger(size) || size <= 0) {
-      throw new RangeError(
-        `Invalid memory size: ${size}. Expected a positive integer.`,
-      );
+      throw new RangeError(`Invalid memory size: ${size}. Expected a positive integer.`);
     }
 
     this.data = new Uint8Array(size);

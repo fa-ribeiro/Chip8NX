@@ -32,21 +32,22 @@ export class ClassicInstructionTraceFormatter implements InstructionTraceFormatt
   }
 
   private formatSuccess(trace: SuccessfulInstructionTrace): string {
-    return `${this.formatAddress(trace.before.programCounter)} ${this.formatOpcode(
-      trace.instruction.opcode,
-    )} ${this.instructionFormatter.format(trace.instruction)}`;
+    return `${this.formatAddress(trace.before.programCounter)} ${
+      this.formatOpcode(
+        trace.instruction.opcode,
+      )
+    } ${this.instructionFormatter.format(trace.instruction)}`;
   }
 
   private formatFailure(trace: FailedInstructionTrace): string {
     const address = this.formatAddress(trace.before.programCounter);
     const opcode = trace.opcode === undefined ? "????" : this.formatOpcode(trace.opcode);
 
-    const operation =
-      trace.instruction !== undefined
-        ? this.instructionFormatter.format(trace.instruction)
-        : trace.opcode === undefined
-          ? "<fetch failed>"
-          : "<decode failed>";
+    const operation = trace.instruction !== undefined
+      ? this.instructionFormatter.format(trace.instruction)
+      : trace.opcode === undefined
+      ? "<fetch failed>"
+      : "<decode failed>";
 
     return `${address} ${opcode} ${operation} [${this.formatError(trace.error)}]`;
   }

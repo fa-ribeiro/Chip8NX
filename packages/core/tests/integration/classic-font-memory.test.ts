@@ -18,10 +18,7 @@ Deno.test("ClassicFont sprite addresses point to the loaded font image", () => {
 
   const spriteAddress = font.getSpriteAddress(byte(0x0b));
 
-  assertEquals(
-    spriteAddress,
-    address(fontBaseAddress + 0x0b * CLASSIC_FONT_GLYPH_SIZE),
-  );
+  assertEquals(spriteAddress, address(fontBaseAddress + 0x0b * CLASSIC_FONT_GLYPH_SIZE));
 
   assertEquals(
     [

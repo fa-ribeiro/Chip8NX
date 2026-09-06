@@ -39,9 +39,7 @@ export interface ExampleMachine {
  * Keeping machine construction shared ensures the examples differ only in
  * how the terminal host is assembled.
  */
-export async function createExampleMachine(
-  romPath: string,
-): Promise<ExampleMachine> {
+export async function createExampleMachine(romPath: string): Promise<ExampleMachine> {
   const profile = CLASSIC_CHIP8_PROFILE;
 
   const program = new MemoryImage(await Deno.readFile(romPath));
@@ -51,10 +49,7 @@ export async function createExampleMachine(
   const verticalBlank = new VerticalBlank();
   const keyboard = new KeyboardState();
 
-  const displayBuffer = new DisplayBuffer(
-    profile.display.width,
-    profile.display.height,
-  );
+  const displayBuffer = new DisplayBuffer(profile.display.width, profile.display.height);
 
   const context: ExecutionContext = {
     registers: new Registers(),

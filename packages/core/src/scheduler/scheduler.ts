@@ -49,10 +49,7 @@ export class Scheduler {
       throw new Error(`Task already exists: ${id}`);
     }
 
-    this.tasks.set(
-      id,
-      new ScheduledTask(frequency, callback, this.clock.now()),
-    );
+    this.tasks.set(id, new ScheduledTask(frequency, callback, this.clock.now()));
   }
 
   /**
@@ -134,9 +131,7 @@ export class Scheduler {
    * exactly equal, retaining the first task encountered provides deterministic
    * tie-breaking without a separate priority mechanism.
    */
-  private findEarliestDueTask(
-    currentTimestamp: Timestamp,
-  ): ScheduledTask | undefined {
+  private findEarliestDueTask(currentTimestamp: Timestamp): ScheduledTask | undefined {
     let earliestTask: ScheduledTask | undefined;
 
     for (const task of this.tasks.values()) {
@@ -144,10 +139,7 @@ export class Scheduler {
         continue;
       }
 
-      if (
-        earliestTask === undefined ||
-        task.hasEarlierDeadlineThan(earliestTask)
-      ) {
+      if (earliestTask === undefined || task.hasEarlierDeadlineThan(earliestTask)) {
         earliestTask = task;
       }
     }
@@ -228,9 +220,7 @@ class ScheduledTask {
       return false;
     }
 
-    return (
-      this.nextDeadlineNumerator <= currentTimestamp * this.deadlineDenominator
-    );
+    return this.nextDeadlineNumerator <= currentTimestamp * this.deadlineDenominator;
   }
 
   /**

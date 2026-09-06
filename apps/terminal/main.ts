@@ -103,12 +103,12 @@ const runtime = new Chip8Runtime(
  */
 const terminal = traceEnabled
   ? new StandardTerminalHost(keyboardState, {
-      createPresentation: () => ({
-        start(): void {},
-        render(): void {},
-        stop(): void {},
-      }),
-    })
+    createPresentation: () => ({
+      start(): void {},
+      render(): void {},
+      stop(): void {},
+    }),
+  })
   : new StandardTerminalHost(keyboardState);
 
 const inputTask = terminal.start();
