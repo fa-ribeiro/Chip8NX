@@ -1,6 +1,8 @@
 import { address } from "../core/types/address.ts";
 import { opcode } from "../core/types/opcode.ts";
 import { Decoder } from "../instruction/decoder.ts";
+import type { InstructionTrace } from "../tracing/instruction-trace.ts";
+import type { InstructionTraceObserver } from "../tracing/instruction-trace-observer.ts";
 import type { ExecutionContext } from "./execution-context.ts";
 import { InstructionExecutor } from "./instruction-executor.ts";
 import type { CpuState } from "./state/cpu-state.ts";
@@ -10,7 +12,7 @@ import type { CpuState } from "./state/cpu-state.ts";
  *
  * @remarks
  * A CPU instance operates on a single {@link ExecutionContext}. Each call to
- * {@link step} executes one CHIP-8 instruction:
+ * {@link step} attempts one CHIP-8 instruction:
  *
  * 1. Fetch the two-byte opcode at the current program counter.
  * 2. Advance the program counter to the following instruction.
@@ -28,17 +30,23 @@ export class Cpu {
    * @param context - Machine resources used during instruction execution.
    * @param decoder - Decoder used to translate opcodes into instructions.
    * @param executor - Executor used to apply decoded instruction semantics.
+   * @param traceObserver - Optional observer notified after normally returned
+   * instruction attempts.
    */
   public constructor(
     private readonly context: ExecutionContext,
     private readonly decoder: Decoder,
     private readonly executor: InstructionExecutor,
+    private readonly traceObserver?: InstructionTraceObserver,
   ) {}
 
   /**
-   * Fetches, decodes, and executes one CHIP-8 instruction.
+   * Fetches, decodes, and attempts to execute one CHIP-8 instruction.
    */
   public step(): void {
+    const traceObserver = this.traceObserver;
+    const before = traceObserver === undefined ? undefined : this.snapshot();
+
     const programCounter = this.context.programCounter.getValue();
 
     const highByte = this.context.memory.read(programCounter);
@@ -51,6 +59,20 @@ export class Cpu {
     const instruction = this.decoder.decode(fetchedOpcode);
 
     this.executor.execute(instruction, this.context);
+
+    if (traceObserver !== undefined && before !== undefined) {
+      const trace: InstructionTrace = {
+        instruction,
+        before,
+        after: this.snapshot(),
+      };
+
+      try {
+        traceObserver.observe(trace);
+      } catch {
+        // Trace observation must not affect emulation behavior.
+      }
+    }
   }
 
   /**

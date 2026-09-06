@@ -56,6 +56,12 @@ export type { DisassembledInstruction } from "./src/disassembly/disassembled-ins
 export { Disassembler } from "./src/disassembly/disassembler.ts";
 export type { InstructionFormatter } from "./src/disassembly/instruction-formatter.ts";
 
+// Tracing
+export { ClassicInstructionTraceFormatter } from "./src/tracing/classic-instruction-trace-formatter.ts";
+export type { InstructionTrace } from "./src/tracing/instruction-trace.ts";
+export type { InstructionTraceFormatter } from "./src/tracing/instruction-trace-formatter.ts";
+export type { InstructionTraceObserver } from "./src/tracing/instruction-trace-observer.ts";
+
 // Keyboard
 export type { Keyboard } from "./src/keyboard/keyboard.ts";
 export { KeyboardState } from "./src/keyboard/keyboard-state.ts";
