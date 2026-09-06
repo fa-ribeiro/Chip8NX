@@ -8,7 +8,7 @@ flowchart LR
     Initialize["Initialize machine"]
     Paused["Runtime paused"]
     Running["Runtime running"]
-    Step["Single step"]
+    Step["Single CPU attempt"]
     Reset["Reinitialize"]
 
     Construct --> Initialize --> Paused
@@ -18,13 +18,34 @@ flowchart LR
     Paused -->|"MachineInitializer.initialize()"| Reset --> Paused
 ```
 
+The lifecycle is intentionally distributed across explicit responsibilities:
+
+```text
+Application
+    → construction and lifecycle coordination
+
+MachineInitializer
+    → initial/reset machine state
+
+Chip8Runtime
+    → paused/running progression and manual stepping
+```
+
+Construction, initialization, execution, pause, stepping, and reset are related operations, but they are not the same operation hidden behind one machine façade.
+
+See also:
+
+- [Machine initialization architecture](./machine-initialization.md)
+- [Machine state and capabilities architecture](./machine-state-and-capabilities.md)
+- [Runtime and timing architecture](./runtime-and-timing.md)
+- [Instruction execution architecture](./instruction-execution.md)
+- [ADR 0012 — Application-owned composition](../decisions/0012-application-owned-composition.md)
+
 ## Construction
 
 Construction belongs to the application composition root.
 
-The application chooses concrete implementations and assembles the execution context.
-
-Conceptually:
+The application chooses concrete implementations and assembles the object graph:
 
 ```ts
 const profile = CLASSIC_CHIP8_PROFILE;
@@ -33,97 +54,56 @@ const memory = new Ram(profile.memorySize);
 const registers = new Registers();
 const stack = new Stack(profile.stackCapacity);
 const programCounter = new ProgramCounter(profile.programStartAddress);
-
-const displayBuffer = new DisplayBuffer(profile.display.width, profile.display.height);
+const displayBuffer = new DisplayBuffer(
+  profile.display.width,
+  profile.display.height,
+);
 
 const verticalBlank = new VerticalBlank();
 const keyboard = new KeyboardState();
 ```
 
-Construction selects implementations. It does not establish the complete runnable machine state.
+Construction answers:
+
+> Which objects make up this emulator instance?
+
+It does not install the font/program or establish the complete runnable state.
+
+See [Machine state and capabilities architecture](./machine-state-and-capabilities.md) for composition roles and state/capability ownership.
 
 ## Initialization
 
-`MachineInitializer.initialize()` establishes that state.
+`MachineInitializer.initialize()` establishes the defined starting state of those already-constructed components.
 
-Initialization first validates the complete memory layout.
-
-Known validation failures occur before any machine state is mutated.
-
-The initializer then establishes:
+The lifecycle-level contract is:
 
 ```text
-Memory             cleared
-V0-VF              0
-Stack              empty
-I                  0
-PC                 profile program start
-Delay timer        0
-Sound timer        0
-DisplayBuffer      cleared
-VerticalBlank      no pending opportunity
-Keyboard wait      reset
-Font               reinstalled
-Program            loaded
+validate
+    ↓
+reset existing machine state
+    ↓
+install machine/system data
+    ↓
+install program
+    ↓
+machine ready while runtime remains paused
 ```
 
-The font is installed on every initialization because CHIP-8 memory is writable and a program may have modified the font region during a previous run.
+Known invalid memory-layout relationships are rejected before mutation begins.
 
-The random-number generator is deliberately not reset.
+Initialization does not:
 
-## Program images
-
-Programs are represented by `MemoryImage`.
-
-`MemoryImage` is deliberately generic and may structurally contain zero or more bytes.
-
-`MachineInitializer` imposes the stronger semantic requirement that a runnable machine must be initialized with:
-
-- a non-empty font image;
-- a non-empty program image.
-
-This illustrates the validation strategy used throughout the project:
-
-> Low-level abstractions validate local structural invariants. Higher-level domain operations validate relationships and semantic requirements.
-
-## Keyboard lifecycle
-
-Resetting keyboard interpretation state does not mean pretending every physical key was released.
-
-`KeyboardState.reset()` clears transient CHIP-8 interpreter state, including an outstanding `FX0A` wait, while preserving the keys currently reported as pressed by the host.
-
-The host adapter owns the physical-event lifecycle and may explicitly release all keys when its own session ends.
-
-## Vertical-blank lifecycle
-
-`VerticalBlank` is transient emulated machine state.
-
-Initialization calls `reset()`, leaving no pending display opportunity.
-
-During scheduled execution, the runtime's display-frame task calls:
-
-```ts
-verticalBlank.signal();
+```text
+construct components
+perform host file I/O
+pause/resume the runtime
+render output
+rebuild the host session
 ```
 
-The state is non-accumulating: multiple signals before consumption still represent one available opportunity.
+Those boundaries are covered in detail by [Machine initialization architecture](./machine-initialization.md).
 
-A Classic `Dxyn` instruction consumes that opportunity before drawing. If no opportunity is available, the instruction waits by rewinding the program counter and retrying later.
-
-## Random-number generator lifecycle
-
-Initialization deliberately does not reset the random-number generator.
-
-CHIP-8 does not define a random-number generator seeding lifecycle, and applications may use:
-
-- system randomness;
-- deterministic seeded randomness;
-- recorded randomness;
-- test sequences.
-
-The application or concrete RNG implementation owns that lifecycle.
-
-## Runtime startup
+## Runtime Startup
 
 `Chip8Runtime` starts paused.
 
@@ -133,37 +113,91 @@ A typical startup sequence is:
 flowchart LR
     Build["Construct components"]
     Init["MachineInitializer.initialize(...)"]
+    Paused["Runtime paused"]
     Resume["runtime.resume()"]
     Tick["Host repeatedly calls runtime.tick()"]
 
-    Build --> Init --> Resume --> Tick
+    Build --> Init --> Paused --> Resume --> Tick
 ```
 
-Starting paused keeps construction and initialization separate from execution.
+Starting paused preserves a useful invariant:
+
+> Construction and initialization do not implicitly begin emulated execution.
+
+The host explicitly decides when the initialized machine should start running.
 
 ## Running
 
 While resumed, the runtime allows the scheduler to process:
 
-- display-frame boundaries;
-- timer ticks;
-- CPU instructions.
+```text
+display-frame boundaries
+timer ticks
+CPU attempts
+```
 
-The host does not need to call `runtime.tick()` at the CPU frequency. The deadline-driven scheduler determines which occurrences are due from its monotonic clock.
+The host only needs to wake the runtime by calling:
+
+```ts
+runtime.tick();
+```
+
+The deadline-driven scheduler determines which emulated occurrences are due from its monotonic clock.
+
+The host event-loop frequency is therefore not the emulator's CPU/timer/display timing model.
+
+See [Runtime and timing architecture](./runtime-and-timing.md) for deadline ordering, catch-up, equal-deadline policy, and exact timing semantics.
 
 ## Pause
 
-Pausing freezes scheduled emulated execution:
+Calling:
 
-- vertical-blank scheduling is suspended;
-- timer scheduling is suspended;
-- CPU scheduling is suspended.
+```ts
+runtime.pause();
+```
 
-Elapsed host time while paused does not become execution debt.
+suspends scheduled emulated progression:
 
-A long host pause therefore does not cause a burst of historical CPU, timer, or display-frame events when execution resumes.
+```text
+vertical-blank scheduling
+timer scheduling
+CPU scheduling
+```
 
-## Single stepping
+It preserves the current machine state.
+
+Elapsed host time while paused does not become execution debt, so a long pause does not cause historical work to burst on resume.
+
+The distinction is:
+
+```text
+pause
+    → preserve state
+    → stop scheduled progression
+
+reset
+    → rewrite machine state
+```
+
+This makes pause suitable for debugging and inspection.
+
+## Resume
+
+Calling:
+
+```ts
+runtime.resume();
+```
+
+reactivates scheduled progression.
+
+Resume does not replay elapsed paused time. Each suspended task is rebased from the current clock time.
+
+Calling `resume()` on an already-running runtime is idempotent and does not rebase active deadlines.
+
+Detailed scheduler semantics belong in [Runtime and timing architecture](./runtime-and-timing.md).
+
+## Single Stepping
 
 Single-step execution is allowed only while paused.
 
@@ -173,58 +207,214 @@ One call to:
 runtime.step();
 ```
 
-executes one CPU instruction.
+performs one CPU **attempt**.
 
 It does not:
 
-- advance scheduler time;
-- tick the delay timer;
-- tick the sound timer;
-- advance the normal scheduled display-frame task.
+```text
+advance scheduler time
+tick the delay timer
+tick the sound timer
+advance the normal scheduled display task
+resume the runtime
+```
+
+The word *attempt* matters because an instruction may deliberately wait and retry.
+
+Examples include:
+
+```text
+Fx0A
+    → wait for keyboard press/release lifecycle
+
+Dxyn
+    → wait for a display opportunity when required
+```
+
+The runtime remains paused after the step.
 
 ### Display-synchronized draw during a step
 
-Classic `Dxyn` normally requires a pending vertical-blank opportunity.
+Classic `Dxyn` normally depends on runtime-produced vertical blank.
 
-A debugger must still be able to step over a draw instruction while the runtime is paused.
+Because normal vblank scheduling is suspended while paused, `runtime.step()` may temporarily make one display opportunity available when none is pending.
 
-If no real vertical-blank opportunity is already pending, `runtime.step()` temporarily signals one so that the draw can complete.
+That temporary aid exists only so debugger-style stepping can make useful progress.
 
-After the CPU step:
+Scheduled time still does not advance.
 
-- an unused temporary signal is removed;
-- a real pre-existing pending signal is preserved;
-- scheduled time has not advanced.
+The exact preservation/cleanup rules are documented in [Runtime and timing architecture](./runtime-and-timing.md).
 
-This gives debugger stepping useful instruction-level behavior without leaking synthetic timing state into later execution.
+## `Fx0A` Does Not Pause the Runtime
 
-## `FX0A` is not a runtime pause
+Classic `Fx0A` waits for a key press followed by release.
 
-Classic `FX0A` waits for a key press followed by release.
+During normal running, this does **not** call:
 
-This does not pause the runtime.
+```ts
+runtime.pause();
+```
 
-While the CPU repeatedly waits on `FX0A`:
+Instead:
 
-- CPU scheduling continues;
-- timer scheduling continues;
-- display-frame scheduling continues.
+```text
+CPU occurrence reaches Fx0A
+    ↓
+keyboard condition incomplete
+    ↓
+instruction restores its own address
+    ↓
+later CPU occurrence retries
+```
 
-The instruction itself rewinds and retries until `KeyboardState` reports completion of the press/release lifecycle.
+Meanwhile:
+
+```text
+timers continue
+display-frame scheduling continues
+runtime remains running
+```
+
+This is an instruction-level wait condition, not a runtime lifecycle transition.
+
+See [Instruction execution architecture](./instruction-execution.md) for retry semantics and [Machine state and capabilities architecture](./machine-state-and-capabilities.md) for keyboard-state ownership.
 
 ## Reset
 
-Resetting a machine does not require reconstructing all components.
+Reset reuses machine initialization.
 
-The application can pause the runtime and call `MachineInitializer.initialize()` again with the same execution context, profile, and program image.
+A typical lifecycle sequence is:
 
-This:
+```text
+running
+    ↓
+runtime.pause()
+    ↓
+MachineInitializer.initialize(
+  existing context,
+  profile,
+  program
+)
+    ↓
+paused at defined initial state
+```
 
-- clears mutable machine state;
-- clears pending vertical blank;
-- resets transient keyboard interpretation state;
-- reinstalls system data;
-- reloads the program;
-- returns the machine to its defined initial state.
+Reset does not require reconstructing every Core component.
 
-The runtime should be paused before reinitializing the machine.
+The existing object graph can remain in place while the initializer:
+
+```text
+clears mutable machine state
+re-establishes control/timer state
+resets interpreter-owned transient state
+reinstalls font data
+reloads the program image
+```
+
+The runtime should be paused before reinitialization.
+
+Initialization itself does not resume the runtime afterward; the application explicitly chooses whether to remain paused or call `resume()`.
+
+Detailed reset scope, memory restoration, keyboard/RNG lifecycle, failure guarantees, and ROM-replacement alternatives belong in [Machine initialization architecture](./machine-initialization.md).
+
+## ROM Replacement
+
+Loading another ROM is an application-session decision rather than a new Core lifecycle state.
+
+A host may choose either:
+
+```text
+pause existing machine
+    ↓
+initialize same context with new program
+```
+
+or:
+
+```text
+stop old session
+    ↓
+construct a new object graph
+    ↓
+initialize new program
+```
+
+`MachineInitializer` supports in-place reuse, but Core does not require it.
+
+The current Web host, for example, reuses the graph for Reset while composing a fresh session when loading a different ROM.
+
+That distinction keeps Core lifecycle semantics separate from frontend/session policy.
+
+## Lifecycle Ownership
+
+```mermaid
+flowchart TD
+    Host["Application / host"]
+    Init["MachineInitializer"]
+    Runtime["Chip8Runtime"]
+    State["Machine state"]
+    IO["Host I/O / presentation"]
+
+    Host -->|"construct"| State
+    Host -->|"initialize / reset"| Init
+    Init -->|"establish state"| State
+
+    Host -->|"pause / resume / step / tick"| Runtime
+    Runtime -->|"scheduled progression"| State
+
+    Host --> IO
+```
+
+The responsibilities are:
+
+```text
+Application
+    → construct object graph
+    → obtain ROM data
+    → coordinate startup/reset/session lifecycle
+    → call runtime operations
+
+MachineInitializer
+    → establish or re-establish machine state
+
+Chip8Runtime
+    → own scheduled paused/running behavior
+    → perform manual paused stepping
+
+State/capability components
+    → own local state and invariants
+```
+
+## Lifecycle Design Rules
+
+1. **Construction does not start execution.**  
+   Object creation and emulated progression remain separate.
+
+2. **Initialization does not construct the graph.**  
+   It establishes state in already-composed components.
+
+3. **The runtime starts paused.**  
+   Applications explicitly decide when execution begins.
+
+4. **Pause preserves machine state.**  
+   It suspends progression without creating execution debt.
+
+5. **Single stepping is paused instruction execution, not scheduled time.**  
+   One step performs one CPU attempt while timers and normal display scheduling remain still.
+
+6. **Instruction waits are not runtime pauses.**  
+   `Fx0A` and retrying draw behavior remain instruction-level control flow.
+
+7. **Reset reuses initialization.**  
+   Re-establishing initial state does not require rebuilding the object graph.
+
+8. **Reset does not automatically resume.**  
+   Post-reset execution policy belongs to the application.
+
+9. **ROM replacement is host/session policy.**  
+   Applications may reuse or rebuild the machine graph.
+
+10. **Lifecycle ownership remains explicit.**  
+    Application, initializer, runtime, and state components each own distinct transitions.
+
+These rules keep lifecycle sequencing understandable without making one class responsible for construction, initialization, timing, reset, and host-session behavior.

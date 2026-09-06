@@ -25,7 +25,9 @@ Current topics include:
 - the Core architecture and component relationships;
 - [instruction execution](./architecture/instruction-execution.md), including fetch/decode/execute orchestration, the typed `Instruction` boundary, execution semantics, invariant ownership, and verification;
 - [runtime and timing](./architecture/runtime-and-timing.md), including monotonic time, exact deadline scheduling, catch-up, pause/resume semantics, timer and vertical-blank state, equal-deadline ordering, and single stepping;
-- machine lifecycle;
+- [machine state and capabilities](./architecture/machine-state-and-capabilities.md), including focused mutable state, capability seams, snapshot-based inspection, profiles, runtime configuration, and reset ownership;
+- [machine initialization](./architecture/machine-initialization.md), including binary images, memory-layout validation, validate-before-mutate guarantees, reset/reload semantics, and ROM-replacement boundaries;
+- [machine lifecycle](./architecture/machine-lifecycle.md), including construction, initialization, paused/running transitions, single stepping, reset sequencing, and application/runtime ownership;
 - disassembly, instruction inspection, formatting boundaries, and application-level traversal policy;
 - host composition across the Terminal and Web applications.
 

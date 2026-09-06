@@ -10,7 +10,8 @@ Source-level JSDoc explains individual classes, interfaces, methods, and types. 
 - [Instruction execution](./instruction-execution.md) — fetch/decode/execute orchestration, the typed `Instruction` boundary, execution semantics, `ExecutionContext`, invariant ownership, and verification strategy.
 - [Runtime and timing](./runtime-and-timing.md) — monotonic time, deadline-driven scheduling, catch-up, pause/resume semantics, equal-deadline ordering, timers, vertical blank, and single-step timing behavior.
 - [Machine state and capabilities](./machine-state-and-capabilities.md) — focused mutable state, invariant ownership, capability boundaries, profiles and runtime configuration, inspection, lifecycle, and reset ownership.
-- [Machine lifecycle](./machine-lifecycle.md) — construction, initialization, execution, pause/resume, display synchronization, single stepping, and reset.
+- [Machine initialization](./machine-initialization.md) — binary images, memory layout validation, validate-before-mutate guarantees, reset/reload semantics, ROM replacement boundaries, and initialization verification.
+- [Machine lifecycle](./machine-lifecycle.md) — construction, initialization, paused/running transitions, single stepping, reset sequencing, and application/runtime ownership.
 - [Disassembly](./disassembly.md) — read-only instruction inspection, decoding and formatting boundaries, dependency direction, range semantics, lifecycle, application-level tolerant traversal, and future extension points.
 - [Host composition evaluation](./composition-evaluation.md) — comparison of the Terminal and Web composition case studies and the resulting project-wide conclusions.
 

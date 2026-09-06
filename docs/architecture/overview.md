@@ -183,19 +183,21 @@ See [Disassembly architecture](./disassembly.md) for the detailed component boun
 
 ## Machine initialization
 
-`MachineInitializer` establishes a valid initial state for already-constructed components.
+`MachineInitializer` establishes the defined starting state of an already-composed machine.
 
-It:
+```text
+ExecutionContext + Chip8Profile + Program MemoryImage
+    ↓
+validate memory layout
+    ↓
+reset machine state
+    ↓
+install font + program
+```
 
-1. validates the complete memory layout before mutation;
-2. clears mutable machine state;
-3. resets registers, stack, timers, index register, display, vertical-blank state, and keyboard interpreter state;
-4. sets the initial program counter;
-5. installs profile-provided font data;
-6. loads the program image.
+Known layout errors are rejected before mutation begins. Initialization does not construct components, perform host I/O, control runtime pause/resume, or provide general rollback after mutation has started.
 
-It does not construct components, perform external I/O, or drive execution.
-The random-number generator is intentionally not reset by machine initialization because CHIP-8 does not define an RNG seeding lifecycle.
+See [Machine initialization architecture](./machine-initialization.md) for binary-image boundaries, half-open memory ranges, reset and ROM-replacement semantics, failure guarantees, and verification strategy.
 
 ## Runtime and timing
 
