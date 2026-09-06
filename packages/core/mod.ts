@@ -50,11 +50,13 @@ export type { Font } from "./src/font/font.ts";
 export { Decoder, InvalidOpcodeError } from "./src/instruction/decoder.ts";
 export * from "./src/instruction/instruction.ts";
 
+// Instruction formatting
+export { ClassicInstructionFormatter } from "./src/instruction/formatting/classic-instruction-formatter.ts";
+export type { InstructionFormatter } from "./src/instruction/formatting/instruction-formatter.ts";
+
 // Disassembly
-export { ClassicInstructionFormatter } from "./src/disassembly/classic-instruction-formatter.ts";
 export type { DisassembledInstruction } from "./src/disassembly/disassembled-instruction.ts";
 export { Disassembler } from "./src/disassembly/disassembler.ts";
-export type { InstructionFormatter } from "./src/disassembly/instruction-formatter.ts";
 
 // Tracing
 export { ClassicInstructionTraceFormatter } from "./src/tracing/classic-instruction-trace-formatter.ts";

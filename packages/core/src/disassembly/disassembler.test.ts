@@ -5,9 +5,9 @@ import { byte } from "../core/types/byte.ts";
 import { opcode } from "../core/types/opcode.ts";
 import { registerIndex } from "../cpu/registers/register-index.ts";
 import { Decoder, InvalidOpcodeError } from "../instruction/decoder.ts";
+import type { InstructionFormatter } from "../instruction/formatting/instruction-formatter.ts";
 import { Ram } from "../memory/ram.ts";
 import { Disassembler } from "./disassembler.ts";
-import type { InstructionFormatter } from "./instruction-formatter.ts";
 
 const formatter: InstructionFormatter = { format: () => "CUSTOM" };
 

@@ -1,7 +1,7 @@
-import type { Address } from "../core/types/address.ts";
-import type { Byte } from "../core/types/byte.ts";
-import type { RegisterIndex } from "../cpu/registers/register-index.ts";
-import type { Instruction, RegisterOperationInstruction } from "../instruction/instruction.ts";
+import type { Address } from "../../core/types/address.ts";
+import type { Byte } from "../../core/types/byte.ts";
+import type { RegisterIndex } from "../../cpu/registers/register-index.ts";
+import type { Instruction, RegisterOperationInstruction } from "../instruction.ts";
 import type { InstructionFormatter } from "./instruction-formatter.ts";
 
 /**
@@ -30,49 +30,37 @@ export class ClassicInstructionFormatter implements InstructionFormatter {
         return `CALL ${this.formatAddress(instruction.address)}`;
 
       case "skip-equal-immediate":
-        return `SE ${this.formatRegister(instruction.register)}, ${
-          this.formatByte(
-            instruction.value,
-          )
-        }`;
+        return `SE ${this.formatRegister(instruction.register)}, ${this.formatByte(
+          instruction.value,
+        )}`;
 
       case "skip-not-equal-immediate":
-        return `SNE ${this.formatRegister(instruction.register)}, ${
-          this.formatByte(
-            instruction.value,
-          )
-        }`;
+        return `SNE ${this.formatRegister(instruction.register)}, ${this.formatByte(
+          instruction.value,
+        )}`;
 
       case "skip-equal-register":
-        return `SE ${this.formatRegister(instruction.x)}, ${
-          this.formatRegister(
-            instruction.y,
-          )
-        }`;
+        return `SE ${this.formatRegister(instruction.x)}, ${this.formatRegister(
+          instruction.y,
+        )}`;
 
       case "load-immediate":
-        return `LD ${this.formatRegister(instruction.register)}, ${
-          this.formatByte(
-            instruction.value,
-          )
-        }`;
+        return `LD ${this.formatRegister(instruction.register)}, ${this.formatByte(
+          instruction.value,
+        )}`;
 
       case "add-immediate":
-        return `ADD ${this.formatRegister(instruction.register)}, ${
-          this.formatByte(
-            instruction.value,
-          )
-        }`;
+        return `ADD ${this.formatRegister(instruction.register)}, ${this.formatByte(
+          instruction.value,
+        )}`;
 
       case "register-operation":
         return this.formatRegisterOperation(instruction);
 
       case "skip-not-equal-register":
-        return `SNE ${this.formatRegister(instruction.x)}, ${
-          this.formatRegister(
-            instruction.y,
-          )
-        }`;
+        return `SNE ${this.formatRegister(instruction.x)}, ${this.formatRegister(
+          instruction.y,
+        )}`;
 
       case "set-index":
         return `LD I, ${this.formatAddress(instruction.address)}`;
@@ -81,18 +69,14 @@ export class ClassicInstructionFormatter implements InstructionFormatter {
         return `JP V0, ${this.formatAddress(instruction.address)}`;
 
       case "random-and":
-        return `RND ${this.formatRegister(instruction.register)}, ${
-          this.formatByte(
-            instruction.mask,
-          )
-        }`;
+        return `RND ${this.formatRegister(instruction.register)}, ${this.formatByte(
+          instruction.mask,
+        )}`;
 
       case "draw-sprite":
-        return `DRW ${this.formatRegister(instruction.x)}, ${
-          this.formatRegister(
-            instruction.y,
-          )
-        }, ${this.formatNibble(instruction.height)}`;
+        return `DRW ${this.formatRegister(instruction.x)}, ${this.formatRegister(
+          instruction.y,
+        )}, ${this.formatNibble(instruction.height)}`;
 
       case "skip-key-pressed":
         return `SKP ${this.formatRegister(instruction.register)}`;

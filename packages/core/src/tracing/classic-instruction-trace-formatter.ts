@@ -1,6 +1,6 @@
 import type { Address } from "../core/types/address.ts";
 import type { Opcode } from "../core/types/opcode.ts";
-import type { InstructionFormatter } from "../disassembly/instruction-formatter.ts";
+import type { InstructionFormatter } from "../instruction/formatting/instruction-formatter.ts";
 import type { InstructionTrace } from "./instruction-trace.ts";
 import type { InstructionTraceFormatter } from "./instruction-trace-formatter.ts";
 
@@ -12,24 +12,21 @@ import type { InstructionTraceFormatter } from "./instruction-trace-formatter.ts
  * formatter owns only the trace-level representation of source address,
  * opcode, and instruction text.
  */
-export class ClassicInstructionTraceFormatter
-  implements InstructionTraceFormatter {
+export class ClassicInstructionTraceFormatter implements InstructionTraceFormatter {
   /**
    * Creates a Classic CHIP-8 trace formatter.
    *
    * @param instructionFormatter - Formatter used for decoded instruction text.
    */
-  public constructor(
-    private readonly instructionFormatter: InstructionFormatter,
-  ) {}
+  public constructor(private readonly instructionFormatter: InstructionFormatter) {}
 
   /**
    * {@inheritDoc InstructionTraceFormatter.format}
    */
   public format(trace: InstructionTrace): string {
-    return `${this.formatAddress(trace.before.programCounter)} ${
-      this.formatOpcode(trace.instruction.opcode)
-    } ${this.instructionFormatter.format(trace.instruction)}`;
+    return `${this.formatAddress(trace.before.programCounter)} ${this.formatOpcode(
+      trace.instruction.opcode,
+    )} ${this.instructionFormatter.format(trace.instruction)}`;
   }
 
   private formatAddress(value: Address): string {

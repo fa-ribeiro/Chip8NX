@@ -2,6 +2,8 @@ import {
   Chip8Runtime,
   CLASSIC_CHIP8_PROFILE,
   ClassicFont,
+  ClassicInstructionFormatter,
+  ClassicInstructionTraceFormatter,
   Cpu,
   Decoder,
   DefaultRandomNumberGenerator,
@@ -10,6 +12,7 @@ import {
   Frequency,
   IndexRegister,
   InstructionExecutor,
+  type InstructionTraceObserver,
   KeyboardState,
   MachineInitializer,
   MemoryImage,
@@ -26,6 +29,7 @@ import {
 import { StandardTerminalHost } from "./src/standard-terminal-host.ts";
 
 const CPU_FREQUENCY = Frequency.fromInteger(500n);
+const TRACE_FLAG = "--trace";
 
 /**
  * Host presentation frequency.
@@ -36,10 +40,12 @@ const CPU_FREQUENCY = Frequency.fromInteger(500n);
  */
 const HOST_RENDER_INTERVAL_MS = 1_000 / 60;
 
-const romPath = Deno.args[0];
+const traceEnabled = Deno.args[0] === TRACE_FLAG;
+const romPath = traceEnabled ? Deno.args[1] : Deno.args[0];
+const expectedArgumentCount = traceEnabled ? 2 : 1;
 
-if (romPath === undefined || Deno.args.length !== 1) {
-  console.error("Usage: deno task terminal <rom-path>");
+if (romPath === undefined || Deno.args.length !== expectedArgumentCount) {
+  console.error("Usage: deno task terminal [--trace] <rom-path>");
   Deno.exit(1);
 }
 
@@ -73,7 +79,8 @@ const context: ExecutionContext = {
 const initializer = new MachineInitializer(new MemoryImageLoader());
 initializer.initialize(context, profile, program);
 
-const cpu = new Cpu(context, new Decoder(), new InstructionExecutor());
+const traceObserver = traceEnabled ? createConsoleTraceObserver() : undefined;
+const cpu = new Cpu(context, new Decoder(), new InstructionExecutor(), traceObserver);
 const scheduler = new Scheduler(new PerformanceClock());
 const runtime = new Chip8Runtime(
   cpu,
@@ -88,7 +95,20 @@ const runtime = new Chip8Runtime(
   profile.display.refreshFrequency,
 );
 
-const terminal = new StandardTerminalHost(keyboardState);
+/*
+ * The standard terminal presentation continuously redraws an alternate screen
+ * on stdout. Trace mode disables only that presentation so the trace stream
+ * remains readable; keyboard input and emulated execution are unchanged.
+ */
+const terminal = traceEnabled
+  ? new StandardTerminalHost(keyboardState, {
+      createPresentation: () => ({
+        start(): void {},
+        render(): void {},
+        stop(): void {},
+      }),
+    })
+  : new StandardTerminalHost(keyboardState);
 
 const inputTask = terminal.start();
 
@@ -109,6 +129,16 @@ try {
 }
 
 await inputTask;
+
+function createConsoleTraceObserver(): InstructionTraceObserver {
+  const formatter = new ClassicInstructionTraceFormatter(new ClassicInstructionFormatter());
+
+  return {
+    observe(trace): void {
+      console.log(formatter.format(trace));
+    },
+  };
+}
 
 function sleep(milliseconds: number): Promise<void> {
   return new Promise((resolve) => {

@@ -2,9 +2,9 @@ import { type Address, address } from "../core/types/address.ts";
 import { opcode } from "../core/types/opcode.ts";
 import { INSTRUCTION_SIZE } from "../cpu/program-counter/program-counter.ts";
 import { Decoder } from "../instruction/decoder.ts";
+import type { InstructionFormatter } from "../instruction/formatting/instruction-formatter.ts";
 import type { Memory } from "../memory/memory.ts";
 import type { DisassembledInstruction } from "./disassembled-instruction.ts";
-import type { InstructionFormatter } from "./instruction-formatter.ts";
 
 /**
  * Disassembles CHIP-8 instructions from memory.

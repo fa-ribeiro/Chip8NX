@@ -1,10 +1,10 @@
 import { assertEquals } from "@std/assert";
 
-import { address } from "../core/types/address.ts";
-import { byte } from "../core/types/byte.ts";
-import { opcode } from "../core/types/opcode.ts";
-import { registerIndex } from "../cpu/registers/register-index.ts";
-import type { Instruction } from "../instruction/instruction.ts";
+import { address } from "../../core/types/address.ts";
+import { byte } from "../../core/types/byte.ts";
+import { opcode } from "../../core/types/opcode.ts";
+import { registerIndex } from "../../cpu/registers/register-index.ts";
+import type { Instruction } from "../instruction.ts";
 import { ClassicInstructionFormatter } from "./classic-instruction-formatter.ts";
 
 const formatter = new ClassicInstructionFormatter();

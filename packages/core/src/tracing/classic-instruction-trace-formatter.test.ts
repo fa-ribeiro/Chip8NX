@@ -5,8 +5,8 @@ import { byte } from "../core/types/byte.ts";
 import { opcode } from "../core/types/opcode.ts";
 import { registerIndex } from "../cpu/registers/register-index.ts";
 import type { CpuState } from "../cpu/state/cpu-state.ts";
-import { ClassicInstructionFormatter } from "../disassembly/classic-instruction-formatter.ts";
-import type { InstructionFormatter } from "../disassembly/instruction-formatter.ts";
+import { ClassicInstructionFormatter } from "../instruction/formatting/classic-instruction-formatter.ts";
+import type { InstructionFormatter } from "../instruction/formatting/instruction-formatter.ts";
 import type { InstructionTrace } from "./instruction-trace.ts";
 import { ClassicInstructionTraceFormatter } from "./classic-instruction-trace-formatter.ts";
 
@@ -21,9 +21,7 @@ Deno.test("formats source address, opcode, and delegated instruction text", () =
 });
 
 Deno.test("formats Classic instruction text without appending a newline", () => {
-  const formatter = new ClassicInstructionTraceFormatter(
-    new ClassicInstructionFormatter(),
-  );
+  const formatter = new ClassicInstructionTraceFormatter(new ClassicInstructionFormatter());
   const trace = createTrace(0x200, 0x202);
 
   assertEquals(formatter.format(trace), "0x200 6AFF LD VA, 0xFF");
