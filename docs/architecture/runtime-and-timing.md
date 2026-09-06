@@ -1211,28 +1211,28 @@ manual draw can complete while paused
 
 The runtime/timing architecture follows a few stable rules:
 
-1. **Host time and emulated work are separate.**  
+1. **Host time and emulated work are separate.**\
    The host wakes the runtime; scheduler deadlines determine what emulated work is due.
 
-2. **The scheduler owns chronology, not CHIP-8 meaning.**  
+2. **The scheduler owns chronology, not CHIP-8 meaning.**\
    Exact periodic deadlines, catch-up, and tie-breaking remain generic.
 
-3. **The runtime owns CHIP-8 timing policy.**  
+3. **The runtime owns CHIP-8 timing policy.**\
    It maps scheduler callbacks to CPU, timers, and vertical blank and chooses their equal-deadline registration order.
 
-4. **Timed state does not schedule itself.**  
+4. **Timed state does not schedule itself.**\
    `Timer` and `VerticalBlank` own state and local transitions only.
 
-5. **Running and pausing have different time semantics.**  
+5. **Running and pausing have different time semantics.**\
    Late host ticks catch up; explicit pauses discard scheduling progress.
 
-6. **Equal-deadline behavior is deterministic.**  
+6. **Equal-deadline behavior is deterministic.**\
    Chronology wins first; registration order resolves exact ties.
 
-7. **Single stepping is not scheduled time.**  
+7. **Single stepping is not scheduled time.**\
    It performs one CPU attempt while leaving timer and scheduler progression unchanged.
 
-8. **Debugging aids must not become persistent machine state.**  
+8. **Debugging aids must not become persistent machine state.**\
    Synthetic vertical blank exists only for the lifetime of the manual step that needs it.
 
 Together these rules keep timing deterministic and testable while leaving host applications free to choose their own event-loop and presentation mechanisms.

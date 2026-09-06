@@ -17,21 +17,13 @@ flowchart LR
 
 ## Machine profile
 
-A `Chip8Profile` is a declarative description of the CHIP-8 environment being emulated.
+`Chip8Profile` is the declarative description of the machine being emulated.
 
-The Classic profile supplies characteristics such as:
+It supplies characteristics such as memory size, program start address, stack capacity, display geometry and refresh frequency, timer frequency, and font definition. Applications use those values when constructing and initializing compatible components.
 
-- memory size;
-- program start address;
-- stack capacity;
-- display width and height;
-- display refresh frequency;
-- timer frequency;
-- font image;
-- font location.
+A profile describes machine characteristics; it does not construct components, select host implementations, or represent current mutable state. Runtime execution policy such as CPU frequency remains a separate configuration concern.
 
-A profile describes the machine itself. It does not select host-specific implementations.
-Future profiles may describe different machine characteristics or compatibility behavior when CHIP-8-family variants genuinely require different semantics.
+See [Machine state and capabilities architecture](./machine-state-and-capabilities.md) for the detailed state/configuration model and the project's evidence-driven approach to future CHIP-8-family variation.
 
 ## Core component overview
 
@@ -97,30 +89,15 @@ flowchart TB
     Context --> RNG
 ```
 
-`ExecutionContext` is an explicit aggregate of the mutable state and capabilities required by instruction execution.
-The context does not make these components a monolith. The individual components remain independently constructed, replaceable, and testable.
+`ExecutionContext` is an explicit aggregate of the state and capabilities required by instruction execution. It groups already-constructed resources without owning their construction or collapsing their responsibilities into one machine object.
 
-## Focused components
+## Machine state and capabilities
 
-The emulator is composed from narrow components such as:
+Core keeps persistent state in focused components such as `Registers`, `Memory`, `Stack`, `ProgramCounter`, `IndexRegister`, `Timer`, `DisplayBuffer`, and `VerticalBlank`.
 
-- `Memory`;
-- `Registers`;
-- `Stack`;
-- `ProgramCounter`;
-- `IndexRegister`;
-- `Timer`;
-- `DisplayBuffer`;
-- `VerticalBlank`;
-- `Keyboard`;
-- `Font`;
-- `RandomNumberGenerator`;
-- `Cpu`;
-- `Disassembler`;
+Roles whose implementations genuinely vary are exposed through capability boundaries such as `Keyboard`, `RandomNumberGenerator`, `Font`, and `Memory`. Interface use and state ownership are independent concerns: for example, `Memory` is both an interface and mutable machine state, while `Keyboard` is a capability whose implementation owns interpreter-relevant state.
 
-Generic components do not hide Classic-specific defaults.
-
-For example:
+Applications construct the object graph explicitly, using profile characteristics where appropriate:
 
 ```ts
 new Stack(profile.stackCapacity);
@@ -129,7 +106,7 @@ new ProgramCounter(profile.programStartAddress);
 new DisplayBuffer(profile.display.width, profile.display.height);
 ```
 
-The profile supplies machine-specific values while the components remain reusable.
+See [Machine state and capabilities architecture](./machine-state-and-capabilities.md) for focused invariant ownership, snapshot-based inspection, capability substitution, profiles and runtime configuration, reset semantics, and lifecycle ownership.
 
 ## CPU execution pipeline
 
