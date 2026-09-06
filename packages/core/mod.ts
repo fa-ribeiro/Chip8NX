@@ -53,6 +53,7 @@ export * from "./src/instruction/instruction.ts";
 // Instruction formatting
 export { ClassicInstructionFormatter } from "./src/instruction/formatting/classic-instruction-formatter.ts";
 export type { InstructionFormatter } from "./src/instruction/formatting/instruction-formatter.ts";
+export { StateChangeInstructionTraceFormatter } from "./src/tracing/state-change-instruction-trace-formatter.ts";
 
 // Disassembly
 export type { DisassembledInstruction } from "./src/disassembly/disassembled-instruction.ts";
