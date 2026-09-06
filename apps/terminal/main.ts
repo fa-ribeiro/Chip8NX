@@ -23,6 +23,7 @@ import {
   Registers,
   Scheduler,
   Stack,
+  StateChangeInstructionTraceFormatter,
   Timer,
   VerticalBlank,
 } from "@chip8nx/core";
@@ -131,11 +132,15 @@ try {
 await inputTask;
 
 function createConsoleTraceObserver(): InstructionTraceObserver {
-  const formatter = new ClassicInstructionTraceFormatter(new ClassicInstructionFormatter());
+  const instructionFormatter = new ClassicInstructionFormatter();
+
+  const compactTraceFormatter = new ClassicInstructionTraceFormatter(instructionFormatter);
+
+  const traceFormatter = new StateChangeInstructionTraceFormatter(compactTraceFormatter);
 
   return {
     observe(trace): void {
-      console.log(formatter.format(trace));
+      console.log(traceFormatter.format(trace));
     },
   };
 }
