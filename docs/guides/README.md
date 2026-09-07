@@ -11,5 +11,6 @@ Architecture documents explain **how the system is structured**. Guides explain 
 - [Web application](./web-application.md) — understand the browser host, including Canvas presentation, physical and virtual input, Web Audio, execution controls, and ROM lifecycle.
 - [Terminal composition levels](./terminal-composition-levels.md) — choose between component-level, standard-subsystem, and ready-to-use Terminal composition.
 - [Continuous integration](./continuous-integration.md) — reproduce the repository CI contract locally and understand the separate documentation/conformance audits.
+- [Release checklist](./release-checklist.md) — prepare, verify, and tag a Chip8NX milestone release using the repository's existing validation contract.
 
 For design rationale and responsibility boundaries, see the [Architecture documentation](../architecture/README.md).

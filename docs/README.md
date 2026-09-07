@@ -44,6 +44,7 @@ Current topics include:
 - disassembling CHIP-8 programs, customizing instruction formatting, and exploratory whole-ROM inspection;
 - terminal composition levels and terminal component diagrams;
 - continuous integration;
+- preparing, verifying, and tagging project releases;
 - the Web application and browser-host composition.
 
 ### Reference
