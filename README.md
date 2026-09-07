@@ -10,17 +10,33 @@ The project focuses first on accurate **Classic CHIP-8** behavior while keeping 
 
 ## Status
 
-### Current release: `v0.5.0` — Disassembly and Inspection
+### Current release: `v0.6.0` — Tracing and Execution Observation
 
-`v0.5.0` adds the first reusable instruction-inspection capability to Chip8NX Core.
+`v0.6.0` establishes a reusable execution-observation boundary in Chip8NX Core.
 
-The new disassembly subsystem reads CHIP-8 instruction words from memory, reuses the existing typed `Decoder`, and delegates human-readable presentation through the pluggable `InstructionFormatter` boundary. Core includes a conventional `ClassicInstructionFormatter` and exposes both single-instruction inspection and strict known-range disassembly.
+`Cpu` can optionally emit structured `InstructionTrace` records for real CPU instruction attempts. Successful and failed attempts preserve the semantic information available at that point, including before/after CPU state, while observer failures remain isolated from emulated execution and failed attempts preserve the original CPU error.
 
-A small command-line application under `apps/disassembler` provides exploratory whole-ROM inspection. It performs a linear sweep of ROM words, prints supported Classic CHIP-8 instructions, reports unsupported words as `UNKNOWN`, and continues without claiming to distinguish executable code from embedded data.
+Trace presentation remains separate from observation. Core provides conventional instruction-trace formatting, optional CPU-state-change decoration, and `InstructionTraceBuffer` for bounded chronological history without introducing debugger control into the tracing contract.
 
-The implementation establishes a reusable inspection boundary for later debugger, tracer, and analysis work without coupling those concerns to CPU execution or host presentation.
+The Terminal application provides the first tracing proof of concept:
 
-See [Disassembly architecture](./docs/architecture/disassembly.md) and [Disassembling CHIP-8 programs](./docs/guides/disassembling-programs.md).
+```bash
+deno task terminal --trace <rom-path>
+```
+
+Disassembly and tracing intentionally observe different things:
+
+```text
+disassembly
+    → inspect encoded instructions without executing them
+
+tracing
+    → observe instruction attempts that actually execute
+```
+
+Together, the `v0.5.0` disassembly boundary and the `v0.6.0` tracing boundary establish the inspection foundation for future debugger and analysis tools across different host applications.
+
+See [Tracing architecture](./docs/architecture/tracing.md).
 
 The Classic CHIP-8 Core remains at the `v0.2.0` conformance baseline, with intentional coverage for the complete Classic opcode set and the project's current external conformance suite:
 
@@ -75,17 +91,15 @@ flowchart TB
 
 A `Chip8Profile` describes the emulated machine, including memory layout, display geometry, display refresh frequency, timer frequency, and font placement.
 
-The application selects concrete implementations and host adapters.
-
-`MachineInitializer` validates and establishes machine state, reinstalls profile system data, resets transient state such as vertical-blank availability, and loads a program.
+The application selects concrete implementations and host adapters. `MachineInitializer` validates and establishes machine state, reinstalls profile system data, resets transient state such as vertical-blank availability, and loads a program.
 
 `Cpu` owns the fetch/decode/execute cycle.
 
 `Chip8Runtime` coordinates CPU execution, CHIP-8 timer countdown, and emulated display-frame boundaries.
 
-Host rendering remains outside Core. A terminal, browser, or desktop host observes `DisplayBuffer` without defining CHIP-8 display timing.
+Host rendering remains outside Core. A terminal, browser, or desktop host observes `DisplayBuffer` without defining CHIP-8 display timing. Core also exposes a read-only disassembly path for instruction inspection. `Disassembler` reuses the same typed `Decoder` used by CPU execution, while `InstructionFormatter` keeps human-readable presentation replaceable. Inspection remains independent of execution state and host presentation.
 
-Core also exposes a read-only disassembly path for instruction inspection. `Disassembler` reuses the same typed `Decoder` used by CPU execution, while `InstructionFormatter` keeps human-readable presentation replaceable. Inspection remains independent of execution state and host presentation.
+Core tracing optionally observes the `Cpu.step()` attempt boundary as structured `InstructionTrace` data. Trace formatting, application output, and bounded history remain separate concerns, and observation failures cannot change emulated execution behavior.
 
 For diagrams and more detail, see [Architecture](./docs/architecture/README.md).
 
@@ -133,6 +147,14 @@ deno task terminal <rom-path>
 
 The terminal host presents the 64×32 Classic framebuffer using Unicode block characters with a retro green presentation and accepts the conventional CHIP-8 keyboard mapping.
 
+To run the same emulator with line-oriented instruction tracing:
+
+```bash
+deno task terminal --trace <rom-path>
+```
+
+Trace mode keeps keyboard input and emulated execution active while disabling the Terminal's alternate-screen framebuffer presentation so trace lines can use stdout cleanly.
+
 Press `Escape` to exit. `Ctrl+C` remains available as an alternative exit path.
 
 ### Compare terminal composition levels
@@ -147,9 +169,7 @@ apps/terminal/examples/02-standard-compositions.ts
 apps/terminal/examples/03-standard-host.ts
 ```
 
-The model has now been evaluated against the Web host and remains a terminal-specific composition model rather than a mandatory project-wide framework.
-
-See [Terminal composition levels](./docs/guides/terminal-composition-levels.md) and [Host composition evaluation](./docs/architecture/composition-evaluation.md).
+The model has now been evaluated against the Web host and remains a terminal-specific composition model rather than a mandatory project-wide framework. See [Terminal composition levels](./docs/guides/terminal-composition-levels.md) and [Host composition evaluation](./docs/architecture/composition-evaluation.md).
 
 ### Run the Web application
 
@@ -191,9 +211,7 @@ Output contains the source address, opcode word, and decoded Classic CHIP-8 inst
 0x204  AAEA  LD I, 0xAEA
 ```
 
-Unsupported words are reported as `UNKNOWN` and traversal continues.
-
-The CLI performs a linear sweep and does not attempt to distinguish executable code from embedded data. A word that decodes successfully may therefore still represent sprite, table, string, or other non-executable data.
+Unsupported words are reported as `UNKNOWN` and traversal continues. The CLI performs a linear sweep and does not attempt to distinguish executable code from embedded data. A word that decodes successfully may therefore still represent sprite, table, string, or other non-executable data.
 
 See [Disassembling CHIP-8 programs](./docs/guides/disassembling-programs.md).
 
@@ -241,7 +259,7 @@ deno task docs:check
 
 The reusable **Chip8NX Core** package (`@chip8nx/core`).
 
-It contains machine components, profiles, CPU execution, initialization, runtime orchestration, scheduling, disassembly and instruction-inspection capabilities, and Core tests.
+It contains machine components, profiles, CPU execution, initialization, runtime orchestration, scheduling, disassembly and instruction-inspection capabilities, optional execution tracing, bounded trace history, and Core tests.
 
 Its intended public API is exposed through:
 
@@ -295,7 +313,7 @@ Long-form architecture, guides, reference material, and Architecture Decision Re
 
 Source-level API behavior belongs close to TypeScript implementation in JSDoc. Project documentation explains how larger pieces collaborate and why major decisions were made.
 
-## Classic conformance baseline
+## Milestone history
 
 ### `v0.0.1` — IBM Logo POC ✓
 
@@ -325,21 +343,31 @@ The Web host also completes the second application-composition case study, valid
 
 Core gains a reusable read-only instruction-inspection path built on the existing typed decoder, together with a pluggable instruction-formatting boundary and a conventional Classic CHIP-8 formatter.
 
-The release also adds a small command-line disassembler for exploratory whole-ROM inspection. Unsupported words are rendered as `UNKNOWN` without changing the strict Core range-disassembly contract.
+The release also adds a small command-line disassembler for exploratory whole-ROM inspection. Unsupported words are rendered as `UNKNOWN` without changing the strict Core range-disassembly contract. The implementation and application are documented through dedicated architecture and usage guides and validated against real CHIP-8 ROMs containing mixed code and data.
 
-The implementation and application are documented through dedicated architecture and usage guides and validated against real CHIP-8 ROMs containing mixed code and data.
+### `v0.6.0` — Tracing and Execution Observation ✓
+
+Core gains optional structured observation of real CPU instruction attempts, including successful and failed attempts, before/after CPU state, observer-failure isolation, and preservation of the original execution error.
+
+Trace formatting remains separate from observation, with conventional Classic trace formatting and composable CPU-state-change decoration. `InstructionTraceBuffer` adds bounded chronological history suitable for future inspection consumers.
+
+The Terminal `--trace` mode provides the first external proof of concept while keeping output and host presentation outside Core.
+
+Together with the `v0.5.0` disassembly boundary, this milestone establishes the reusable inspection foundation for future debugger and analysis tooling without prematurely adding breakpoints, execution control, event infrastructure, replay, or whole-machine tracing.
 
 ## Future work
 
-Post-`v0.5.0` development can proceed across areas such as:
+Post-`v0.6.0` development can proceed across areas such as:
 
-- richer debugger, tracer, and inspection tooling built on the completed disassembly boundary;
-- Web-host refinement where interactive debugging or other new use cases justify it;
+- debugger and richer inspection tooling built on the completed disassembly and execution-tracing boundaries;
+- Web-host refinement when concrete debugger, inspection, or other interactive use cases justify it;
 - public Core API and composition ergonomics when additional architectural evidence creates concrete pressure for change;
 - desktop hosts;
 - additional CHIP-8-family profiles when the project is ready to model variant differences explicitly.
 
-The current disassembler intentionally remains a small foundation rather than a full static-analysis system. Features such as control-flow analysis, code/data classification, labels, descriptions, and richer tolerant-disassembly models should be introduced only when concrete consumers justify them.
+The current tracing boundary deliberately remains observational. Breakpoints, execution control, observer fan-out, timestamps, replay, whole-machine snapshots, persistent trace formats, and richer history-query APIs should be introduced only when concrete debugger or analysis consumers demonstrate the need.
+
+The current disassembler likewise remains a small inspection foundation rather than a full static-analysis system. Features such as control-flow analysis, code/data classification, labels, descriptions, and richer tolerant-disassembly models should be introduced only when concrete consumers justify them.
 
 ## References
 

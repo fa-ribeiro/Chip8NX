@@ -12,6 +12,86 @@ During the `0.x` development phase:
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-09-07 - Tracing and Execution Observation
+
+### Added
+
+- Structured `InstructionTrace` model representing successful and failed CPU instruction attempts.
+- Optional `InstructionTraceObserver` boundary at `Cpu.step()`.
+- Before/after `CpuState` observation for traced attempts without expanding traces into whole-machine snapshots.
+- `ClassicInstructionTraceFormatter` for conventional human-readable instruction traces.
+- `StateChangeInstructionTraceFormatter` for composable reporting of changed CPU state.
+- `InstructionTraceBuffer`, a bounded ring-buffer observer retaining recent traces in chronological order.
+- Focused CPU tracing coverage for successful attempts, retry attempts, fetch failures, decode failures, execution failures, observer failures, and original-error preservation.
+- Trace-formatter coverage for success, failure, state changes, unchanged state, and failure paths that mutate CPU state.
+- Bounded-history coverage for capacity validation, ordering, overflow, repeated wraparound, snapshot ownership, object identity, and clearing.
+- Public-API integration coverage proving that tracing observation, history, and formatting compose through `packages/core/mod.ts` without private source imports.
+- Terminal `--trace` mode:
+
+  ```text
+  deno task terminal --trace <rom-path>
+  ```
+
+- Dedicated tracing architecture documentation covering the CPU-attempt observation boundary, success/failure records, non-interference guarantees, retry visibility, formatting boundaries, bounded history, and deliberately deferred debugger concerns.
+- Expanded architecture documentation for instruction execution, runtime and timing, machine state and capabilities, machine initialization, and machine lifecycle.
+
+### Changed
+
+- Moved `InstructionFormatter` and `ClassicInstructionFormatter` from the disassembly-specific area to the neutral `instruction/formatting` area after tracing became a second real consumer.
+- Extended `Cpu` with one optional trace observer while avoiding trace snapshot creation when tracing is disabled.
+- Isolated observer failures so tracing cannot turn successful CPU execution into failure.
+- Preserved the exact original CPU error when tracing a failed attempt, even when the observer itself throws.
+- Represented failed execution traces using the actual post-failure CPU state rather than implying transactional rollback.
+- Kept retry-style instructions such as waiting `Fx0A` and vblank-gated `Dxyn` visible as repeated real CPU attempts.
+- Extended the public `@chip8nx/core` API with the tracing model, observer, formatters, bounded history, and shared instruction-formatting surface.
+- Kept trace formatting, trace storage, and application output separate from CPU observation.
+- Kept Terminal trace output application-owned; trace mode suppresses alternate-screen framebuffer presentation while preserving keyboard input and emulated execution.
+- Updated architecture and documentation navigation to distinguish read-only disassembly from observation of instruction attempts that actually execute.
+- Performed an editorial review of the architecture and guide documentation to improve consistency and remove duplicated or stale explanations.
+- Removed the tracked VS Code launch configuration so editor-specific launch settings are no longer part of the versioned project configuration.
+
+### Milestone
+
+`v0.6.0` establishes Chip8NX's reusable execution-observation foundation.
+
+The CPU remains responsible for the semantics of one instruction attempt, while `Chip8Runtime` remains responsible for when scheduled attempts occur:
+
+```text
+Chip8Runtime
+    ↓
+when an attempt occurs
+
+Cpu.step()
+    ↓
+what the attempt means
+    ↓
+InstructionTrace
+    ↓
+optional observers
+    ├── formatting / application output
+    └── bounded recent history
+```
+
+Tracing is deliberately observational. It records facts about execution without controlling execution.
+
+That boundary complements the read-only disassembly capability introduced in `v0.5.0`:
+
+```text
+encoded program
+    ↓
+disassembly
+    → inspect instructions without execution
+
+running machine
+    ↓
+tracing
+    → observe actual CPU attempts
+```
+
+Together, these capabilities establish the reusable inspection foundation on which later Terminal, Web, desktop, debugger, or analysis consumers can be built.
+
+Breakpoints, execution control, observer fan-out, timestamps, sequence numbers, whole-machine snapshots, persistent trace formats, replay, and richer history-query APIs remain deliberately deferred until concrete consumers create demonstrated architectural pressure for them.
+
 ## [0.5.0] - 2026-09-05 - Disassembly and Inspection
 
 ### Added
@@ -55,13 +135,13 @@ During the `0.x` development phase:
 Disassembly reuses the same `Decoder` and typed `Instruction` model used by CPU execution, then deliberately diverges into a read-only formatting path rather than executing or mutating machine state:
 
 ```text
-encoded bytes
-    ↓
-Opcode
-    ↓
-Decoder
-    ↓
-Instruction
+   encoded bytes
+        ↓
+     Opcode
+        ↓
+     Decoder
+        ↓
+    Instruction
    /           \
 execution    inspection
 ```
@@ -105,9 +185,7 @@ This milestone establishes the inspection foundation needed for later debugger, 
 
 The Web frontend can load and run Classic CHIP-8 programs with Canvas framebuffer presentation, physical and virtual keyboard input, execution lifecycle controls, and Web Audio sound presentation.
 
-The Web application also completes the second-host composition case study.
-
-Comparison with the Terminal host validates the existing Core host boundaries while showing that host-level composition structures should be allowed to differ according to platform responsibilities.
+The Web application also completes the second-host composition case study. Comparison with the Terminal host validates the existing Core host boundaries while showing that host-level composition structures should be allowed to differ according to platform responsibilities.
 
 The Terminal Level 1 / Level 2 / Level 3 model therefore remains a terminal-specific composition model, while application-owned composition remains the project-wide rule.
 
@@ -133,7 +211,6 @@ No new Core composition abstraction is introduced as part of this milestone.
   - Level 1 — individual components;
   - Level 2 — standard subsystem compositions;
   - Level 3 — standard terminal host.
-
 - Mermaid architecture diagrams covering Core components, CPU execution, runtime/display timing, machine lifecycle, terminal components, and terminal composition levels.
 - Terminal composition guide documenting the Level-1 / Level-2 / Level-3 case study.
 
@@ -165,9 +242,7 @@ Level 3 — Ready-to-use host
 
 All three levels are built from the same underlying components and preserve the ability to mix standard and custom subsystems.
 
-This provides concrete evidence for the layered-composition model without yet generalizing it to the reusable Core. The pattern will be evaluated again while developing a second, substantially different host before any project-wide composition abstraction is adopted.
-
-Terminal feature development is considered complete for this milestone. Further terminal changes should be limited to bug fixes, documentation corrections, or architectural issues revealed by future hosts.
+This provides concrete evidence for the layered-composition model without yet generalizing it to the reusable Core. The pattern will be evaluated again while developing a second, substantially different host before any project-wide composition abstraction is adopted. Terminal feature development is considered complete for this milestone. Further terminal changes should be limited to bug fixes, documentation corrections, or architectural issues revealed by future hosts.
 
 ## [0.2.0] - 2026-09-02 - Classic CHIP-8 Baseline
 
@@ -206,9 +281,7 @@ Chip8NX `v0.2.0` passes:
 - Timendus Quirks in Classic CHIP-8 mode;
 - Timendus Keypad.
 
-The Classic opcode audit confirms that every Classic opcode family is intentionally handled by the implementation.
-
-Ordinary CHIP-8 virtual-machine instructions have executable semantics and direct unit coverage. The historical `0mmm` instruction is recognized and decoded but intentionally rejected because it transfers execution to native CDP1802 machine code outside the scope of the generic CHIP-8 core.
+The Classic opcode audit confirms that every Classic opcode family is intentionally handled by the implementation. Ordinary CHIP-8 virtual-machine instructions have executable semantics and direct unit coverage. The historical `0mmm` instruction is recognized and decoded but intentionally rejected because it transfers execution to native CDP1802 machine code outside the scope of the generic CHIP-8 core.
 
 ### Milestone
 
