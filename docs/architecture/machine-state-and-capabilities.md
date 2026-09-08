@@ -713,9 +713,9 @@ Ram
 
 The layers reinforce rather than duplicate one another.
 
-## State Inspection Without Leaking Ownership
+## State Observation Without Leaking Ownership
 
-Tests, debuggers, tracers, and user interfaces need to observe mutable state.
+Tests, passive inspection tooling, future debuggers, and user interfaces need to observe mutable machine state.
 
 Chip8NX prefers explicit observation APIs instead of exposing live backing collections.
 
@@ -767,14 +767,14 @@ Cpu.snapshot()
         ↓
 CpuState
         ↓
-debugger / tracer / UI / test
+test / Inspection consumer / future debugger / UI
 ```
 
 Machine control still occurs through the real components and execution operations.
 
 The broader rule is:
 
-> Inspection should copy or describe mutable state rather than leak ownership of that state.
+> State observation should copy or describe mutable state rather than leak ownership of that state.
 
 ## Capabilities and Services
 
@@ -1257,10 +1257,7 @@ Applications use profile values when constructing compatible components:
 ```ts
 const memory = new Ram(profile.memorySize);
 const stack = new Stack(profile.stackCapacity);
-const displayBuffer = new DisplayBuffer(
-  profile.display.width,
-  profile.display.height,
-);
+const displayBuffer = new DisplayBuffer(profile.display.width, profile.display.height);
 ```
 
 The profile supplies required characteristics; the application chooses concrete implementations.

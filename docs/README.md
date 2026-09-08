@@ -22,14 +22,14 @@ See [Architecture](./architecture/README.md).
 
 Current topics include:
 
-- the Core architecture and component relationships;
+- the Core and Inspection package architecture and their application composition boundaries;
 - [instruction execution](./architecture/instruction-execution.md), including fetch/decode/execute orchestration, the typed `Instruction` boundary, execution semantics, invariant ownership, and verification;
 - [runtime and timing](./architecture/runtime-and-timing.md), including monotonic time, exact deadline scheduling, catch-up, pause/resume semantics, timer and vertical-blank state, equal-deadline ordering, and single stepping;
-- [machine state and capabilities](./architecture/machine-state-and-capabilities.md), including focused mutable state, capability seams, snapshot-based inspection, profiles, runtime configuration, and reset ownership;
+- [machine state and capabilities](./architecture/machine-state-and-capabilities.md), including focused mutable state, capability seams, snapshot-based state observation, profiles, runtime configuration, and reset ownership;
 - [machine initialization](./architecture/machine-initialization.md), including binary images, memory-layout validation, validate-before-mutate guarantees, reset/reload semantics, and ROM-replacement boundaries;
 - [machine lifecycle](./architecture/machine-lifecycle.md), including construction, initialization, paused/running transitions, single stepping, reset sequencing, and application/runtime ownership;
-- disassembly, instruction inspection, formatting boundaries, and application-level traversal policy;
-- [tracing](./architecture/tracing.md), including optional CPU-attempt observation, success/failure records, retry visibility, non-interference guarantees, formatting boundaries, and bounded history;
+- [disassembly](./architecture/disassembly.md), including Core decoding semantics, Inspection-owned disassembly and instruction formatting, strict reusable behavior, and application-level exploratory traversal policy;
+- [tracing](./architecture/tracing.md), including Core CPU-attempt observation, success/failure records, retry visibility, non-interference guarantees, and Inspection-owned formatting and bounded history;
 - host composition across the Terminal and Web applications.
 
 ### Guides
@@ -67,10 +67,11 @@ ADRs are historical records. New experiments such as the terminal layered-compos
 
 ## API documentation
 
-Generated API documentation is produced from the public package entrypoint:
+Generated API documentation is produced from the public reusable package entrypoints:
 
 ```text
 packages/core/mod.ts
+packages/inspection/mod.ts
 ```
 
 Generate it with:
@@ -93,6 +94,6 @@ Documentation diagnostics can be run with:
 deno task docs:check
 ```
 
-`docs:check` runs Deno's documentation linter against the public Core entrypoint. It is currently used as a public-API documentation audit rather than as a repository CI or release gate, because the existing API still contains historical `missing-jsdoc` diagnostics.
+`docs:check` runs Deno's documentation linter against the public Core and Inspection entrypoints. It is currently used as a public-API documentation audit rather than as a repository CI or release gate, because the existing APIs still contain historical `missing-jsdoc` diagnostics.
 
 New or substantially changed public APIs should include useful JSDoc describing their contract, semantics, invariants, or lifecycle where those details are not obvious from the type signature. The longer-term goal is to reduce the existing documentation backlog without adding ceremonial comments solely to satisfy the linter.

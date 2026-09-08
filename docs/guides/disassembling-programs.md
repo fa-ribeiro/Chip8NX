@@ -1,6 +1,6 @@
 # Disassembling CHIP-8 Programs
 
-Chip8NX Core can inspect encoded CHIP-8 instructions without executing them.
+Chip8NX can inspect encoded CHIP-8 instructions without executing them by combining Core machine semantics with the passive disassembly tools provided by `@chip8nx/inspection`.
 
 This guide covers the practical disassembly API. For design rationale, see [Disassembly architecture](../architecture/disassembly.md).
 
@@ -25,7 +25,8 @@ new MemoryImageLoader().load(memory, profile.programStartAddress, program);
 ## Create a disassembler
 
 ```ts
-import { ClassicInstructionFormatter, Decoder, Disassembler } from "@chip8nx/core";
+import { Decoder } from "@chip8nx/core";
+import { ClassicInstructionFormatter, Disassembler } from "@chip8nx/inspection";
 
 const disassembler = new Disassembler(new Decoder(), new ClassicInstructionFormatter());
 ```
@@ -107,13 +108,13 @@ const entry = disassembler.disassembleAt(memory, profile.programStartAddress);
 console.log(entry.text);
 ```
 
-A debugger can use current CPU state to choose the address:
+An inspection UI or future debugger can use current CPU state to choose the address:
 
 ```ts
 const currentInstruction = disassembler.disassembleAt(memory, cpu.snapshot().programCounter);
 ```
 
-The debugger owns that relationship. `Disassembler` remains independent of CPU state.
+The higher-level consumer owns that relationship. `Disassembler` remains independent of CPU state.
 
 ## Use structured instruction data
 
@@ -133,7 +134,8 @@ Do not parse assembly text to recover semantic instruction data.
 Implement `InstructionFormatter` when a consumer needs another assembly syntax or text presentation:
 
 ```ts
-import type { Instruction, InstructionFormatter } from "@chip8nx/core";
+import type { Instruction } from "@chip8nx/core";
+import type { InstructionFormatter } from "@chip8nx/inspection";
 
 class MyFormatter implements InstructionFormatter {
   format(instruction: Instruction): string {
@@ -172,7 +174,7 @@ The formatter's current contract is deliberately small:
 format(instruction: Instruction): string;
 ```
 
-Descriptions, symbols, comments, control-flow information, or debugger metadata can be layered around `DisassembledInstruction` without expanding the base text-formatting capability prematurely.
+Descriptions, symbols, comments, control-flow information, or other higher-level inspection metadata can be layered around `DisassembledInstruction` without expanding the base text-formatting capability prematurely.
 
 ## Whole-ROM exploratory inspection
 
@@ -201,7 +203,7 @@ Example:
 
 The successful `AAEA` decode still does not prove that the bytes are code.
 
-The `apps/disassembler` command-line application demonstrates this tolerant policy. It catches `InvalidOpcodeError` per word and continues; strict Core range disassembly does not.
+The `apps/disassembler` command-line application demonstrates this tolerant policy. It catches `InvalidOpcodeError` per word and continues; strict Inspection range disassembly does not.
 
 ## Range behavior
 
@@ -296,7 +298,7 @@ out-of-range memory access
     → RangeError from Memory
 ```
 
-The Core API preserves these ownership boundaries rather than wrapping them in disassembly-specific exceptions.
+The reusable Core and Inspection APIs preserve these ownership boundaries rather than wrapping collaborator errors in disassembly-specific exceptions.
 
 ## Related documentation
 

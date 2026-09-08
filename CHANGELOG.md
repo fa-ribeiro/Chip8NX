@@ -12,6 +12,23 @@ During the `0.x` development phase:
 
 ## [Unreleased]
 
+### Added
+
+- Added the host-independent `@chip8nx/inspection` workspace package for passive CHIP-8 inspection tooling.
+- Added public-package integration coverage proving that Core semantics and observation contracts compose with Inspection disassembly, formatting, and bounded trace history through public APIs only.
+- Added a focused Core public-API integration test for the CPU instruction-observation contract.
+
+### Changed
+
+- Moved instruction formatting, disassembly, bounded trace history, and trace formatting from `@chip8nx/core` to `@chip8nx/inspection`.
+- Reduced Core tracing ownership to the minimal CPU observation boundary: `InstructionTrace`, its success/failure variants, and `InstructionTraceObserver`.
+- Reorganized the private Core observation source under `cpu/observation`, reflecting that instruction traces are produced by `Cpu.step()` rather than by a separate Core tracing subsystem.
+- Updated Terminal and disassembler applications to compose `@chip8nx/core` with `@chip8nx/inspection` where passive inspection capabilities are required.
+- Extended generated API documentation and documentation linting to cover the public entrypoints of both reusable packages.
+- Reconciled architecture, tracing, disassembly, usage, CI, and project documentation with the new Core / Inspection responsibility boundary.
+- Clarified that Core owns machine semantics, runtime mechanisms, and authoritative observation signals; Inspection owns passive consumers; applications own host-specific presentation and lifecycle policy.
+- Kept debugger execution-control behavior deliberately deferred until concrete reusable needs such as breakpoints, watchpoints, or step-over semantics are demonstrated.
+
 ## [0.6.0] - 2026-09-07 - Tracing and Execution Observation
 
 ### Added
@@ -27,11 +44,9 @@ During the `0.x` development phase:
 - Bounded-history coverage for capacity validation, ordering, overflow, repeated wraparound, snapshot ownership, object identity, and clearing.
 - Public-API integration coverage proving that tracing observation, history, and formatting compose through `packages/core/mod.ts` without private source imports.
 - Terminal `--trace` mode:
-
   ```text
   deno task terminal --trace <rom-path>
   ```
-
 - Dedicated tracing architecture documentation covering the CPU-attempt observation boundary, success/failure records, non-interference guarantees, retry visibility, formatting boundaries, bounded history, and deliberately deferred debugger concerns.
 - Expanded architecture documentation for instruction execution, runtime and timing, machine state and capabilities, machine initialization, and machine lifecycle.
 
@@ -107,11 +122,9 @@ Breakpoints, execution control, observer fan-out, timestamps, sequence numbers, 
 - Public-API integration coverage exercising ROM loading, memory composition, decoding, formatting, and disassembly through `packages/core/mod.ts`.
 - Command-line disassembler application under `apps/disassembler`.
 - Root `disassemble` task for exploratory ROM inspection:
-
   ```text
   deno task disassemble <rom-path>
   ```
-
 - Tolerant application-level whole-ROM linear traversal that reports unsupported Classic CHIP-8 words as `UNKNOWN` and continues with subsequent words.
 - Dedicated disassembly architecture documentation covering responsibility boundaries, dependency direction, lifecycle, error ownership, extension points, and the relationship between inspection and execution.
 - Practical disassembly guide covering known instruction ranges, single-instruction inspection, custom formatters, error behavior, and the exploratory CLI.
@@ -135,13 +148,13 @@ Breakpoints, execution control, observer fan-out, timestamps, sequence numbers, 
 Disassembly reuses the same `Decoder` and typed `Instruction` model used by CPU execution, then deliberately diverges into a read-only formatting path rather than executing or mutating machine state:
 
 ```text
-   encoded bytes
-        ↓
-     Opcode
-        ↓
-     Decoder
-        ↓
-    Instruction
+encoded bytes
+    ↓
+Opcode
+    ↓
+Decoder
+    ↓
+Instruction
    /           \
 execution    inspection
 ```
@@ -185,7 +198,8 @@ This milestone establishes the inspection foundation needed for later debugger, 
 
 The Web frontend can load and run Classic CHIP-8 programs with Canvas framebuffer presentation, physical and virtual keyboard input, execution lifecycle controls, and Web Audio sound presentation.
 
-The Web application also completes the second-host composition case study. Comparison with the Terminal host validates the existing Core host boundaries while showing that host-level composition structures should be allowed to differ according to platform responsibilities.
+The Web application also completes the second-host composition case study.
+Comparison with the Terminal host validates the existing Core host boundaries while showing that host-level composition structures should be allowed to differ according to platform responsibilities.
 
 The Terminal Level 1 / Level 2 / Level 3 model therefore remains a terminal-specific composition model, while application-owned composition remains the project-wide rule.
 
@@ -242,7 +256,8 @@ Level 3 — Ready-to-use host
 
 All three levels are built from the same underlying components and preserve the ability to mix standard and custom subsystems.
 
-This provides concrete evidence for the layered-composition model without yet generalizing it to the reusable Core. The pattern will be evaluated again while developing a second, substantially different host before any project-wide composition abstraction is adopted. Terminal feature development is considered complete for this milestone. Further terminal changes should be limited to bug fixes, documentation corrections, or architectural issues revealed by future hosts.
+This provides concrete evidence for the layered-composition model without yet generalizing it to the reusable Core. The pattern will be evaluated again while developing a second, substantially different host before any project-wide composition abstraction is adopted.
+Terminal feature development is considered complete for this milestone. Further terminal changes should be limited to bug fixes, documentation corrections, or architectural issues revealed by future hosts.
 
 ## [0.2.0] - 2026-09-02 - Classic CHIP-8 Baseline
 
@@ -281,7 +296,8 @@ Chip8NX `v0.2.0` passes:
 - Timendus Quirks in Classic CHIP-8 mode;
 - Timendus Keypad.
 
-The Classic opcode audit confirms that every Classic opcode family is intentionally handled by the implementation. Ordinary CHIP-8 virtual-machine instructions have executable semantics and direct unit coverage. The historical `0mmm` instruction is recognized and decoded but intentionally rejected because it transfers execution to native CDP1802 machine code outside the scope of the generic CHIP-8 core.
+The Classic opcode audit confirms that every Classic opcode family is intentionally handled by the implementation.
+Ordinary CHIP-8 virtual-machine instructions have executable semantics and direct unit coverage. The historical `0mmm` instruction is recognized and decoded but intentionally rejected because it transfers execution to native CDP1802 machine code outside the scope of the generic CHIP-8 core.
 
 ### Milestone
 

@@ -16,7 +16,7 @@ The project focuses first on accurate **Classic CHIP-8** behavior while keeping 
 
 `Cpu` can optionally emit structured `InstructionTrace` records for real CPU instruction attempts. Successful and failed attempts preserve the semantic information available at that point, including before/after CPU state, while observer failures remain isolated from emulated execution and failed attempts preserve the original CPU error.
 
-Trace presentation remains separate from observation. Core provides conventional instruction-trace formatting, optional CPU-state-change decoration, and `InstructionTraceBuffer` for bounded chronological history without introducing debugger control into the tracing contract.
+Current development builds on that milestone by separating passive inspection tooling into `@chip8nx/inspection`. Core retains the CPU observation signal and observer contract, while instruction formatting, disassembly, bounded trace history, and trace formatting belong to the Inspection package. Host-specific output and interaction remain application-owned.
 
 The Terminal application provides the first tracing proof of concept:
 
@@ -67,39 +67,56 @@ The main goals are to:
 
 ## Architecture
 
-Chip8NX separates machine definition, application composition, initialization, execution, and runtime orchestration.
+Chip8NX separates reusable machine semantics, passive inspection tooling, and host-specific application concerns.
 
 ```mermaid
-flowchart TB
-    Profile["Chip8Profile<br/>What machine?"]
-    App["Application composition<br/>Which implementations?"]
-    Init["MachineInitializer<br/>Establish state"]
-    Cpu["Cpu"]
-    Runtime["Chip8Runtime"]
-    Scheduler["Scheduler"]
-    Context["ExecutionContext"]
+flowchart LR
+    Apps["Applications"]
+    Inspection["@chip8nx/inspection"]
+    Core["@chip8nx/core"]
 
-    Profile --> App
-    App --> Init
-    Init --> Context
-    App --> Cpu
-    App --> Runtime
-    Cpu --> Context
-    Runtime --> Cpu
-    Runtime --> Scheduler
+    Apps -->|"depends on"| Core
+    Apps -->|"when needed"| Inspection
+    Inspection -->|"depends on"| Core
 ```
 
-A `Chip8Profile` describes the emulated machine, including memory layout, display geometry, display refresh frequency, timer frequency, and font placement.
+The arrows represent dependency direction.
 
-The application selects concrete implementations and host adapters. `MachineInitializer` validates and establishes machine state, reinstalls profile system data, resets transient state such as vertical-blank availability, and loads a program.
+`@chip8nx/core` owns the emulated machine: profiles, machine state and capabilities, initialization, CPU execution, runtime orchestration, scheduling, and the minimal CPU-observation contract.
 
-`Cpu` owns the fetch/decode/execute cycle.
+Within Core, one instruction attempt follows the canonical path:
 
-`Chip8Runtime` coordinates CPU execution, CHIP-8 timer countdown, and emulated display-frame boundaries.
+```text
+Memory → Cpu → Decoder → Instruction → InstructionExecutor → ExecutionContext
+```
 
-Host rendering remains outside Core. A terminal, browser, or desktop host observes `DisplayBuffer` without defining CHIP-8 display timing. Core also exposes a read-only disassembly path for instruction inspection. `Disassembler` reuses the same typed `Decoder` used by CPU execution, while `InstructionFormatter` keeps human-readable presentation replaceable. Inspection remains independent of execution state and host presentation.
+`Cpu` owns fetch/decode/execute sequencing. `InstructionExecutor` applies typed instruction semantics through the focused state and capability components grouped by `ExecutionContext`.
 
-Core tracing optionally observes the `Cpu.step()` attempt boundary as structured `InstructionTrace` data. Trace formatting, application output, and bounded history remain separate concerns, and observation failures cannot change emulated execution behavior.
+`@chip8nx/inspection` builds only on Core's public API and provides passive tooling:
+
+```text
+instruction formatting
+disassembly
+bounded instruction-trace history
+trace formatting
+```
+
+Core does not depend on Inspection.
+
+Applications are the composition roots. They construct Core components, choose host adapters, optionally compose Inspection tools, and own platform-specific concerns such as rendering, audio presentation, keyboard adaptation, filesystem access, terminal or DOM interaction, and lifecycle integration.
+
+This keeps the reusable responsibilities distinct:
+
+```text
+Core
+    → what the machine is and what happened
+
+Inspection
+    → how machine semantics and observations can be inspected
+
+Applications
+    → how the machine is hosted and presented
+```
 
 For diagrams and more detail, see [Architecture](./docs/architecture/README.md).
 
@@ -227,6 +244,8 @@ Generated API documentation is written to:
 build/docs/api/
 ```
 
+The generated API reference covers the public entrypoints of both `@chip8nx/core` and `@chip8nx/inspection`.
+
 ### Check public API documentation
 
 ```bash
@@ -236,72 +255,101 @@ deno task docs:check
 ## Repository structure
 
 ```text
-.
+Chip8NX/
 ├── packages/
-│   └── core/
+│   ├── core/
+│   │   ├── mod.ts
+│   │   └── src/
+│   └── inspection/
 │       ├── mod.ts
-│       ├── src/
-│       └── tests/
-│
+│       └── src/
 ├── apps/
-│   ├── disassembler/
 │   ├── terminal/
-│   └── web/
+│   ├── web/
+│   └── disassembler/
 ├── docs/
-├── CHANGELOG.md
-├── LICENSE
-├── README.md
-├── THIRD_PARTY_NOTICES.md
+├── build/
 └── deno.json
 ```
 
 ### `packages/core`
 
-The reusable **Chip8NX Core** package (`@chip8nx/core`).
+`@chip8nx/core` contains the reusable CHIP-8 machine.
 
-It contains machine components, profiles, CPU execution, initialization, runtime orchestration, scheduling, disassembly and instruction-inspection capabilities, optional execution tracing, bounded trace history, and Core tests.
+Its responsibilities include:
 
-Its intended public API is exposed through:
+- machine profiles and initialization;
+- focused machine state and capability boundaries;
+- opcode decoding and typed instruction semantics;
+- CPU execution;
+- runtime scheduling and timing;
+- timers and vertical blank;
+- display-buffer state;
+- keyboard, font, and random-number capability seams;
+- the minimal CPU instruction-observation contract.
 
-```text
-packages/core/mod.ts
-```
+Core does not depend on host-specific presentation or passive Inspection tooling.
 
-### `apps/disassembler`
+### `packages/inspection`
 
-A small command-line consumer of the Core disassembly API.
+`@chip8nx/inspection` contains host-independent passive tools built on Core's public API.
 
-It reads a CHIP-8 ROM, performs an exploratory two-byte linear sweep, prints supported Classic CHIP-8 instructions, reports unsupported words as `UNKNOWN`, and continues through the remainder of the file.
+Its current responsibilities include:
 
-The application deliberately owns filesystem access, command-line arguments, output formatting, and tolerant traversal policy rather than pushing those concerns into Core.
+- CHIP-8 instruction formatting;
+- strict disassembly;
+- bounded instruction-trace history;
+- human-readable trace formatting;
+- CPU-state-change trace decoration.
+
+Inspection does not control execution and does not own host-specific output.
 
 ### `apps/terminal`
 
-The first concrete Chip8NX host application.
+The Terminal application is a host composition case study.
 
-It adapts the reusable Core to terminal-specific presentation and input while keeping terminal concerns out of the emulator package.
+It uses Core for emulation and may compose Inspection formatters for optional line-oriented trace output.
 
-The terminal application also serves as the completed first case study for three composition depths:
-
-1. individual components;
-2. standard subsystem compositions;
-3. a ready-to-use standard terminal host.
-
-The three levels use the same underlying components and demonstrate how convenience can reduce assembly burden without removing the manual, fully customizable path.
+Terminal-specific rendering, keyboard adaptation, CLI options, and output policy remain application-owned.
 
 ### `apps/web`
 
-The second concrete Chip8NX host application.
+The Web application hosts the CHIP-8 machine in a browser.
 
-It adapts the same reusable Core to browser-specific presentation, input, audio, and application lifecycle concerns.
+It owns browser-specific rendering, audio, keyboard input, ROM loading, and UI lifecycle concerns.
 
-The current Web host includes Canvas rendering, physical and virtual keyboard input, execution controls, ROM loading, and Web Audio sound presentation.
+The current Web host primarily composes Core. Inspection capabilities can be added as the interactive inspection UI evolves.
 
-It also serves as the second composition case study used to evaluate which architectural patterns belong in Core and which should remain host-specific.
+### `apps/disassembler`
+
+The disassembler application is a command-line inspection tool.
+
+It combines:
+
+```text
+Core
+    Memory
+    Decoder
+    InvalidOpcodeError
+
+Inspection
+    Disassembler
+    ClassicInstructionFormatter
+```
+
+The reusable Inspection disassembler is strict. The application adds tolerant whole-ROM exploration policy by catching invalid opcodes per instruction-sized word and continuing.
 
 ### `docs`
 
 Long-form architecture, guides, reference material, and Architecture Decision Records.
+
+Generated API documentation is written under:
+
+```text
+build/docs/api/
+```
+
+and is not committed to source control.
 
 ## Documentation
 
@@ -361,7 +409,7 @@ Post-`v0.6.0` development can proceed across areas such as:
 
 - debugger and richer inspection tooling built on the completed disassembly and execution-tracing boundaries;
 - Web-host refinement when concrete debugger, inspection, or other interactive use cases justify it;
-- public Core API and composition ergonomics when additional architectural evidence creates concrete pressure for change;
+- public reusable-package APIs and composition ergonomics when additional architectural evidence creates concrete pressure for change;
 - desktop hosts;
 - additional CHIP-8-family profiles when the project is ready to model variant differences explicitly.
 

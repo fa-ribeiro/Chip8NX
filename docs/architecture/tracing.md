@@ -1,35 +1,51 @@
 # Tracing Architecture
 
-Chip8NX tracing observes CPU instruction attempts without participating in
-execution semantics.
+Chip8NX tracing spans two reusable package responsibilities:
+
+- `@chip8nx/core` owns CPU observation: producing structured facts about instruction attempts and exposing the minimal observer port;
+- `@chip8nx/inspection` owns passive trace consumers such as bounded history and human-readable formatting.
+
+Applications decide whether to compose those capabilities and own final presentation or other host-specific behavior.
 
 At a high level:
 
 ```text
-Cpu.step()
-    ↓
+Core: Cpu.step()
+      ↓
 instruction attempt
-    ↓
-InstructionTrace
-    ↓
-optional InstructionTraceObserver
-    ├── formatting / console output
-    └── bounded trace history
+      ↓
+Core: InstructionTrace
+      ↓
+Core: InstructionTraceObserver
+      ↓
+Inspection consumers
+    ├── InstructionTraceBuffer
+    └── InstructionTraceFormatter
+              ↓
+        application presentation
 ```
 
 The central rule is:
 
-> Tracing is purely observational. Enabling, disabling, or failing to observe a
-> trace must not change emulated machine behavior.
+> Observation is purely passive. Enabling, disabling, storing, formatting, or failing to consume a trace must not change emulated machine behavior.
+
+The package dependency remains one-way:
+
+```text
+@chip8nx/inspection
+        ↓ depends on
+@chip8nx/core
+```
+
+Core does not depend on Inspection.
 
 Tracing therefore remains separate from:
 
-- instruction execution;
+- instruction execution semantics;
 - runtime scheduling;
-- formatting;
-- output;
-- history presentation;
-- debugger control such as breakpoints.
+- execution-control policy;
+- host output;
+- debugger behavior such as breakpoints.
 
 See also:
 
@@ -41,20 +57,18 @@ See also:
 
 ## Responsibility Model
 
-Tracing observes one **CPU instruction attempt**.
+One `InstructionTrace` represents one **CPU instruction attempt**.
 
-That distinction is important because one CPU attempt does not necessarily mean
-one completed instruction.
+That distinction is important because one CPU attempt does not necessarily mean one completed instruction.
 
-For example, Classic CHIP-8 instructions such as:
+Classic CHIP-8 instructions such as:
 
 ```text
 Fx0A
 Dxyn
 ```
 
-may deliberately retry by restoring the program counter to the address of the
-current instruction.
+may deliberately retry by restoring the program counter to the address of the current instruction.
 
 Each retry is still a real CPU attempt and therefore produces its own trace.
 
@@ -74,11 +88,9 @@ CPU state after
 InstructionTrace
 ```
 
-This boundary belongs at `Cpu.step()` because the CPU owns the complete
-fetch/decode/execute attempt.
+This boundary belongs to Core `Cpu.step()` because the CPU owns the complete fetch/decode/execute attempt.
 
-`Chip8Runtime` determines **when** CPU attempts occur, but it does not own the
-semantics of those attempts.
+`Chip8Runtime` determines **when** CPU attempts occur, but it does not own the semantics or observation of an individual attempt.
 
 The distinction is:
 
@@ -88,68 +100,103 @@ Chip8Runtime
 
 Cpu
     → what one instruction attempt does
+    → produces the observation
 
-Tracing
-    → what was observed about that attempt
+@chip8nx/inspection
+    → passively retains or presents observations
 ```
 
-This also means instruction tracing is available independently of normal
-scheduled execution. Manual stepping and any future direct CPU consumers observe
-the same execution boundary.
+Instruction observation is therefore available independently of normal scheduled execution. Manual runtime stepping and any future direct CPU consumers observe the same CPU-attempt boundary.
+
+Neither the observer contract nor its Inspection consumers decide whether execution should continue, pause, retry, or stop. Those decisions remain execution or future debugger policy.
 
 ## Optional Observation
 
-Tracing is an optional CPU dependency.
+CPU observation is an optional Core dependency.
 
 Conceptually:
 
 ```text
-tracing disabled
+no observer
     ↓
 normal CPU execution
 
-tracing enabled
+observer attached
     ↓
 normal CPU execution
     +
-immutable observations
+structured observations
 ```
 
-When no observer is configured, the CPU does not create trace snapshots.
+When no `InstructionTraceObserver` is configured, `Cpu` does not create the `CpuState` snapshots required for an `InstructionTrace`.
 
-Tracing therefore carries no trace-snapshot cost unless an observer is
-configured. History storage adds cost only when a history observer such as
-`InstructionTraceBuffer` is used.
+The observation machinery therefore avoids trace-snapshot work when unused.
 
-The desired behavioral invariant is:
+When an observer is configured, Core performs the additional work required to construct and deliver the trace. What happens after delivery depends on the consumer.
+
+For example:
 
 ```text
-machine behavior with tracing disabled
-    =
-machine behavior with tracing enabled
+Core
+    create InstructionTrace
+    deliver to observer
+            ↓
+Inspection
+    InstructionTraceBuffer
+        → bounded retention cost
+
+    InstructionTraceFormatter
+        → formatting cost
+
+Application
+        → rendering / console / UI cost
 ```
 
-except for the externally visible trace observations themselves.
+These costs are real host-side costs, but they must not alter emulated machine semantics.
+
+The required invariant is:
+
+```text
+machine behavior without observation
+    =
+machine behavior with observation
+```
+
+except for the externally visible observations and the host resources consumed to produce or process them.
+
+Observation is therefore **semantically non-interfering**, not computationally free.
 
 ## Non-Interference
 
-Trace observers are diagnostic collaborators rather than execution
-collaborators.
+`InstructionTraceObserver` is a diagnostic collaborator rather than an execution collaborator.
 
-If an observer throws while processing a trace, that failure is isolated and
-must not become a CPU execution failure.
+Its failure must never become a CPU execution failure.
 
-Likewise, when the CPU attempt itself fails:
+If a successful CPU attempt is followed by an observer failure:
 
 ```text
-CPU throws original error
+CPU attempt succeeds
         ↓
-failed trace is observed
+trace produced
         ↓
-observer may itself fail
+observer throws
         ↓
-original CPU error is still rethrown
+Cpu.step() still succeeds
 ```
+
+Likewise, if the CPU attempt itself fails:
+
+```text
+CPU raises original error
+        ↓
+failed trace produced
+        ↓
+observer may also throw
+        ↓
+original CPU error is rethrown
+```
+
+The observer cannot replace the original execution error with its own failure.
 
 This is intentionally different from semantic collaborators such as:
 
@@ -160,57 +207,80 @@ InstructionExecutor
 Stack
 ```
 
-Errors from those collaborators describe execution failure and therefore
-propagate normally.
+Failures from those collaborators may describe actual machine execution failure and therefore propagate normally.
 
-An observer failure describes only a failure to observe execution.
+An observer failure means only:
 
-The rule is:
+> The attempt could not be observed successfully.
+
+It does not mean:
+
+> The emulated instruction failed.
+
+The Core guarantee can therefore be summarized as:
 
 > Observation may fail; emulation must not fail because observation failed.
 
+The same rule applies regardless of which passive consumer is attached. An Inspection buffer, formatter adapter, application logger, or future UI bridge may fail internally without acquiring authority over CPU semantics.
+
 ## Structured Data Before Presentation
 
-Core tracing produces structured trace records rather than formatted strings.
+Core CPU observation produces structured semantic records rather than formatted strings.
 
 ```text
-CPU attempt
-    ↓
-InstructionTrace
-    ↓
-formatter
-    ↓
-text
-    ↓
-console / UI / future output
+Core
+    CPU attempt
+        ↓
+    InstructionTrace
+        ↓
+Inspection
+    InstructionTraceFormatter
+        ↓
+Application
+    console / terminal / UI / other presentation
 ```
 
-The trace record contains semantic execution information.
-
-It does not contain:
+An `InstructionTrace` contains facts about execution. It does not contain presentation policy such as:
 
 ```text
-formatted instruction text
+formatted assembly text
+columns or padding
 terminal output
 newlines
 console behavior
-UI state
+DOM state
+UI styling
 ```
 
-Formatting and output remain downstream concerns.
+Those concerns belong downstream.
 
-This follows the same architectural principle used by disassembly:
+This follows the same architectural principle used by static disassembly:
 
 > Preserve semantic information first; derive presentation from it afterward.
 
-Trace consumers therefore never need to re-decode an opcode in order to
-understand a successfully decoded instruction.
+Successfully decoded traces retain the typed Core `Instruction`, so Inspection consumers do not need to decode the opcode again merely to understand or present the operation.
+
+The resulting ownership is:
+
+```text
+@chip8nx/core
+    Instruction
+    CpuState
+    InstructionTrace
+
+@chip8nx/inspection
+    InstructionFormatter
+    InstructionTraceFormatter
+
+applications
+    output and interaction
+```
 
 ## Trace Data Model
 
-One CPU attempt produces an `InstructionTrace`.
+One CPU instruction attempt produces one `InstructionTrace`.
 
-The trace model is a discriminated union:
+The Core trace model is a discriminated union:
 
 ```text
 InstructionTrace
@@ -225,11 +295,11 @@ before
     → CPU state immediately before the attempt
 
 after
-    → CPU state immediately after the attempt returned or failed
+    → actual CPU state immediately after the attempt
+       returned or failed
 ```
 
-The `outcome` discriminator lets consumers distinguish the variants without
-casts or speculative optional-field checks:
+The `outcome` discriminator lets consumers narrow the union directly:
 
 ```ts
 if (trace.outcome === "success") {
@@ -251,17 +321,11 @@ SuccessfulInstructionTrace
 └── after
 ```
 
-"Successful" here means that the CPU attempt returned normally.
+“Successful” means that the CPU attempt returned normally. It does not necessarily mean that the instruction completed all of its semantic work.
 
-It does not necessarily mean that the instruction completed its semantic work.
+For example, `Fx0A` and vblank-gated `Dxyn` may deliberately restore the current instruction address and return so that execution can retry later. Those attempts are successful trace records because retry is normal instruction behavior rather than an exception.
 
-For example, `Fx0A` and vblank-gated `Dxyn` may deliberately restore the program
-counter and return so that the same instruction can be attempted again later.
-Those retries are successful trace records because they are normal execution
-outcomes rather than exceptions.
-
-The decoded `Instruction` already retains its original `Opcode`, so successful
-traces do not duplicate either:
+The decoded Core `Instruction` already retains its original `Opcode`, so successful traces do not duplicate facts merely for consumer convenience:
 
 ```text
 source address
@@ -270,8 +334,6 @@ source address
 opcode
     → instruction.opcode
 ```
-
-This keeps one authoritative representation of each fact.
 
 ### Failed attempts
 
@@ -287,8 +349,7 @@ FailedInstructionTrace
 └── error
 ```
 
-The optional opcode and instruction describe how far the attempt progressed
-before failing:
+The optional `opcode` and `instruction` fields describe how far the attempt progressed:
 
 ```text
 opcode absent
@@ -296,27 +357,27 @@ opcode absent
 
 opcode present
 instruction absent
-    → fetch completed, but decoding did not complete
+    → fetch completed, decoding did not
 
 instruction present
     → decoding completed and execution was reached
 ```
 
-This avoids adding a separate `"fetch" | "decode" | "execute"` stage field when
-the existing semantic data already expresses that distinction.
+The model therefore does not need a separate:
 
-The stored `error` is the original error raised by the CPU attempt.
+```ts
+"fetch" | "decode" | "execute";
+```
 
-Tracing does not wrap or replace it.
+stage field. The semantic data already expresses that information.
+
+The `error` is the original error raised by the CPU attempt. Core observation does not wrap or replace it.
 
 ### `before` and `after` describe actual CPU state
 
-The trace snapshots record what the CPU state actually was at the two
-observation points.
+CPU execution is not transactional.
 
-That matters because CPU execution is not transactional.
-
-For example, the CPU advances the program counter before decoding:
+For example, `Cpu.step()` advances the program counter before decoding:
 
 ```text
 before.PC = 0x200
@@ -330,16 +391,15 @@ decode fails
 after.PC = 0x202
 ```
 
-A failed trace therefore preserves the real post-failure CPU state rather than
-pretending that execution rolled back.
+A failed trace therefore records the real post-failure CPU state rather than pretending that execution rolled back.
 
-Likewise, an execution failure may occur after some state has already changed.
-The `after` snapshot describes the resulting CPU state even though the attempt
-ultimately threw.
+The same principle applies to execution failures: if machine state changed before an exception occurred, `after` reflects the resulting CPU state.
+
+This makes traces observations of what actually happened rather than reconstructions of what a successful instruction would have done.
 
 ### `CpuState` is intentionally CPU-focused
 
-`CpuState` contains:
+`CpuState` currently contains:
 
 ```text
 V0–VF
@@ -350,12 +410,9 @@ delay timer
 sound timer
 ```
 
-Its mutable collections are copied when the snapshot is created, so later
-machine execution cannot modify an existing trace snapshot.
+Mutable collections are copied when the snapshot is created so later execution cannot mutate an existing observation.
 
-However, `CpuState` is not a complete machine snapshot.
-
-It deliberately does not contain:
+`CpuState` is not a complete machine snapshot. It deliberately does not contain:
 
 ```text
 Memory
@@ -376,25 +433,17 @@ mean:
 
 > CPU state before and after the attempt.
 
-They do not mean:
+They do **not** mean:
 
 > Complete emulator state before and after the attempt.
 
-For example, `CLS` may modify the display while producing no CPU-state change
-other than normal program-counter advancement. `Fx55` may modify memory even
-though memory contents are not represented in the trace snapshots.
+For example, `CLS` may modify the display while its trace records only the corresponding CPU-state changes. `Fx55` may modify memory even though memory contents do not appear in `CpuState`.
 
-The tracing model does not introduce a larger machine snapshot merely to make
-instruction traces appear comprehensive. Memory, display, input, or runtime
-event tracing are separate observability concerns and should be introduced only
-when a real consumer requires them.
+The observation model should not grow into a complete machine snapshot merely to make instruction traces appear comprehensive. Memory, display, input, runtime-event, or other observation needs should be introduced only when a real consumer demonstrates them.
 
-### Trace snapshot ownership
+### Snapshot ownership
 
-A trace owns immutable observation values rather than references to live mutable
-CPU collections.
-
-Conceptually:
+Trace snapshots contain observation values rather than references to live mutable CPU collections:
 
 ```text
 live CPU state
@@ -406,11 +455,11 @@ immutable CpuState
 InstructionTrace
 ```
 
-This makes a trace suitable for:
+That makes Core traces safe for passive consumers such as:
 
 ```text
-formatting
-bounded history
+Inspection formatting
+bounded Inspection history
 tests
 future debugger presentation
 ```
@@ -419,11 +468,9 @@ without giving those consumers ownership of the running machine.
 
 ## Retry Semantics and Repeated Trace Lines
 
-A trace records CPU **attempts**, not only instructions that advance to a new
-program counter.
+An `InstructionTrace` records a CPU **attempt**, not only an instruction that advances to a new program counter.
 
-That means the same instruction address may legitimately appear several times
-in succession.
+The same instruction address may therefore legitimately appear several times in succession.
 
 The most visible current examples are:
 
@@ -435,15 +482,15 @@ Fx0A
     → may wait for the required key press/release lifecycle
 ```
 
-In both cases, retry is expressed by restoring the program counter to the
-current instruction address and returning normally from the executor.
+In both cases, retry is expressed by restoring the program counter to the current instruction address and returning normally from the executor.
 
-The runtime remains active and later CPU occurrences attempt the same
-instruction again.
+The runtime remains active and later CPU occurrences attempt the same instruction again.
+
+Because Core observes attempts at the `Cpu.step()` boundary, each of those attempts produces its own `InstructionTrace`.
 
 ### Repeated `Dxyn` traces
 
-Consider this real trace:
+Consider this trace presentation:
 
 ```text
 0x25C D8B4 DRW V8, VB, 0x4   | PC:0x25C → 0x25E
@@ -457,15 +504,11 @@ Consider this real trace:
 0x260 D9B4 DRW V9, VB, 0x4   | PC:0x260 → 0x262
 ```
 
-This does not mean the tracer duplicated one event.
+The repeated lines do not mean that observation duplicated one event.
 
 Each line represents a separate CPU attempt.
 
-The first draw at `0x25C` consumes the currently available vertical-blank
-opportunity.
-
-The CPU then reaches the draw at `0x260` before another display opportunity is
-available.
+The first draw at `0x25C` consumes the currently available vertical-blank opportunity. The CPU then reaches the draw at `0x260` before another display opportunity is available.
 
 Conceptually:
 
@@ -490,15 +533,14 @@ vertical blank pending?
         retry on a later CPU occurrence
 ```
 
-While no opportunity is available, the retry leaves the traced `CpuState`
-unchanged:
+While no opportunity is available, the retry leaves the traced `CpuState` unchanged:
 
 ```text
 before.PC = 0x260
 after.PC  = 0x260
 ```
 
-The state-change formatter therefore has nothing to append:
+An Inspection state-change formatter therefore has no CPU-state difference to append:
 
 ```text
 0x260 D9B4 DRW V9, VB, 0x4
@@ -506,14 +548,14 @@ The state-change formatter therefore has nothing to append:
 
 Eventually the runtime signals another vertical blank.
 
-The next attempt can consume it and complete the draw:
+The next CPU attempt can consume it and complete the draw:
 
 ```text
 before.PC = 0x260
 after.PC  = 0x262
 ```
 
-which appears as:
+which may be presented as:
 
 ```text
 0x260 D9B4 DRW V9, VB, 0x4   | PC:0x260 → 0x262
@@ -521,8 +563,7 @@ which appears as:
 
 ### Retry count is timing-dependent
 
-The number of repeated attempts is not part of the `Dxyn` instruction
-semantics.
+The number of repeated attempts is not part of the `Dxyn` instruction semantics.
 
 It depends on the relative timing and phase of:
 
@@ -538,23 +579,19 @@ CPU:       ↑ ↑ ↑ ↑ ↑ ↑ ↑ ↑ ↑ ↑ ↑
 VBlank:    ↑                   ↑
 ```
 
-If one draw consumes the current opportunity, later CPU attempts may retry
-several times before the next display boundary occurs.
+If one draw consumes the current opportunity, later CPU attempts may retry several times before the next display boundary occurs.
 
-Different CPU frequencies or different scheduling phase relationships can
-therefore produce a different number of repeated trace lines while preserving
-the same machine semantics.
+Different CPU frequencies or scheduling phase relationships can therefore produce different numbers of repeated traces while preserving the same machine semantics.
 
-Tracing exposes those attempts; it does not create them.
+Core observation exposes those attempts; it does not create them.
 
-See [Runtime and timing architecture](./runtime-and-timing.md) for the
-deadline-driven scheduling model and vertical-blank production.
+See [Runtime and timing architecture](./runtime-and-timing.md) for the deadline-driven scheduling model and vertical-blank production.
 
 ### `Fx0A` behaves similarly
 
-The same tracing principle applies to a key-wait instruction.
+The same observation principle applies to a key-wait instruction.
 
-A trace may look conceptually like:
+Inspection presentation may look conceptually like:
 
 ```text
 0x300 F00A LD V0, K
@@ -573,20 +610,15 @@ after.PC  = 0x300
 
 so the same instruction appears again on later CPU attempts.
 
-Once the keyboard capability reports a completed key-release sequence, the
-instruction writes the key value and allows execution to advance.
+Once the keyboard capability reports a completed key-release sequence, the instruction writes the key value and allows execution to advance.
 
-The runtime itself never enters the paused lifecycle state merely because
-`Fx0A` is waiting.
+The runtime itself never enters the paused lifecycle state merely because `Fx0A` is waiting.
 
-See [Instruction execution architecture](./instruction-execution.md) for the
-retry control-flow semantics and
-[Machine state and capabilities architecture](./machine-state-and-capabilities.md)
-for keyboard-state ownership.
+See [Instruction execution architecture](./instruction-execution.md) for the retry control-flow semantics and [Machine state and capabilities architecture](./machine-state-and-capabilities.md) for keyboard-state ownership.
 
 ### Repetition is diagnostic information
 
-Repeated trace lines are therefore not noise by definition.
+Repeated observations are not noise by definition.
 
 They can reveal:
 
@@ -598,96 +630,142 @@ display synchronization behavior
 unexpected retry loops
 ```
 
-A future debugger may summarize consecutive identical attempts for
-readability, but that is a **presentation policy**. The underlying trace stream
-should continue to preserve each actual CPU attempt so that observability
-remains faithful to execution.
-
-## Formatting and Presentation Boundaries
-
-Tracing produces structured execution observations.
-
-Formatting decides how those observations are represented for people.
-
-Output decides where that representation goes.
-
-The architecture therefore separates:
-
-```text
-InstructionTrace
-    ↓
-InstructionTraceFormatter
-    ↓
-text
-    ↓
-application-owned output
-```
-
-This avoids coupling Core tracing to:
-
-```text
-console
-terminal
-file system
-browser UI
-debugger widgets
-```
-
-### Shared instruction formatting
-
-A trace formatter should not reimplement CHIP-8 assembly syntax.
-
-Successful traces already contain a decoded `Instruction`, and instruction
-formatting is a concern shared by both disassembly and tracing.
-
-The dependency direction is:
-
-```text
-ClassicInstructionTraceFormatter
-        ↓
-InstructionFormatter
-        ↓
-Instruction
-```
-
-This lets `ClassicInstructionFormatter` remain the single owner of Classic
-instruction syntax.
+Presentation layers may choose to summarize consecutive equivalent attempts for readability, but that is presentation policy.
 
 For example:
 
 ```text
-Instruction
+0x260 D9B4 DRW V9, VB, 0x4   × 7
+```
+
+could represent seven retained attempts in a compact UI.
+
+The underlying observation/history should still preserve all seven actual attempts when faithful execution history is required.
+
+The distinction is:
+
+```text
+Core observation
+    → faithfully reports CPU attempts
+
+Inspection history
+    → retains those attempts
+
+presentation
+    → may organize or summarize them
+```
+
+Presentation convenience must not change what Core observed.
+
+## Formatting and Presentation Boundaries
+
+Core observation produces structured execution facts.
+
+Inspection decides how those facts are represented for people.
+
+Applications decide where that representation is presented.
+
+```text
+Core
+    InstructionTrace
+        ↓
+Inspection
+    InstructionTraceFormatter
+        ↓
+    text
+        ↓
+Application
+    terminal / browser / file / other output
+```
+
+This keeps three responsibilities independent:
+
+```text
+observation
+    → what happened?
+
+formatting
+    → how should it be represented?
+
+output
+    → where should it go?
+```
+
+Core therefore has no dependency on:
+
+```text
+InstructionTraceFormatter
+ClassicInstructionTraceFormatter
+StateChangeInstructionTraceFormatter
+console
+terminal output
+browser UI
+file output
+```
+
+All trace formatting belongs to `@chip8nx/inspection`, while host presentation remains application-owned.
+
+### Shared instruction formatting
+
+Trace formatting should not reimplement CHIP-8 assembly syntax.
+
+Successful traces already contain a typed Core `Instruction`, and instruction formatting is shared by static disassembly and runtime trace presentation.
+
+Both capabilities therefore reuse the Inspection-owned `InstructionFormatter`:
+
+```text
+Core: Instruction
+        ↓
+Inspection: InstructionFormatter
+        ├── used by Disassembler
+        └── used by InstructionTraceFormatter
+```
+
+`ClassicInstructionFormatter` remains the single owner of the project's Classic CHIP-8 assembly representation.
+
+For example:
+
+```text
+Core Instruction
     ↓
 ClassicInstructionFormatter
     ↓
 LD V0, 0x42
 ```
 
-The trace formatter then composes that instruction text with execution-specific
-context such as source address and opcode:
+`ClassicInstructionTraceFormatter` then combines that instruction representation with trace-specific facts:
+
+```text
+source address
+opcode
+instruction text
+```
+
+to produce:
 
 ```text
 0x200 6042 LD V0, 0x42
 ```
 
-Trace formatting therefore consumes the typed instruction rather than
-re-decoding opcode fields.
+The trace formatter consumes semantic Core data rather than decoding opcode bit fields again.
 
-This follows the same rule used throughout the Core:
+This follows the project-wide rule:
 
 > Decode uncertainty once; downstream consumers operate on semantic data.
 
-### Classic trace representation
+### `ClassicInstructionTraceFormatter`
 
-`ClassicInstructionTraceFormatter` formats one complete trace record.
+`ClassicInstructionTraceFormatter` belongs to `@chip8nx/inspection`.
 
-For a successful trace:
+It provides a compact human-readable representation of one complete `InstructionTrace`.
+
+For a successful attempt:
 
 ```text
 0x200 6042 LD V0, 0x42
 ```
 
-The source address comes from:
+the source address comes from:
 
 ```text
 trace.before.programCounter
@@ -699,11 +777,9 @@ and the opcode comes from:
 trace.instruction.opcode
 ```
 
-Those facts are not duplicated in the trace model merely for formatting
-convenience.
+Those facts are not duplicated in the trace model merely for formatting convenience.
 
-For failed attempts, the formatter uses whatever semantic information became
-available before failure.
+For failed attempts, the formatter uses whatever semantic information Core captured before failure.
 
 Examples include:
 
@@ -713,28 +789,28 @@ Examples include:
 0x200 00EE RET [RangeError: ...]
 ```
 
-The representation reflects three different failure points:
+These representations correspond naturally to the trace model:
 
 ```text
-no opcode
+opcode absent
     → fetch did not complete
 
-opcode but no instruction
+opcode present
+instruction absent
     → decode did not complete
 
-instruction available
+instruction present
     → execution was reached
 ```
 
-The formatter does not alter or wrap the stored execution error; it only
-renders it for human consumption.
+The formatter does not alter, classify, or wrap the original Core execution error. It only renders the available observation for human consumption.
 
 ### State-change decoration
 
-CPU-state differences are formatted by a separate decorator:
+CPU-state differences are added by a separate Inspection formatter:
 
 ```text
-base trace formatter
+base InstructionTraceFormatter
         ↓
 StateChangeInstructionTraceFormatter
         ↓
@@ -754,7 +830,7 @@ trace.before
 trace.after
 ```
 
-and emits only changed CPU-state fields.
+and emits only changed fields represented by Core `CpuState`.
 
 Current state-change presentation includes:
 
@@ -767,66 +843,80 @@ delay timer
 sound timer
 ```
 
-The formatter deliberately does not attempt to infer changes to memory,
-display, keyboard, vertical blank, or other machine resources that are not part
-of `CpuState`.
+It deliberately does not infer changes to:
 
-This is another consequence of the trace model being CPU-focused rather than a
-complete machine snapshot.
+```text
+Memory
+DisplayBuffer
+Keyboard
+VerticalBlank
+other machine resources
+```
+
+because those values are not part of `CpuState`.
+
+The formatter therefore respects the same observation boundary as Core rather than pretending an instruction trace is a complete machine snapshot.
 
 ### Composition rather than inheritance
 
-The state-change formatter wraps another `InstructionTraceFormatter` rather
-than subclassing `ClassicInstructionTraceFormatter`.
+`StateChangeInstructionTraceFormatter` wraps another `InstructionTraceFormatter` rather than subclassing `ClassicInstructionTraceFormatter`.
 
 Conceptually:
 
 ```text
 InstructionTraceFormatter
         ↑
-        │
+        │ implements
 ClassicInstructionTraceFormatter
 
+
+InstructionTraceFormatter
+        ↑
+        │ implements
 StateChangeInstructionTraceFormatter
-        ↓
-wraps any InstructionTraceFormatter
+        │
+        └── wraps another InstructionTraceFormatter
 ```
 
 This keeps two presentation decisions independent:
 
 ```text
-How is the base trace written?
-How much CPU-state detail should be appended?
+How is the base trace represented?
+
+How much CPU-state detail is appended?
 ```
 
-The result is formatter composition:
+The current detailed formatter is composed as:
 
 ```ts
 const formatter = new StateChangeInstructionTraceFormatter(
-  new ClassicInstructionTraceFormatter(
-    new ClassicInstructionFormatter(),
-  ),
+  new ClassicInstructionTraceFormatter(new ClassicInstructionFormatter()),
 );
 ```
 
-A compact trace can use only the base formatter.
+A consumer that wants compact traces can use only:
 
-A more detailed trace can decorate it.
+```ts
+new ClassicInstructionTraceFormatter(new ClassicInstructionFormatter());
+```
 
-No tracing producer changes are required.
+No Core producer changes are required for either presentation.
+
+This is composition around demonstrated variation rather than an inheritance hierarchy tied to one concrete formatter.
 
 ### Formatting owns text, not record framing
 
-A formatter returns one logical trace line as text.
+`InstructionTraceFormatter` returns the text representation of one logical trace record.
 
 It does not own:
 
 ```text
-trailing newline
+trailing newlines
 stdout buffering
 file framing
 terminal cursor behavior
-UI row insertion
+DOM row insertion
+UI scrolling
 ```
 
 Those concerns belong to the output consumer.
@@ -837,55 +927,74 @@ For example:
 console.log(formatter.format(trace));
 ```
 
-lets `console.log()` own line separation.
+lets the Terminal application's chosen output mechanism own line separation.
 
-A future file writer could choose its own framing convention without requiring
-formatter changes.
+A browser UI can render the same formatted value inside a table or panel without changing the formatter.
+
+Likewise, a future file-export consumer could choose its own record framing.
 
 ### Output remains application-owned
 
-The first tracing proof of concept lives in the Terminal application.
+Inspection provides reusable presentation logic, but it does not provide host-specific output policy.
 
-Its observer performs:
+The current Terminal trace composition is conceptually:
 
 ```text
-trace
-    ↓
-traceFormatter.format(trace)
-    ↓
+Core
+    InstructionTrace
+        ↓
+Terminal observer
+        ↓
+Inspection formatter
+        ↓
+text
+        ↓
 console.log(...)
 ```
 
-Core does not provide a console-specific trace observer.
+The Terminal application owns the final observer because it decides:
+
+```text
+which formatter to compose
+where output goes
+when trace mode is enabled
+how trace output coexists with normal Terminal presentation
+```
+
+Neither Core nor Inspection provides a console-specific tracing component.
 
 That is deliberate.
 
-`console.log()` is a host technology, not a CHIP-8 tracing responsibility.
+`console.log()` is a host technology, not a CHIP-8 machine or passive-inspection responsibility.
 
-Keeping it in the application means the same Core trace model and formatters can
-later support:
+The same reusable observation and Inspection formatting can therefore support different hosts:
 
 ```text
-terminal output
-debugger history
-browser UI
-file export
+Terminal application
+    → line-oriented console output
+
+Web application
+    → debugger / inspection UI
+
+future desktop application
+    → native inspection view
+
 tests
-other presentation layers
+    → direct structured assertions
+
+future export feature
+    → file-oriented representation
 ```
 
-without introducing host APIs into `packages/core`.
+without bringing host APIs into either reusable package.
 
 ### Terminal trace mode
 
-The Terminal application's normal presentation uses stdout to render the
-emulated framebuffer.
+The Terminal application's normal presentation uses stdout to render the emulated framebuffer.
 
 That conflicts with a readable line-oriented trace stream.
 
-For the current `--trace` proof of concept, the application therefore replaces
-the normal framebuffer presentation with a no-op presentation while keeping
-emulation and keyboard input active.
+For the current `--trace` proof of concept, the application therefore replaces normal framebuffer presentation with a no-op presenter while keeping emulation and keyboard input active.
 
 Conceptually:
 
@@ -898,7 +1007,7 @@ normal Terminal mode
     → trace lines on stdout
 ```
 
-This is a host-level presentation choice.
+This is a host presentation policy.
 
 It does not change:
 
@@ -908,138 +1017,88 @@ timer frequency
 display scheduling
 keyboard semantics
 instruction execution
-trace production
+Core observation
 ```
 
-The trace consumer merely chooses a different way to use the Terminal's output
-surface.
-
-### Presentation can summarize without changing observation
-
-Formatting and UI layers may eventually choose to make trace output more compact.
-
-For example, a debugger might visually summarize several identical retry
-attempts as:
-
-```text
-0x260 D9B4 DRW V9, VB, 0x4   × 7
-```
-
-That would be valid presentation behavior as long as the underlying trace
-history still contains all seven actual CPU attempts.
-
-The distinction is:
-
-```text
-trace model
-    → faithful execution observations
-
-presentation
-    → may organize or summarize those observations
-```
-
-Presentation convenience must not change what the tracer records.
+Only the way the Terminal application uses its output surface changes.
 
 ## Bounded Trace History
 
-Live trace output is useful for observing execution as it happens, but a debugger
-also needs to inspect recent execution after the fact.
+`InstructionTraceBuffer` belongs to `@chip8nx/inspection`.
 
-`InstructionTraceBuffer` provides that capability.
-
-Its responsibility is deliberately narrow:
-
-> Retain the most recent N immutable instruction traces in execution order.
-
-Conceptually:
+It is a passive implementation of the Core `InstructionTraceObserver` contract:
 
 ```text
-InstructionTraceObserver
-        ↑
-InstructionTraceBuffer
-        ↓
-bounded chronological history
+Core
+    InstructionTraceObserver
+            ↑
+            │ implements
+Inspection
+    InstructionTraceBuffer
 ```
 
-The buffer is both:
+Its responsibility is intentionally narrow:
+
+> Retain a bounded chronological history of observed instruction attempts.
+
+It does not produce traces, schedule CPU work, format output, or control execution.
+
+### Bounded retention
+
+The buffer has a fixed positive capacity.
+
+Once full, each newly observed trace replaces the oldest retained trace:
 
 ```text
-observer
-    → consumes InstructionTrace values
+capacity = 3
 
-history store
-    → exposes retained traces for later inspection
+observe A
+    [A]
+
+observe B
+    [A B]
+
+observe C
+    [A B C]
+
+observe D
+    [B C D]
 ```
 
-It does not format traces, control execution, or decide how history is presented.
+This gives consumers predictable memory use even during long-running execution.
 
-### Why history is bounded
-
-CPU tracing can produce observations indefinitely.
-
-An unbounded history such as:
+The buffer therefore avoids an unbounded:
 
 ```text
-traces.push(trace)
+InstructionTrace[]
 ```
 
-would make long-running tracing consume memory without limit.
+that would grow for the lifetime of the emulator.
 
-That would be especially expensive because each instruction trace already owns:
+Each retained instruction trace already owns:
 
 ```text
 before CpuState
 after CpuState
 ```
 
-including copied register and stack collections.
+including copied register and stack collections, so boundedness is particularly important.
 
-The buffer therefore has a fixed positive capacity:
+### Observation remains constant-time
 
-```text
-capacity = maximum retained traces
-```
+`observe()` uses ring-buffer semantics.
 
-Once full, observing a new trace discards the oldest one.
-
-For capacity `3`:
+Conceptually:
 
 ```text
-observe A
-observe B
-observe C
-
-history:
-[A, B, C]
+next write slot
+      ↓
+replace / append trace
+      ↓
+advance write index modulo capacity
 ```
 
-then:
-
-```text
-observe D
-
-history:
-[B, C, D]
-```
-
-and:
-
-```text
-observe E
-
-history:
-[C, D, E]
-```
-
-This gives tracing predictable memory usage.
-
-### Ring-buffer storage
-
-The implementation uses ring-buffer semantics rather than shifting an array
-every time the buffer is full.
-
-When capacity is reached, the next observation overwrites the oldest physical
-slot.
+No retained history needs to be shifted when the buffer is full.
 
 For example, with capacity `3`:
 
@@ -1059,89 +1118,89 @@ After observing `D`:
     next write
 ```
 
-The physical array is no longer chronological, but observation remains cheap:
+The physical storage is no longer chronological, but the intended complexity remains:
 
 ```text
-observe()
+observe(trace)
     → O(1)
+
+snapshot()
+    → O(n)
 ```
 
-That matters because `observe()` runs on the CPU execution path whenever the
-buffer is configured as a trace observer.
+where `n` is the number of currently retained traces.
 
-Chronological reconstruction is deferred until somebody asks to inspect the
-history.
+This is a useful fit for the observation path because synchronous observer work should remain small and predictable.
 
-### Chronological snapshots
+The trade-off is deliberate:
 
-`InstructionTraceBuffer.snapshot()` returns retained traces from oldest to
-newest regardless of physical storage order.
+> Recording should remain inexpensive; inspection may pay the cost of producing an ordered view.
 
-For the physical example:
+### Snapshot order
+
+Consumers should not need to understand ring-buffer storage layout.
+
+`snapshot()` therefore returns traces in chronological order:
+
+```text
+oldest
+  ↓
+...
+  ↓
+newest
+```
+
+For example, after:
+
+```text
+capacity = 3
+observe A
+observe B
+observe C
+observe D
+```
+
+the physical storage may be:
 
 ```text
 [D, B, C]
 ```
 
-the logical snapshot is:
+while the logical snapshot is:
 
 ```text
 [B, C, D]
 ```
 
-The operation is therefore:
-
-```text
-snapshot()
-    → O(n)
-```
-
-This is an intentional trade-off:
-
-> Recording should remain inexpensive; inspection may pay the cost of producing
-> an ordered view.
-
-A debugger normally inspects history far less frequently than the CPU records
-individual attempts.
-
 ### History snapshot ownership
 
-Each call to `snapshot()` returns a new array.
+Each call to `snapshot()` returns a fresh array.
 
-The caller therefore cannot mutate the buffer's internal storage by modifying
-the returned container.
+Consumers may therefore retain, sort, or otherwise manipulate the returned collection without mutating the buffer's internal storage.
 
-Conceptually:
-
-```text
-internal mutable ring storage
-        ↓
-snapshot()
-        ↓
-new chronological array
-```
-
-The contained `InstructionTrace` objects themselves are shared rather than
-copied again.
-
-That is safe because trace records are immutable observation values.
-
-The ownership model is:
+The traces themselves are not copied again:
 
 ```text
-snapshot array
-    → copied container
-
-InstructionTrace values
-    → safely shared immutable records
+buffer storage
+    ── trace object ──┐
+                     ├── snapshot
+                     └── later snapshot
 ```
 
-This avoids duplicating the already-copied CPU snapshots stored inside every
-trace.
+This is safe because `InstructionTrace` values are structured as immutable observations and their `CpuState` snapshots do not expose live mutable CPU collections.
+
+The ownership rule is:
+
+```text
+fresh collection
+shared immutable trace values
+```
+
+This avoids duplicating the already-copied CPU snapshots stored inside every trace.
 
 ### Clearing history
 
-`clear()` removes all retained traces while preserving the configured capacity.
+`clear()` removes all retained trace references while preserving the configured capacity.
 
 After:
 
@@ -1153,7 +1212,7 @@ the state becomes:
 
 ```text
 size = 0
-capacity unchanged
+capacity = unchanged
 snapshot() = []
 ```
 
@@ -1168,15 +1227,9 @@ reset memory
 reset keyboard state
 ```
 
-It only changes the local state owned by the history buffer.
+It only changes state owned by the Inspection buffer.
 
-That makes it suitable for debugger operations such as:
-
-```text
-"clear trace history"
-```
-
-without affecting emulation.
+Releasing the old backing references also ensures that discarded trace history is not unnecessarily retained.
 
 ### Successful and failed traces are retained identically
 
@@ -1191,7 +1244,7 @@ FailedInstructionTrace
 
 for retention purposes.
 
-A history may therefore naturally end with a failure:
+A history may therefore naturally end with:
 
 ```text
 success
@@ -1200,11 +1253,7 @@ success
 failure
 ```
 
-which is often exactly the history a debugger needs when execution terminates
-unexpectedly.
-
-Failure interpretation belongs to consumers of the trace model, not to the
-storage algorithm.
+Failure interpretation belongs to consumers of the trace model, not to the storage algorithm.
 
 ### The buffer remains purely observational
 
@@ -1222,18 +1271,28 @@ filter machine behavior
 
 It merely retains the observation it receives.
 
-This preserves the same non-interference rule as every other tracing consumer:
+The rule remains:
 
 > History may observe execution; history must not control execution.
 
-### Capacity is local configuration
+### Capacity is local Inspection configuration
 
-The buffer capacity is validated when the buffer is constructed and remains
-fixed for that instance.
+The buffer capacity is validated when the buffer is constructed and remains fixed for that instance.
 
 A positive safe integer is required.
 
-The capacity is not part of:
+Invalid examples include:
+
+```text
+0
+-1
+1.5
+NaN
+Infinity
+Number.MAX_SAFE_INTEGER + 1
+```
+
+Capacity is not part of:
 
 ```text
 Chip8Profile
@@ -1241,49 +1300,82 @@ Chip8RuntimeConfiguration
 machine state
 ```
 
-because it describes debugger/observability storage policy rather than CHIP-8
-machine semantics.
+because it describes passive inspection storage policy rather than CHIP-8 machine semantics.
 
-Different applications can therefore choose different history sizes without
-changing the emulated machine.
+Different applications can therefore choose different history sizes without changing the emulated machine.
 
-## Testing and Verification
+### Buffering is not debugger state
+
+`InstructionTraceBuffer` is useful to a debugger UI, but bounded history alone is not debugger control state.
+
+It does not know about:
+
+```text
+breakpoints
+current selection
+pause reasons
+watch conditions
+step-over state
+execution-control commands
+```
+
+A Web inspection panel may, for example, compose:
+
+```text
+Core CPU observation
+        ↓
+Inspection InstructionTraceBuffer
+        ↓
+Web UI reads snapshot()
+        ↓
+render recent attempts
+```
+
+The buffer remains reusable because nothing in that flow makes it aware of the browser or of debugger policy.
+
+### Why history belongs to Inspection
+
+Core owns the signal because only `Cpu` can authoritatively describe the instruction attempt.
+
+Retention is a different responsibility.
+
+The machine does not require instruction history to execute correctly:
+
+```text
+Core without history
+    → valid emulator
+
+Core + Inspection history
+    → same emulator
+      + passive retained observations
+```
+
+That makes bounded history a consumer of machine semantics rather than part of the machine itself.
+
+## Verification Strategy
 
 Tracing is verified at the boundary that owns each behavior.
 
-The current test layers are:
+### Core CPU-observation tests
 
-```text
-Cpu tracing tests
-    → production of trace records
-    → failure preservation
-    → observer isolation
-    → retry visibility
+Core tests verify the semantics of producing an `InstructionTrace` from `Cpu.step()`.
 
-Trace formatter tests
-    → human-readable representation
-    → failure rendering
-    → state-change decoration
+They cover behavior such as:
 
-InstructionTraceBuffer tests
-    → bounded retention
-    → chronological snapshots
-    → clear semantics
+- successful instruction attempts;
+- fetch, decode, and execution failures;
+- real `before` and `after` CPU state;
+- preservation of the original execution error;
+- retry-style instruction attempts;
+- no trace snapshots when no observer is configured;
+- observer failure isolation;
+- the same CPU semantics with observation enabled or disabled.
 
-Public API integration test
-    → supported tracing composition through packages/core/mod.ts
-```
+These are Core responsibilities because they describe what the CPU observes and guarantees while executing an instruction attempt.
 
-This mirrors the architecture rather than testing every behavior through one
-large end-to-end scenario.
+#### Successful and retry attempts
 
-### CPU tracing collaboration tests
-
-CPU tracing tests verify the producer boundary at `Cpu.step()`.
-
-They cover successful attempts and failed attempts separately.
-
-For successful attempts, the tests verify that tracing captures:
+For successful attempts, tests verify that observation captures:
 
 ```text
 decoded Instruction
@@ -1306,11 +1398,7 @@ because retry is normal control flow rather than an exception.
 
 This protects the rule:
 
-> Tracing observes CPU attempts, not merely instructions that advance.
-
-### Failure-stage coverage
-
-CPU tracing tests verify failures at all three meaningful stages.
+> Core observes CPU attempts, not merely instructions that advance.
 
 #### Fetch failure
 
@@ -1319,36 +1407,34 @@ A fetch failure occurs before a complete opcode can be assembled.
 The expected failed trace contains:
 
 ```text
-opcode      absent
-instruction absent
-before      available
-after       available
-error       original fetch error
+opcode       absent
+instruction  absent
+before       available
+after        available
+error        original fetch error
 ```
 
-This proves that partial fetch state is not misrepresented as a complete
-instruction.
+This proves that partial fetch state is not misrepresented as a complete instruction.
 
 #### Decode failure
 
-A decode failure occurs after the opcode is known but before an `Instruction`
-exists.
+A decode failure occurs after the opcode is known but before an `Instruction` exists.
 
 The expected failed trace contains:
 
 ```text
-opcode      present
-instruction absent
+opcode       present
+instruction  absent
 ```
 
-and also verifies the current CPU ordering:
+and verifies the current CPU ordering:
 
 ```text
 before.PC = source address
 after.PC  = source address + 2
 ```
 
-because the CPU advances the program counter before decoding.
+because `Cpu.step()` advances the program counter before decoding.
 
 #### Execution failure
 
@@ -1364,13 +1450,11 @@ after
 error
 ```
 
-This is important because execution is not transactional; the `after` snapshot
-must describe the actual resulting CPU state rather than an imagined rollback.
+This is important because execution is not transactional; the `after` snapshot must describe actual resulting CPU state rather than an imagined rollback.
 
-### Exact error preservation
+#### Exact error preservation
 
-One of the strongest tracing tests verifies object identity of the execution
-error.
+One of the strongest observation tests verifies object identity of the execution error.
 
 Conceptually:
 
@@ -1384,97 +1468,46 @@ observer throws another error
 Cpu.step() still throws E
 ```
 
-The test checks that the error returned from `Cpu.step()` is the exact same
-object stored in the failed trace.
+The test checks that the error rethrown from `Cpu.step()` is the exact same object stored in the failed trace.
 
 This protects two guarantees simultaneously:
 
 ```text
-tracing does not wrap execution errors
+observation does not wrap execution errors
 observer errors cannot replace execution errors
 ```
 
-### Observer non-interference
+#### Observer non-interference
 
-A separate CPU test verifies that an observer throwing during a successful
-attempt does not turn that instruction into an execution failure.
+A separate CPU test verifies that an observer throwing during a successful attempt does not turn that instruction into an execution failure.
 
-The resulting machine state must match the state produced without the observer
-failure.
+The resulting machine state must match the state produced without the observer failure.
 
 This is direct evidence for the architectural invariant:
 
 ```text
-tracing enabled
+observation enabled
     =
-tracing disabled
+observation disabled
 ```
 
 with respect to emulated behavior.
 
-The tests therefore verify non-interference rather than relying only on
-documentation.
+### Core public observation contract
 
-### Formatter tests
-
-Formatter tests operate on already-constructed trace records.
-
-They do not execute the CPU.
-
-This keeps presentation verification independent from execution semantics.
-
-`ClassicInstructionTraceFormatter` tests verify:
+`packages/core/tests/integration/instruction-observation-public-api.test.ts` verifies that an external consumer can use the public:
 
 ```text
-successful instruction representation
-fetch failure without opcode
-decode failure with opcode
-execution failure with decoded instruction
-error rendering
+InstructionTrace
+InstructionTraceObserver
+Cpu
 ```
 
-The successful case also proves that instruction syntax is delegated through
-`InstructionFormatter` rather than reimplemented inside tracing.
+observation contract without importing private Core implementation files.
 
-### State-change decorator tests
+The integration test intentionally remains narrow. Detailed trace semantics belong to the CPU unit tests rather than being duplicated through a large public-API composition test.
 
-`StateChangeInstructionTraceFormatter` is tested with a small fake base
-formatter.
-
-That isolates its responsibility:
-
-```text
-compare before / after CpuState
-        ↓
-append only changed fields
-```
-
-Tests cover changes to:
-
-```text
-registers
-I
-PC
-stack
-delay timer
-sound timer
-```
-
-and verify the current presentation conventions:
-
-```text
-aligned base column
-" → " state-change separator
-"; " between multiple changes
-```
-
-When no CPU-state field changes, the decorator must return the base formatter
-output unchanged.
-
-The decorator is also tested against failed traces, proving that state-change
-presentation depends only on `before` and `after`, not on execution outcome.
-
-### Trace-buffer tests
+### Inspection trace-buffer tests
 
 `InstructionTraceBuffer` is tested independently from `Cpu`.
 
@@ -1484,10 +1517,9 @@ The buffer contract begins at:
 observe(trace)
 ```
 
-so constructing a complete emulator would make those tests broader than
-necessary.
+so constructing a complete emulator would make those tests broader than necessary.
 
-Current tests verify:
+Current coverage includes:
 
 ```text
 invalid capacity rejected
@@ -1502,7 +1534,7 @@ capacity survives clear()
 success and failure retained identically
 ```
 
-The identity assertions intentionally prove two different ownership rules:
+The identity assertions intentionally prove two ownership rules:
 
 ```text
 snapshot array
@@ -1512,34 +1544,75 @@ InstructionTrace
     → same immutable object retained by buffer
 ```
 
-### Public API integration
+These are Inspection responsibilities because history is a consumer of observations rather than part of CPU execution.
 
-The tracing public-API integration test imports only from:
+### Inspection formatter tests
+
+Trace formatter tests operate directly on structured Core trace values.
+
+They do not execute the CPU.
+
+`ClassicInstructionTraceFormatter` tests verify:
 
 ```text
-packages/core/mod.ts
+successful instruction representation
+fetch failure without opcode
+decode failure with opcode
+execution failure with decoded instruction
+error rendering
 ```
 
-It composes:
+The successful case also proves that instruction syntax is delegated through `InstructionFormatter` rather than reimplemented in trace formatting.
+
+`StateChangeInstructionTraceFormatter` is tested with a small fake base formatter.
+
+That isolates its responsibility:
 
 ```text
-SuccessfulInstructionTrace
-    ↓
-InstructionTraceObserver
-    ↓
-InstructionTraceBuffer
-    ↓
-ClassicInstructionTraceFormatter
-    ↓
-StateChangeInstructionTraceFormatter
+compare before / after CpuState
+        ↓
+append only changed fields
 ```
 
-without importing internal `src/...` modules.
+Tests cover:
 
-This protects the supported package surface rather than merely proving that
-internal files can reference one another.
+```text
+registers
+I
+PC
+stack
+delay timer
+sound timer
+```
 
-The test also exercises public branded-value factories such as:
+and current presentation conventions such as:
+
+```text
+aligned base column
+" → " state-change separator
+"; " between multiple changes
+```
+
+When no CPU-state field changes, the decorator returns the base formatter output unchanged.
+
+The decorator is also tested against failed traces, proving that state-change presentation depends on `before` and `after`, not on execution outcome.
+
+### Public package composition
+
+`packages/inspection/tests/integration/inspection-public-api.test.ts` proves runtime inspection through public package APIs:
+
+```text
+@chip8nx/core
+    SuccessfulInstructionTrace
+    InstructionTraceObserver
+          ↓
+@chip8nx/inspection
+    InstructionTraceBuffer
+    ClassicInstructionTraceFormatter
+    StateChangeInstructionTraceFormatter
+```
+
+It also exercises public Core branded-value factories such as:
 
 ```text
 address()
@@ -1550,45 +1623,71 @@ registerIndex()
 
 when constructing typed trace fixtures.
 
-That verifies that an external consumer can use the tracing model without
-bypassing the Core's domain types.
+This proves that Inspection and external consumers can use Core's observation model without bypassing Core domain types or reaching into private source paths.
+
+Together, the Core and Inspection integration tests protect the architectural rule:
+
+```text
+Core defines observation
+        ↓
+Inspection consumes observation
+
+never:
+
+Core
+    ↓
+Inspection implementation
+```
+
+### Application-level behavior
+
+Host-specific trace behavior remains application-tested where appropriate.
+
+For example, the Terminal application owns:
+
+```text
+--trace option handling
+formatter composition
+console output
+framebuffer-presentation policy
+```
+
+Those concerns should not migrate into Core or Inspection tests merely because they consume reusable tracing capabilities.
 
 ### Test at the narrowest owning boundary
 
 The overall verification rule is:
 
-> Test trace production where CPU attempts happen, formatting where text is
-> produced, storage where history is retained, and package composition through
-> the public API.
+> Test observation production where CPU attempts happen, formatting where text is produced, storage where history is retained, and package composition through the public APIs.
 
 Examples:
 
 ```text
 before/after snapshots
-    → Cpu tracing test
+    → Core Cpu observation test
 
 observer failure isolation
-    → Cpu tracing test
+    → Core Cpu observation test
 
 decode-failure text
-    → Classic trace formatter test
+    → Inspection Classic trace formatter test
 
 state-difference text
-    → State-change formatter test
+    → Inspection state-change formatter test
 
 ring-buffer wraparound
-    → InstructionTraceBuffer test
+    → Inspection InstructionTraceBuffer test
 
-external composition
-    → public API integration test
+external Core observation contract
+    → Core public API integration test
+
+Core + Inspection composition
+    → Inspection public API integration test
 ```
 
-This keeps failures easy to diagnose and prevents the Terminal proof of concept
-from becoming the only evidence that tracing works.
+This keeps failures easy to diagnose and prevents the Terminal proof of concept from becoming the only evidence that tracing works.
 
-### Verification focus
-
-Taken together, the tests protect four properties that matter most for tracing:
+Taken together, the tests protect four central properties:
 
 ```text
 fidelity
@@ -1598,80 +1697,125 @@ non-interference
     → observation cannot change CPU behavior or replace execution errors
 
 separation
-    → production, formatting, storage, and package composition are tested at
+    → production, formatting, storage, and composition are tested at
       their owning boundaries
 
 boundedness
     → retained history cannot grow without limit
 ```
 
-The architectural rules themselves are summarized once below rather than
-repeated as a second test checklist.
-
 ## Design Summary
 
 The tracing architecture follows these stable rules:
 
-1. **One trace represents one CPU attempt.**\
-   `Cpu.step()` owns the fetch/decode/execute observation boundary; the runtime
-   owns when scheduled attempts occur.
+1. **One trace represents one CPU attempt.**
+   `Cpu.step()` owns the fetch/decode/execute observation boundary; the runtime owns when scheduled attempts occur.
 
-2. **Tracing is optional and non-interfering.**\
-   Without an observer, the CPU creates no trace snapshots. Observer failures
-   cannot alter machine behavior or replace execution errors.
+2. **Observation is optional and non-interfering.**
+   Without an observer, the CPU creates no trace snapshots. Observer failures cannot alter machine behavior or replace execution errors.
 
-3. **Trace records preserve semantic execution data.**\
-   Success and failure are explicit variants, decoded instructions are retained
-   when available, and `before`/`after` describe actual CPU state rather than an
-   imagined transactional rollback.
+3. **Trace records preserve semantic execution data.**
+   Success and failure are explicit variants, decoded instructions are retained when available, and `before` / `after` describe actual CPU state rather than an imagined transactional rollback.
 
-4. **CPU snapshots are intentionally scoped.**\
-   `CpuState` captures CPU-visible state, not complete memory, display, input, or
-   runtime state.
+4. **CPU snapshots are intentionally scoped.**
+   `CpuState` captures CPU-visible state, not complete memory, display, input, or runtime state.
 
-5. **Presentation remains downstream.**\
-   Tracing reuses `InstructionFormatter`; trace formatting is composable; console
-   and UI output remain application-owned.
+5. **Core owns the probe and signal.**
+   `InstructionTrace` and `InstructionTraceObserver` belong to `@chip8nx/core`.
 
-6. **History is bounded and observational.**\
-   `InstructionTraceBuffer` uses O(1) ring-buffer writes, produces chronological
-   snapshots on demand, and never controls execution.
+6. **Passive consumers live in Inspection.**
+   Formatting and bounded history belong to `@chip8nx/inspection`; Core has no dependency on those tools.
 
-7. **Retries remain visible.**\
-   Waiting `Fx0A` and vblank-gated `Dxyn` attempts are preserved individually,
-   even when presentation later chooses to summarize them.
+7. **Presentation remains application-owned.**
+   Console output, DOM rendering, files, and other host presentation stay outside both reusable packages.
 
-8. **The tracing surface is a public Core contract.**\
-   Consumers can compose tracing through `packages/core/mod.ts` without
-   importing internal source modules.
+8. **History is bounded and observational.**
+   `InstructionTraceBuffer` uses constant-time ring-buffer writes, produces chronological snapshots on demand, and never controls execution.
 
-Together these rules provide enough observability for diagnostics and future
-debugger work without making tracing itself a debugger or execution controller.
+9. **Retries remain visible.**
+   Waiting `Fx0A` and vblank-gated `Dxyn` attempts are preserved individually even when presentation later chooses to summarize them.
 
-## Deliberately Deferred Features
+10. **Public boundaries are executable architecture.**
+    Core observation and Core-plus-Inspection composition are verified separately through their public APIs.
 
-The current tracing Core is intentionally smaller than a full debugger.
+Together these rules provide enough observability for diagnostics and interactive inspection without making tracing itself a debugger or execution controller.
 
-Several plausible features remain deferred until a real consumer requires them.
+## Deliberately Deferred Debugger Features
 
-### Breakpoints and execution control
+Tracing provides observation, not execution control.
 
-Tracing currently observes execution.
-
-It does not:
+Neither Core CPU observation nor the current Inspection package owns:
 
 ```text
-pause on address
-pause on opcode
-pause on register value
-pause on failure
-continue from breakpoint
+breakpoints
+watchpoints
+pause conditions
+step-over
+step-out
+conditional execution
+pause reasons
+debugger session state
 ```
 
-Those behaviors would cross from observation into execution control.
+Core already provides generic runtime mechanisms such as:
 
-They should be designed as debugger/runtime capabilities rather than quietly
-added to trace observers.
+```text
+pause()
+resume()
+step()
+isPaused
+```
+
+Those mechanisms remain machine/runtime capabilities.
+
+A future debugger would provide reusable policy that decides **when and why** those mechanisms should be used.
+
+For example:
+
+```text
+InstructionTrace
+      ↓
+breakpoint policy
+      ↓
+should execution pause?
+      ↓
+Chip8Runtime.pause()
+```
+
+That policy does not exist yet, so Chip8NX does not create a debugger package merely to reserve a place for it.
+
+The trigger for a reusable debugger layer should be demonstrated execution-control behavior that applications would otherwise duplicate.
+
+Likely examples include:
+
+```text
+breakpoint evaluation
+watch conditions
+step-over / step-out semantics
+shared pause-reason modeling
+```
+
+When that need appears, its dependencies should be chosen from the actual behavior.
+
+It may depend on Core alone, or it may also reuse Inspection capabilities. The project should not force a decorative:
+
+```text
+Core → Inspection → Debugger
+```
+
+layering model in advance.
+
+The hard requirement remains:
+
+```text
+Core ──X──> debugger
+```
+
+Core machine semantics must not acquire debugger policy.
+
+## Future Observation and Inspection Needs
+
+The current model intentionally stops short of a general event/debugging framework.
 
 ### Trace filtering
 
@@ -1684,10 +1828,11 @@ only drawing instructions
 only register writes
 ```
 
-A UI or application can filter an inspected trace snapshot today.
+An application or UI can filter a chronological Inspection snapshot today.
 
-A reusable Core filtering abstraction should wait until multiple consumers need
-the same filtering semantics.
+If several consumers later need identical reusable filtering semantics, that would become demonstrated pressure for an Inspection-level capability.
+
+Filtering should not become CPU behavior.
 
 ### Observer fan-out
 
@@ -1702,24 +1847,26 @@ event bus
 subscription registry
 ```
 
-If a real debugger needs simultaneous consumers such as:
+If real consumers need simultaneous sinks such as:
 
 ```text
 history buffer
-live console output
-breakpoint detector
-trace recorder
+live presentation
+breakpoint evaluation
+persistent recorder
 ```
 
-then fan-out will become demonstrated composition pressure.
+fan-out will become demonstrated composition pressure.
 
-Until then, one observer keeps the CPU dependency small.
+Until then, one observer keeps the Core dependency small.
+
+Whether reusable fan-out ultimately belongs in Core, Inspection, debugger tooling, or an application should be decided from the actual required semantics rather than from the generic usefulness of an event bus.
 
 ### Timestamps and sequence numbers
 
-Trace records currently describe CPU execution semantics.
+`InstructionTrace` currently describes CPU execution semantics.
 
-They do not contain:
+It does not contain:
 
 ```text
 wall-clock time
@@ -1736,13 +1883,13 @@ scheduler time
 emulated time
 ```
 
-A sequence number is a different question: it could describe CPU-attempt order
-without introducing time, but no current consumer requires that extra identity.
+A sequence number is a different concern: it could describe CPU-attempt order without introducing time.
 
-Both decisions should wait for a concrete use case, especially because CPU
-tracing and runtime timing are separate architectural concerns.
+Neither is currently required.
 
-### Memory and display tracing
+CPU observation and runtime timing remain separate architectural concerns until a real consumer demonstrates a reason to join them.
+
+### Memory and display observation
 
 `CpuState` does not snapshot:
 
@@ -1753,8 +1900,7 @@ VerticalBlank
 Keyboard
 ```
 
-The current tracer therefore cannot directly describe every machine-side effect
-of instructions such as:
+The current instruction observation therefore cannot directly describe every machine-side effect of instructions such as:
 
 ```text
 CLS
@@ -1763,23 +1909,41 @@ Fx33
 Fx55
 ```
 
-Future debugger requirements may justify:
+Future inspection or debugger requirements may justify:
 
 ```text
 memory access events
 display mutation events
 machine-state snapshots
-resource-specific tracing
+resource-specific observation
 ```
 
-Those should be modeled as their own observability boundaries rather than
-inflating every instruction trace with complete machine state.
+Those should be modeled around the component that authoritatively owns the relevant event rather than inflating every `InstructionTrace` with complete machine state.
+
+A useful first question is:
+
+> Which component authoritatively owns the event being observed?
+
+For example:
+
+```text
+CPU instruction attempt
+    → Cpu observation
+
+memory mutation
+    → potentially Memory observation
+
+runtime deadline occurrence
+    → potentially runtime / scheduler observation
+```
+
+Separate observation seams may be more accurate than turning one instruction trace into a complete emulator-event model.
 
 ### Persistent trace recording
 
-The current history buffer is in-memory and bounded.
+`InstructionTraceBuffer` is in-memory and bounded.
 
-Core does not provide:
+Neither Core nor Inspection currently provides:
 
 ```text
 trace files
@@ -1788,14 +1952,15 @@ binary trace format
 streaming persistence
 ```
 
-Persistence introduces file format, compatibility, versioning, and possibly
-asynchronous I/O concerns.
+Persistence introduces file format, compatibility, versioning, lifecycle, and potentially asynchronous I/O concerns.
 
-Those are separate from observing one CPU attempt.
+Those are separate from observing one CPU attempt or retaining a bounded in-memory history.
+
+A future export feature would most naturally remain outside Core, with exact ownership determined by the required reuse.
 
 ### Search and history queries
 
-`InstructionTraceBuffer` intentionally provides only:
+`InstructionTraceBuffer` intentionally provides only a small history API:
 
 ```text
 observe
@@ -1817,22 +1982,21 @@ slice-by-address()
 
 Consumers can perform ordinary array operations on the chronological snapshot.
 
-A richer history-query API should appear only if debugger usage demonstrates
-that those operations deserve a reusable Core abstraction.
+A richer reusable query API should appear only if real inspection/debugger usage demonstrates that those operations deserve their own abstraction.
 
 ### Retry summarization
 
 Core preserves repeated retry attempts individually.
 
-A UI may summarize consecutive attempts for readability, but the underlying
-trace stream and history should continue to preserve the original observations.
+Inspection history preserves those attempts individually.
+
+A UI may summarize consecutive attempts for readability, but the underlying observation/history should continue to preserve the original attempts whenever faithful execution history is required.
 
 ### Trace-driven replay
 
-Tracing is not currently intended to reproduce execution.
+Tracing is not intended to reproduce execution.
 
-Trace records do not capture enough complete machine state or external inputs to
-guarantee deterministic replay.
+Current trace records do not capture enough complete machine state or external inputs to guarantee deterministic replay.
 
 A replay system would need to define ownership of:
 
@@ -1847,12 +2011,49 @@ initial machine image
 
 That is a substantially different feature from observational tracing.
 
+## Evolution Guideline
+
+When extending tracing and observation, prefer this order:
+
+```text
+real inspection / debugging need
+        ↓
+identify the authoritative producer
+        ↓
+emit the smallest useful semantic signal
+        ↓
+keep passive consumers outside the producer
+        ↓
+introduce reusable control policy only when demonstrated
+```
+
+The guiding rules are:
+
+> Core owns the probe and the signal; everything that stores, interprets, displays, or acts on that signal lives outside Core.
+
+and:
+
+> Abstract demonstrated variation and demonstrated composition pressure, not hypothetical future needs.
+
+These rules keep observation useful without allowing diagnostics to become a hidden dependency of machine execution.
+
 ## Current Scope
 
-The current subsystem is intentionally limited to optional CPU-attempt
-observation, faithful success/failure records, CPU-state snapshots, composable
-human-readable formatting, a Terminal console proof of concept, and bounded
-in-memory history.
+The current architecture is intentionally limited to:
 
-That is enough to support the next debugger/UI phase without pre-designing the
-debugger itself.
+```text
+Core
+    optional CPU-attempt observation
+    faithful success / failure records
+    CPU-state snapshots
+    observer non-interference
+
+Inspection
+    composable human-readable formatting
+    bounded in-memory trace history
+
+Applications
+    host-specific presentation
+```
+
+That is sufficient to support the next interactive inspection/UI phase without pre-designing the debugger itself.

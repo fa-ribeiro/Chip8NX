@@ -1,10 +1,16 @@
 # Chip8NX Architecture Overview
 
-Chip8NX is designed around a reusable CHIP-8 Core that can be hosted by multiple applications.
+Chip8NX is designed around a reusable CHIP-8 machine Core, complemented by host-independent inspection tooling and applications that provide host-specific behavior.
 
-The Core does not assume a terminal, browser, desktop toolkit, renderer, audio system, filesystem, or host event loop. Those decisions belong to applications built around the Core.
+The package boundary reflects those responsibilities:
 
-At the highest level, the architecture distinguishes three concerns:
+- `@chip8nx/core` owns the emulated machine, execution semantics, runtime mechanisms, and the minimal observation signals that only the machine can authoritatively produce;
+- `@chip8nx/inspection` owns passive tools that consume Core semantics, including instruction formatting, disassembly, bounded trace history, and trace formatting;
+- applications remain composition roots and own host-specific concerns such as rendering, audio output, input adapters, filesystem access, user interfaces, and lifecycle policy.
+
+Core does not depend on Inspection, and neither reusable package assumes a terminal, browser, desktop toolkit, renderer, audio system, filesystem, or host event loop.
+
+Within the machine itself, the architecture distinguishes three concerns:
 
 ```mermaid
 flowchart LR
@@ -14,6 +20,27 @@ flowchart LR
 
     Profile --> Composition --> Runtime
 ```
+
+## Package architecture
+
+Chip8NX separates machine behavior, passive inspection, and host-specific concerns across explicit package boundaries.
+
+```mermaid
+flowchart LR
+    Apps["Applications"]
+    Inspection["@chip8nx/inspection"]
+    Core["@chip8nx/core"]
+
+    Apps -->|"depends on"| Core
+    Apps -->|"when inspection is needed"| Inspection
+    Inspection -->|"depends on"| Core
+```
+
+The arrows in this diagram represent **dependency direction**, not runtime data flow.
+
+`@chip8nx/core` has no dependency on `@chip8nx/inspection`. Inspection builds on Core's public machine semantics and observation contracts, while applications may compose either Core alone or Core together with Inspection according to their needs.
+
+This keeps the reusable dependency graph acyclic and prevents presentation or inspection concerns from becoming machine requirements.
 
 ## Machine profile
 
@@ -25,83 +52,43 @@ A profile describes machine characteristics; it does not construct components, s
 
 See [Machine state and capabilities architecture](./machine-state-and-capabilities.md) for the detailed state/configuration model and the project's evidence-driven approach to future CHIP-8-family variation.
 
-## Core component overview
+## Core instruction execution overview
 
-The following diagram is intentionally high level. It shows the main components and their most important direct relationships without trying to represent every method call.
+One CPU step follows a deliberately small execution pipeline:
 
 ```mermaid
-flowchart TB
-    Profile["Chip8Profile"]
-    Program["MemoryImage"]
-
-    Initializer["MachineInitializer"]
-    Loader["MemoryImageLoader"]
-
-    Runtime["Chip8Runtime"]
-    Scheduler["Scheduler"]
-    Clock["Clock"]
-
+flowchart LR
+    Memory["Memory"]
     Cpu["Cpu"]
     Decoder["Decoder"]
     Executor["InstructionExecutor"]
     Context["ExecutionContext"]
 
-    TraceObserver["InstructionTraceObserver"]
-    TraceBuffer["InstructionTraceBuffer"]
-
-    subgraph State["Machine state and capabilities"]
-        Memory["Memory / Ram"]
-        Registers["Registers"]
-        Stack["Stack"]
-        PC["ProgramCounter"]
-        I["IndexRegister"]
-        Delay["Delay Timer"]
-        Sound["Sound Timer"]
-        Buffer["DisplayBuffer"]
-        VBlank["VerticalBlank"]
-        Keyboard["Keyboard / KeyboardState"]
-        Font["Font"]
-        RNG["RandomNumberGenerator"]
-    end
-    Profile --> Initializer
-    Program --> Initializer
-    Loader --> Initializer
-    Initializer --> Context
-
-    Cpu --> Decoder
-    Cpu --> Executor
-    Cpu --> Context
-
-    Cpu -.->|"optional InstructionTrace"| TraceObserver
-    TraceBuffer -.->|"implements"| TraceObserver
-
-    Runtime --> Scheduler
-    Scheduler --> Clock
-    Runtime --> Cpu
-    Runtime --> Delay
-    Runtime --> Sound
-    Runtime --> VBlank
-    Context --> Memory
-    Context --> Registers
-    Context --> Stack
-    Context --> PC
-    Context --> I
-    Context --> Delay
-    Context --> Sound
-    Context --> Buffer
-    Context --> VBlank
-    Context --> Keyboard
-    Context --> Font
-    Context --> RNG
+    Memory -->|"fetch bytes"| Cpu
+    Cpu -->|"decode opcode"| Decoder
+    Decoder -->|"typed Instruction"| Executor
+    Executor -->|"read / mutate"| Context
 ```
 
-`ExecutionContext` is an explicit aggregate of the state and capabilities required by instruction execution. It groups already-constructed resources without owning their construction or collapsing their responsibilities into one machine object.
+`Cpu` owns the sequencing of a single instruction attempt. It fetches the two opcode bytes from memory, advances the program counter, decodes the opcode into a typed `Instruction`, and delegates execution to `InstructionExecutor`.
+
+The typed `Instruction` is the central boundary between encoded representation and instruction semantics.
+
+`InstructionExecutor` operates through `ExecutionContext`, which groups the machine state and capabilities required by instruction semantics. The context does not construct those collaborators or collapse their responsibilities into one machine object; it is an explicit execution boundary.
+
+Control-flow instructions override the already-advanced program counter when required. Retry-style instructions such as Classic `Fx0A` and vblank-gated `Dxyn` restore the current instruction address so the same instruction can be attempted again later.
+
+This diagram intentionally omits initialization, scheduling, timers, and observation. Those concerns have different lifecycles and are described separately below.
+
+See [Instruction execution architecture](./instruction-execution.md) for the detailed fetch/decode/execute model, typed instruction representation, execution semantics, invariant ownership, and verification strategy.
 
 ## Machine state and capabilities
 
 Core keeps persistent state in focused components such as `Registers`, `Memory`, `Stack`, `ProgramCounter`, `IndexRegister`, `Timer`, `DisplayBuffer`, and `VerticalBlank`.
 
-Roles whose implementations genuinely vary are exposed through capability boundaries such as `Keyboard`, `RandomNumberGenerator`, `Font`, and `Memory`. Interface use and state ownership are independent concerns: for example, `Memory` is both an interface and mutable machine state, while `Keyboard` is a capability whose implementation owns interpreter-relevant state.
+Roles whose implementations genuinely vary are exposed through capability boundaries such as `Keyboard`, `RandomNumberGenerator`, `Font`, and `Memory`.
+
+Interface use and state ownership are independent concerns: for example, `Memory` is both an interface and mutable machine state, while `Keyboard` is a capability whose implementation owns interpreter-relevant state.
 
 Applications construct the object graph explicitly, using profile characteristics where appropriate:
 
@@ -112,144 +99,103 @@ new ProgramCounter(profile.programStartAddress);
 new DisplayBuffer(profile.display.width, profile.display.height);
 ```
 
-See [Machine state and capabilities architecture](./machine-state-and-capabilities.md) for focused invariant ownership, snapshot-based inspection, capability substitution, profiles and runtime configuration, reset semantics, and lifecycle ownership.
+See [Machine state and capabilities architecture](./machine-state-and-capabilities.md) for focused invariant ownership, snapshot-based state observation, capability substitution, profiles and runtime configuration, reset semantics, and lifecycle ownership.
 
-## CPU execution pipeline
+## CPU observation
 
-The CPU owns one CHIP-8 fetch/decode/execute cycle.
+Core exposes instruction execution through a minimal observation seam owned by `Cpu`.
 
 ```mermaid
 flowchart LR
-    PC["ProgramCounter"]
-    Memory["Memory"]
     Cpu["Cpu"]
-    Opcode["Opcode"]
-    Decoder["Decoder"]
-    Instruction["Typed Instruction"]
-    Executor["InstructionExecutor"]
-    Context["ExecutionContext"]
+    Trace["InstructionTrace"]
+    Observer["InstructionTraceObserver"]
 
-    PC --> Cpu
-    Memory --> Cpu
-    Cpu -->|"fetch"| Opcode
-    Opcode --> Decoder
-    Decoder -->|"decode"| Instruction
-    Instruction --> Executor
-    Context --> Executor
+    Cpu -.->|"emits after each attempt"| Trace
+    Trace -.->|"delivered to"| Observer
 ```
 
-The CPU fetches the two-byte instruction word, advances the normal program counter, decodes the opcode into a typed `Instruction`, and delegates semantic effects to the stateless `InstructionExecutor` through `ExecutionContext`.
+The observation mechanism is optional. When no observer is attached, `Cpu` does not create trace snapshots.
 
-The typed `Instruction` is the central boundary between encoded representation and instruction semantics. Control-flow instructions override the already-advanced program counter when required, while retry-style instructions such as Classic `Fx0A` and vblank-gated `Dxyn` restore the current instruction address so it can be attempted again later.
+`InstructionTrace` records semantic facts about one CPU instruction attempt, including the before/after CPU state and whether the attempt succeeded or failed. Failed traces preserve the stage reached by the attempt through the presence or absence of the fetched opcode and decoded instruction.
 
-See [Instruction execution architecture](./instruction-execution.md) for the detailed fetch/decode/execute model, typed instruction representation, execution semantics, invariant ownership, and verification strategy.
+`InstructionTraceObserver` is the minimal consumer port. Core does not retain trace history, format trace output, filter observations, fan them out, or use them to control execution.
 
-### Disassembly and inspection
+Observer failures are isolated from CPU semantics: an observer cannot replace a CPU failure, create a new CPU failure, or change the result of `Cpu.step()`.
 
-Decoded instructions are also available to read-only inspection tools.
+Retry-style instructions remain visible as repeated CPU attempts. For example, a vblank-gated `Dxyn` or waiting `Fx0A` may restore its own instruction address and appear multiple times before a later attempt advances.
 
-Disassembly shares the same `Decoder` and typed `Instruction` model used by CPU execution, but diverges after decoding:
+Passive consumers of this signal belong outside Core. `@chip8nx/inspection` provides reusable tools such as bounded trace history and human-readable trace formatting.
+
+## Inspection
+
+`@chip8nx/inspection` provides host-independent, passive tools for understanding CHIP-8 programs and observed execution.
+
+It depends only on the public API of `@chip8nx/core`; Core has no dependency on Inspection.
+
+Inspection currently supports two complementary views of the machine.
+
+### Static inspection
+
+Static inspection starts with encoded program bytes and uses Core decoding semantics to produce human-readable instruction listings.
 
 ```mermaid
 flowchart LR
-    Opcode["Opcode"]
-    Decoder["Decoder"]
-    Instruction["Typed Instruction"]
+    Memory["Core: Memory"]
+    Decoder["Core: Decoder"]
+    Disassembler["Inspection: Disassembler"]
+    Formatter["Inspection: InstructionFormatter"]
+    Listing["DisassembledInstruction"]
 
-    Executor["InstructionExecutor"]
-    Context["ExecutionContext"]
-
-    Formatter["InstructionFormatter"]
-    Result["DisassembledInstruction"]
-    Opcode --> Decoder
-    Decoder --> Instruction
-
-    Instruction --> Executor
-    Executor -->|"apply semantics"| Context
-
-    Instruction --> Formatter
-    Formatter -->|"present"| Result
+    Memory --> Disassembler
+    Decoder --> Disassembler
+    Formatter --> Disassembler
+    Disassembler --> Listing
 ```
 
-The two paths have different responsibilities:
+`Disassembler` does not implement a second decoder. It reuses Core's `Decoder`, so execution and inspection share the same instruction semantics.
 
-```text
-execution:
-Opcode → Decoder → Instruction → InstructionExecutor → machine-state changes
+Instruction presentation is delegated to `InstructionFormatter`. `ClassicInstructionFormatter` provides the conventional CHIP-8 assembly representation currently used by the project.
 
-inspection:
-Opcode → Decoder → Instruction → InstructionFormatter → human-readable result
-```
-
-Inspection does not execute the instruction or mutate machine state. The shared typed `Instruction` boundary keeps opcode interpretation centralized in `Decoder` while allowing execution and tooling to consume the same semantic model.
-
-`Disassembler` coordinates memory reads, decoding, formatting, and sequential range traversal. Presentation remains outside Core, so the resulting structured data can be consumed by command-line tools, debuggers, or graphical hosts.
+Disassembly is strict over the requested range: invalid complete opcodes remain decoding errors. Policies such as treating unknown bytes as data and continuing through a whole ROM belong to the consuming application rather than the reusable disassembler.
 
 See [Disassembly architecture](./disassembly.md) for the detailed component boundaries, composition model, range semantics, and extension strategy.
 
-### Tracing and execution observation
+### Runtime inspection
 
-Tracing observes actual CPU instruction attempts without participating in
-execution semantics.
+Runtime inspection begins with the observation signal emitted by Core during CPU execution.
 
 ```mermaid
 flowchart LR
-    Cpu["Cpu.step()"]
-    Trace["InstructionTrace"]
-    Observer["InstructionTraceObserver"]
-    Formatter["InstructionTraceFormatter"]
-    History["InstructionTraceBuffer"]
-    Output["Application output / UI"]
+    Trace["Core: InstructionTrace"]
+    Observer["Core: InstructionTraceObserver"]
+    Buffer["Inspection: InstructionTraceBuffer"]
+    Formatter["Inspection: InstructionTraceFormatter"]
+    Output["Host presentation"]
 
-    Cpu -.->|"optional observation"| Trace
     Trace --> Observer
-    Trace --> Formatter
-    History -.->|"implements"| Observer
+    Buffer -.->|"implements"| Observer
+    Buffer -->|"snapshot()"| Formatter
     Formatter --> Output
 ```
 
-The important boundary is different from disassembly:
+`InstructionTraceBuffer` is a bounded passive history of observed instruction attempts. It retains traces in chronological order up to its configured capacity, but does not control execution or determine when observations occur.
+
+Trace formatters turn structured Core observations into human-readable representations. They may reuse instruction formatting, but remain independent from storage and host output.
+
+The two inspection paths therefore have the same architectural shape:
 
 ```text
-disassembly
-    → inspect encoded instructions without executing them
-
-tracing
-    → observe instruction attempts that actually execute
+Core semantics / signals
+        ↓
+Inspection tools
+        ↓
+Host presentation or policy
 ```
 
-`Cpu.step()` is the tracing producer because it owns the complete
-fetch/decode/execute attempt. `Chip8Runtime` determines when scheduled CPU
-attempts occur, but it does not own their instruction-level semantics.
+Inspection remains passive. It does not currently provide breakpoints, watchpoints, pause conditions, step-over behavior, step-out behavior, or other debugger execution-control semantics.
 
-Each attempt produces either a successful or failed structured trace. Successful
-traces retain the decoded `Instruction`; failed traces preserve whatever semantic
-information was available before failure together with the original error and
-the actual before/after `CpuState`.
-
-Tracing is optional and non-interfering. With no observer configured, the CPU
-does not create trace snapshots. If an observer itself fails, that failure is
-isolated so observation cannot change emulated behavior or replace an execution
-error.
-
-Retry-style instructions remain visible as repeated CPU attempts. For example,
-a vblank-gated `Dxyn` or waiting `Fx0A` may restore its own instruction address
-and appear multiple times before a later attempt advances.
-
-Formatting, output, and retained history remain separate concerns:
-
-```text
-InstructionTrace
-    ├── formatter → human-readable text → application output
-    └── observer  → bounded history
-```
-
-`InstructionTraceBuffer` provides bounded chronological history using
-ring-buffer storage. It observes traces but never controls execution.
-
-See [Tracing architecture](./tracing.md) for the detailed trace data model,
-failure semantics, retry behavior, formatting boundaries, bounded history,
-testing strategy, and deliberately deferred debugger features.
+See [Tracing architecture](./tracing.md) for the detailed trace data model, failure semantics, retry behavior, formatting boundaries, bounded history, testing strategy, and deliberately deferred debugger features.
 
 ## Machine initialization
 
@@ -265,7 +211,9 @@ reset machine state
 install font + program
 ```
 
-Known layout errors are rejected before mutation begins. Initialization does not construct components, perform host I/O, control runtime pause/resume, or provide general rollback after mutation has started.
+Known layout errors are rejected before mutation begins.
+
+Initialization does not construct components, perform host I/O, control runtime pause/resume, or provide general rollback after mutation has started.
 
 See [Machine initialization architecture](./machine-initialization.md) for binary-image boundaries, half-open memory ranges, reset and ROM-replacement semantics, failure guarantees, and verification strategy.
 
@@ -310,6 +258,10 @@ CPU
 
 Pausing suspends scheduled progression without accumulating execution debt. Manual single stepping remains a separate paused operation: it executes one CPU attempt without advancing scheduled timer or display time.
 
+`Chip8Runtime` therefore provides generic execution-control mechanisms such as `pause()`, `resume()`, `step()`, and paused-state inspection. Core does not decide _why_ execution should pause or resume.
+
+Policies such as stopping at a breakpoint, pausing when a watch condition becomes true, or implementing step-over / step-out behavior would belong to a future reusable debugger layer if those needs are demonstrated. Such a layer would use Core runtime mechanisms rather than move debugger policy into `Chip8Runtime`.
+
 See [Runtime and timing architecture](./runtime-and-timing.md) for deadline representation, catch-up, equal-deadline policy, pause/resume rebasing, timed machine state, and single-step semantics.
 
 ## Display boundary
@@ -326,11 +278,11 @@ flowchart LR
     VBlank["VerticalBlank"]
     Cpu["Cpu / Dxyn"]
     Buffer["DisplayBuffer"]
-
     Terminal["Terminal renderer"]
     Canvas["Canvas renderer"]
     Desktop["Desktop renderer"]
     Tests["Tests / inspection"]
+
     Runtime -->|"display frame"| VBlank
     VBlank -->|"permission consumed by Dxyn"| Cpu
     Cpu --> Buffer
@@ -373,39 +325,52 @@ The host adapter owns platform-specific concerns such as terminal escape-sequenc
 
 ## Application composition
 
-The reusable Core deliberately does not require a dependency-injection container or a single mandatory machine factory.
+Applications are the composition roots of Chip8NX.
 
-The application remains the composition root.
+They construct the machine components required by `@chip8nx/core`, choose the machine profile, connect host-specific adapters, and decide which optional reusable tooling to include.
 
-A terminal application can choose terminal-specific adapters while a browser application can choose browser-specific adapters, with both sharing the same Core semantics.
-The terminal application provides optional higher-level composition helpers through its Level 1 / Level 2 / Level 3 model. Evaluation against the Web application showed that this structure is useful for Terminal but does not need to become a mandatory Core or project-wide composition framework.
+An application may depend only on Core:
 
-Different hosts may develop different host-local composition structures around the same Core boundaries.
+```text
+Application
+    ↓
+@chip8nx/core
+```
+
+or compose Core together with passive inspection tooling:
+
+```text
+Application
+    ├──→ @chip8nx/core
+    │
+    └──→ @chip8nx/inspection
+              ↓
+        @chip8nx/core
+```
+
+This allows a minimal host to remain minimal while richer hosts can add inspection capabilities without changing the emulated machine.
+
+Current applications illustrate different composition needs:
+
+- the Terminal host composes Core with selected Inspection formatting tools for optional trace output;
+- the disassembler application composes Core decoding and memory semantics with Inspection disassembly and instruction formatting;
+- the Web host currently focuses primarily on running the machine and may adopt additional Inspection capabilities as its interactive inspection interface evolves.
+
+Applications remain responsible for host-specific concerns such as rendering, audio presentation, physical input mapping, filesystem access, DOM or terminal interaction, and lifecycle integration.
+
+The reusable packages deliberately do not require a dependency-injection container or a single mandatory machine factory.
+
+The Terminal application provides optional higher-level composition helpers through its Level 1 / Level 2 / Level 3 model. Evaluation against the Web application showed that this structure is useful for Terminal but does not need to become a mandatory Core or project-wide composition framework.
+
+Different hosts may therefore develop different host-local composition structures around the same reusable boundaries.
+
+Inspection may depend only on Core's public API. Reaching into `packages/core/src/...` would bypass the package boundary and couple Inspection to private implementation details.
+
+Core must remain usable without any inspection, formatting, disassembly, trace-history, or host-presentation tooling.
+
+A future reusable debugger layer, if demonstrated by real execution-control needs, would depend inward on Core. Its exact relationship with Inspection should be determined by actual shared behavior rather than imposed in advance.
 
 See:
 
 - [Terminal composition levels](../guides/terminal-composition-levels.md)
 - [Host composition evaluation](./composition-evaluation.md)
-
-## Dependency direction
-
-Dependencies point inward toward the emulator Core.
-
-```mermaid
-flowchart LR
-    Terminal["Terminal app"]
-    Web["Web app"]
-    Desktop["Desktop app"]
-    Tests["Tests"]
-
-    Core["Chip8NX Core"]
-
-    Terminal --> Core
-    Web --> Core
-    Desktop --> Core
-    Tests --> Core
-```
-
-The Core must not import application-specific code.
-
-That boundary is what allows the emulator to remain reusable across multiple frontends.

@@ -132,7 +132,7 @@ Documentation diagnostics are available through:
 deno task docs:check
 ```
 
-This currently runs Deno's documentation linter against the public Core entrypoint and is treated as a **public-API documentation audit**, not as a CI/release gate.
+This currently runs Deno's documentation linter against the public Core and Inspection entrypoints and is treated as a **public-API documentation audit**, not as a CI/release gate.
 
 The repository still has historical `missing-jsdoc` diagnostics. New or substantially changed public APIs should nevertheless receive useful JSDoc where contracts, semantics, invariants, or lifecycle are not obvious.
 

@@ -18,8 +18,8 @@
     "fmt": "deno fmt",
     "lint": "deno lint",
 
-    "docs:build": "deno doc --html --name='Chip8NX Core' --output=build/docs/api packages/core/mod.ts",
-    "docs:check": "deno doc --lint packages/core/mod.ts",
+    "docs:build": "deno doc --html --name='Chip8NX' --output=build/docs/api packages/core/mod.ts packages/inspection/mod.ts",
+    "docs:check": "deno doc --lint packages/core/mod.ts packages/inspection/mod.ts",
 
     "terminal": "deno run --allow-read apps/terminal/main.ts",
     "terminal:example:components": "deno run --allow-read apps/terminal/examples/01-components.ts",

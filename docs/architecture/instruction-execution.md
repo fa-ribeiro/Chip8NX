@@ -173,7 +173,7 @@ This is normal emulated control flow, not a scheduler pause and not an exception
 
 ### Decode failures occur after normal advancement
 
-The current `v0.5.0` ordering advances the program counter before calling `Decoder`.
+The current implementation advances the program counter before calling `Decoder`.
 
 Consequently, if decoding throws `InvalidOpcodeError`, no instruction semantics are applied, but the program counter has already advanced to the next sequential address.
 
@@ -276,7 +276,7 @@ raw opcode fields
       ↓
 typed semantic fields
       ↓
-executor / formatter / debugger / tracer
+Core execution / Inspection tooling / future higher-level consumers
 ```
 
 Keeping one authority for opcode interpretation prevents execution and tooling from drifting into subtly different interpretations of the same bit pattern.
@@ -342,19 +342,22 @@ That separation lets inspection tools identify `0mmm` correctly without pretendi
 
 ### The typed instruction is shared infrastructure
 
-The same semantic model supports execution and inspection:
+The same Core semantic model supports execution and passive inspection:
 
 ```mermaid
 flowchart LR
-    Opcode["Opcode"] --> Decoder["Decoder"]
-    Decoder --> Instruction["typed Instruction"]
+    Opcode["Core: Opcode"] --> Decoder["Core: Decoder"]
+    Decoder --> Instruction["Core: Instruction"]
 
-    Instruction --> Executor["InstructionExecutor"]
-    Instruction --> Formatter["InstructionFormatter"]
-    Instruction --> Future["Debugger / tracer"]
+    Instruction --> Executor["Core: InstructionExecutor"]
+    Instruction --> Formatter["Inspection: InstructionFormatter"]
 ```
 
 `Decoder` is therefore more than an internal CPU helper. It defines the shared boundary between encoded CHIP-8 representation and semantic instruction data.
+
+Core execution and Inspection tooling can consume that same typed representation without depending on one another or interpreting the opcode independently.
+
+Future higher-level analysis or debugger tooling may consume the same semantic boundary if concrete needs justify it.
 
 ## Instruction Executor
 
@@ -508,7 +511,7 @@ The current outer switch is therefore not compile-time exhaustive: the default b
 
 That gives a useful runtime safety net, but a newly added union member may compile and fail only when executed. An exhaustive `never` check would provide stronger compile-time protection, but would require intentionally unsupported execution to be represented more explicitly.
 
-The `v0.5.0` implementation keeps the runtime default. Future variant work may provide evidence for revisiting that tradeoff.
+The current implementation keeps the runtime default. Future variant work may provide evidence for revisiting that tradeoff.
 
 ## Execution Context
 
