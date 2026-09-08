@@ -5,14 +5,15 @@ import {
   assertThrows,
 } from "@std/assert";
 
-import { address } from "../core/types/address.ts";
-import { byte } from "../core/types/byte.ts";
-import { opcode } from "../core/types/opcode.ts";
-import type { CpuState } from "../cpu/state/cpu-state.ts";
-import type {
-  FailedInstructionTrace,
-  SuccessfulInstructionTrace,
-} from "./instruction-trace.ts";
+import {
+  address,
+  byte,
+  type CpuState,
+  type FailedInstructionTrace,
+  opcode,
+  type SuccessfulInstructionTrace,
+} from "@chip8nx/core";
+
 import { InstructionTraceBuffer } from "./instruction-trace-buffer.ts";
 
 function cpuState(programCounter: number): CpuState {
@@ -119,7 +120,6 @@ Deno.test("InstructionTraceBuffer snapshot does not expose mutable storage", () 
   const buffer = new InstructionTraceBuffer(2);
 
   const first = successfulTrace(0x200);
-
   buffer.observe(first);
 
   const firstSnapshot = buffer.snapshot();

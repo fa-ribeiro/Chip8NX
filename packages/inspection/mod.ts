@@ -12,3 +12,6 @@ export { Disassembler } from "./src/disassembly/disassembler.ts";
 export { ClassicInstructionTraceFormatter } from "./src/tracing/classic-instruction-trace-formatter.ts";
 export { StateChangeInstructionTraceFormatter } from "./src/tracing/state-change-instruction-trace-formatter.ts";
 export type { InstructionTraceFormatter } from "./src/tracing/instruction-trace-formatter.ts";
+
+// Trace buffer
+export { InstructionTraceBuffer } from "./src/tracing/instruction-trace-buffer.ts";

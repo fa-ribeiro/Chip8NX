@@ -1,5 +1,4 @@
-import type { InstructionTrace } from "./instruction-trace.ts";
-import type { InstructionTraceObserver } from "./instruction-trace-observer.ts";
+import type { InstructionTrace, InstructionTraceObserver } from "@chip8nx/core";
 
 /**
  * Retains a bounded history of CPU instruction traces.
@@ -15,7 +14,6 @@ export class InstructionTraceBuffer implements InstructionTraceObserver {
   private readonly storage: InstructionTrace[] = [];
 
   private readonly maximumCapacity: number;
-
   private nextWriteIndex = 0;
 
   private retainedSize = 0;

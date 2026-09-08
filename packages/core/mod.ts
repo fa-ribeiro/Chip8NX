@@ -56,7 +56,6 @@ export type { InstructionFormatter } from "./src/instruction/formatting/instruct
 
 // Tracing
 export type { InstructionTraceObserver } from "./src/tracing/instruction-trace-observer.ts";
-export { InstructionTraceBuffer } from "./src/tracing/instruction-trace-buffer.ts";
 export type {
   FailedInstructionTrace,
   InstructionTrace,

@@ -6,7 +6,6 @@ import {
   ClassicInstructionFormatter,
   type CpuState,
   Decoder,
-  InstructionTraceBuffer,
   type InstructionTraceObserver,
   MemoryImage,
   MemoryImageLoader,
@@ -19,6 +18,7 @@ import {
 import {
   ClassicInstructionTraceFormatter,
   Disassembler,
+  InstructionTraceBuffer,
   StateChangeInstructionTraceFormatter,
 } from "../../mod.ts";
 
