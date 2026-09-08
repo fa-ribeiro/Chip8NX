@@ -30,7 +30,7 @@ Deno.test("public API disassembles a CHIP-8 program", () => {
     0x60, 0x01, // LD V0, 0x01
     0x61, 0x02, // LD V1, 0x02
     0x80, 0x14, // ADD V0, V1
-    0x12, 0x00,
+    0x12, 0x00, // JP 0x200
   ]);
 
   const memory = new Ram(0x1000);
@@ -72,20 +72,7 @@ Deno.test("public API disassembles a CHIP-8 program", () => {
   );
 });
 
-function cpuState(programCounter: number, register0 = 0): CpuState {
-  const registers = Array.from({ length: 16 }, (_, index) => byte(index === 0 ? register0 : 0));
-
-  return {
-    registers,
-    index: address(0),
-    programCounter: address(programCounter),
-    stack: [],
-    delayTimer: byte(0),
-    soundTimer: byte(0),
-  };
-}
-
-Deno.test("public APIs compose Core observation with Inspection formatting", () => {
+Deno.test("public APIs compose Core observation with Inspection history and formatting", () => {
   const trace: SuccessfulInstructionTrace = {
     outcome: "success",
     instruction: {
@@ -119,3 +106,16 @@ Deno.test("public APIs compose Core observation with Inspection formatting", () 
     "0x200 6042 LD V0, 0x42       | " + "V0:0x00 → 0x42; PC:0x200 → 0x202",
   );
 });
+
+function cpuState(programCounter: number, register0 = 0): CpuState {
+  const registers = Array.from({ length: 16 }, (_, index) => byte(index === 0 ? register0 : 0));
+
+  return {
+    registers,
+    index: address(0),
+    programCounter: address(programCounter),
+    stack: [],
+    delayTimer: byte(0),
+    soundTimer: byte(0),
+  };
+}
