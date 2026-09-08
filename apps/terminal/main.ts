@@ -1,9 +1,13 @@
 import {
+  ClassicInstructionTraceFormatter,
+  StateChangeInstructionTraceFormatter,
+} from "@chip8nx/inspection";
+
+import {
   Chip8Runtime,
   CLASSIC_CHIP8_PROFILE,
   ClassicFont,
   ClassicInstructionFormatter,
-  ClassicInstructionTraceFormatter,
   Cpu,
   Decoder,
   DefaultRandomNumberGenerator,
@@ -23,7 +27,6 @@ import {
   Registers,
   Scheduler,
   Stack,
-  StateChangeInstructionTraceFormatter,
   Timer,
   VerticalBlank,
 } from "@chip8nx/core";

@@ -1,7 +1,5 @@
-import type { Address } from "../core/types/address.ts";
-import type { Byte } from "../core/types/byte.ts";
-import type { CpuState } from "../cpu/state/cpu-state.ts";
-import type { InstructionTrace } from "./instruction-trace.ts";
+import type { Address, Byte, CpuState, InstructionTrace } from "@chip8nx/core";
+
 import type { InstructionTraceFormatter } from "./instruction-trace-formatter.ts";
 
 const STATE_CHANGE_SEPARATOR = " → ";

@@ -1,4 +1,4 @@
-import type { InstructionTrace } from "./instruction-trace.ts";
+import type { InstructionTrace } from "@chip8nx/core";
 
 /** Formats one CPU instruction trace for human-readable presentation. */
 export interface InstructionTraceFormatter {

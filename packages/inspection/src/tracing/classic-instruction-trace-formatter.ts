@@ -1,11 +1,12 @@
-import type { Address } from "../core/types/address.ts";
-import type { Opcode } from "../core/types/opcode.ts";
-import type { InstructionFormatter } from "../instruction/formatting/instruction-formatter.ts";
 import type {
+  Address,
   FailedInstructionTrace,
+  InstructionFormatter,
   InstructionTrace,
+  Opcode,
   SuccessfulInstructionTrace,
-} from "./instruction-trace.ts";
+} from "@chip8nx/core";
+
 import type { InstructionTraceFormatter } from "./instruction-trace-formatter.ts";
 
 /**

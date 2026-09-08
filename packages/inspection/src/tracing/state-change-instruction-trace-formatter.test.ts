@@ -1,13 +1,14 @@
 import { assertEquals } from "@std/assert";
 
-import { address } from "../core/types/address.ts";
-import { byte } from "../core/types/byte.ts";
-import { opcode } from "../core/types/opcode.ts";
-import type { CpuState } from "../cpu/state/cpu-state.ts";
-import type {
-  FailedInstructionTrace,
-  SuccessfulInstructionTrace,
-} from "./instruction-trace.ts";
+import {
+  address,
+  byte,
+  type CpuState,
+  type FailedInstructionTrace,
+  opcode,
+  type SuccessfulInstructionTrace,
+} from "@chip8nx/core";
+
 import type { InstructionTraceFormatter } from "./instruction-trace-formatter.ts";
 import { StateChangeInstructionTraceFormatter } from "./state-change-instruction-trace-formatter.ts";
 
@@ -23,12 +24,15 @@ function cpuState(overrides: Partial<CpuState> = {}): CpuState {
   };
 }
 
-const baseFormatter: InstructionTraceFormatter = { format: () => "TRACE" };
+const baseFormatter: InstructionTraceFormatter = {
+  format: () => "TRACE",
+};
 
 Deno.test("appends changed CPU state", () => {
   const before = cpuState();
   const registers = [...before.registers];
   registers[0xa] = byte(0x42);
+
   const after = cpuState({
     registers,
     index: address(0x300),
@@ -40,12 +44,16 @@ Deno.test("appends changed CPU state", () => {
 
   const trace: SuccessfulInstructionTrace = {
     outcome: "success",
-    instruction: { kind: "clear-screen", opcode: opcode(0x00e0) },
+    instruction: {
+      kind: "clear-screen",
+      opcode: opcode(0x00e0),
+    },
     before,
     after,
   };
 
   const formatter = new StateChangeInstructionTraceFormatter(baseFormatter);
+
   assertEquals(
     formatter.format(trace),
     "TRACE                        | " +
@@ -60,14 +68,19 @@ Deno.test("appends changed CPU state", () => {
 
 Deno.test("preserves base output when CPU state is unchanged", () => {
   const state = cpuState();
+
   const trace: SuccessfulInstructionTrace = {
     outcome: "success",
-    instruction: { kind: "clear-screen", opcode: opcode(0x00e0) },
+    instruction: {
+      kind: "clear-screen",
+      opcode: opcode(0x00e0),
+    },
     before: state,
     after: state,
   };
 
   const formatter = new StateChangeInstructionTraceFormatter(baseFormatter);
+
   assertEquals(formatter.format(trace), "TRACE");
 });
 
@@ -80,7 +93,11 @@ Deno.test("appends CPU changes to failed traces", () => {
     error: new Error("Invalid opcode"),
   };
 
-  const failedBase: InstructionTraceFormatter = { format: () => "FAILED" };
+  const failedBase: InstructionTraceFormatter = {
+    format: () => "FAILED",
+  };
+
   const formatter = new StateChangeInstructionTraceFormatter(failedBase);
+
   assertEquals(formatter.format(trace), "FAILED                       | PC:0x200 → 0x202");
 });

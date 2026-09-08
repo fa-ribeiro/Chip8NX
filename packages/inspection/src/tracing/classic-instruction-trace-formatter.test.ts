@@ -1,16 +1,17 @@
 import { assertEquals } from "@std/assert";
 
-import { address } from "../core/types/address.ts";
-import { byte } from "../core/types/byte.ts";
-import { opcode } from "../core/types/opcode.ts";
-import { registerIndex } from "../cpu/registers/register-index.ts";
-import type { CpuState } from "../cpu/state/cpu-state.ts";
-import { ClassicInstructionFormatter } from "../instruction/formatting/classic-instruction-formatter.ts";
-import type { InstructionFormatter } from "../instruction/formatting/instruction-formatter.ts";
-import type {
-  FailedInstructionTrace,
-  SuccessfulInstructionTrace,
-} from "./instruction-trace.ts";
+import {
+  address,
+  byte,
+  ClassicInstructionFormatter,
+  type CpuState,
+  type FailedInstructionTrace,
+  type InstructionFormatter,
+  opcode,
+  registerIndex,
+  type SuccessfulInstructionTrace,
+} from "@chip8nx/core";
+
 import { ClassicInstructionTraceFormatter } from "./classic-instruction-trace-formatter.ts";
 
 function cpuState(overrides: Partial<CpuState> = {}): CpuState {
@@ -31,7 +32,9 @@ Deno.test("formats source address, opcode, and delegated instruction text", () =
   const instructionFormatter: InstructionFormatter = {
     format: () => "FORMATTED",
   };
+
   const delegated = new ClassicInstructionTraceFormatter(instructionFormatter);
+
   const trace: SuccessfulInstructionTrace = {
     outcome: "success",
     instruction: {
