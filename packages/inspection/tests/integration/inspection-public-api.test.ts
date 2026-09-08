@@ -3,7 +3,6 @@ import { assert, assertEquals, assertStrictEquals } from "@std/assert";
 import {
   address,
   byte,
-  ClassicInstructionFormatter,
   type CpuState,
   Decoder,
   type InstructionTraceObserver,
@@ -16,6 +15,7 @@ import {
 } from "@chip8nx/core";
 
 import {
+  ClassicInstructionFormatter,
   ClassicInstructionTraceFormatter,
   Disassembler,
   InstructionTraceBuffer,

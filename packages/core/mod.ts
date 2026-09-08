@@ -50,10 +50,6 @@ export type { Font } from "./src/font/font.ts";
 export { Decoder, InvalidOpcodeError } from "./src/instruction/decoder.ts";
 export * from "./src/instruction/instruction.ts";
 
-// Instruction formatting
-export { ClassicInstructionFormatter } from "./src/instruction/formatting/classic-instruction-formatter.ts";
-export type { InstructionFormatter } from "./src/instruction/formatting/instruction-formatter.ts";
-
 // Tracing
 export type { InstructionTraceObserver } from "./src/tracing/instruction-trace-observer.ts";
 export type {

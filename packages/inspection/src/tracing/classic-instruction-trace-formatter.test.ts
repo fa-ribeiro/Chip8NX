@@ -3,15 +3,15 @@ import { assertEquals } from "@std/assert";
 import {
   address,
   byte,
-  ClassicInstructionFormatter,
   type CpuState,
   type FailedInstructionTrace,
-  type InstructionFormatter,
   opcode,
   registerIndex,
   type SuccessfulInstructionTrace,
 } from "@chip8nx/core";
 
+import { ClassicInstructionFormatter } from "../instruction/formatting/classic-instruction-formatter.ts";
+import type { InstructionFormatter } from "../instruction/formatting/instruction-formatter.ts";
 import { ClassicInstructionTraceFormatter } from "./classic-instruction-trace-formatter.ts";
 
 function cpuState(overrides: Partial<CpuState> = {}): CpuState {

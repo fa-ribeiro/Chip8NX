@@ -15,3 +15,7 @@ export type { InstructionTraceFormatter } from "./src/tracing/instruction-trace-
 
 // Trace buffer
 export { InstructionTraceBuffer } from "./src/tracing/instruction-trace-buffer.ts";
+
+// Instruction formatting
+export { ClassicInstructionFormatter } from "./src/instruction/formatting/classic-instruction-formatter.ts";
+export type { InstructionFormatter } from "./src/instruction/formatting/instruction-formatter.ts";

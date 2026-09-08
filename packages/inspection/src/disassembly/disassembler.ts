@@ -3,11 +3,11 @@ import {
   address,
   Decoder,
   INSTRUCTION_SIZE,
-  type InstructionFormatter,
   type Memory,
   opcode,
 } from "@chip8nx/core";
 
+import type { InstructionFormatter } from "../instruction/formatting/instruction-formatter.ts";
 import type { DisassembledInstruction } from "./disassembled-instruction.ts";
 
 /**

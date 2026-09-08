@@ -1,7 +1,11 @@
-import type { Address } from "../../core/types/address.ts";
-import type { Byte } from "../../core/types/byte.ts";
-import type { RegisterIndex } from "../../cpu/registers/register-index.ts";
-import type { Instruction, RegisterOperationInstruction } from "../instruction.ts";
+import type {
+  Address,
+  Byte,
+  Instruction,
+  RegisterIndex,
+  RegisterOperationInstruction,
+} from "@chip8nx/core";
+
 import type { InstructionFormatter } from "./instruction-formatter.ts";
 
 /**

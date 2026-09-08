@@ -1,4 +1,4 @@
-import type { Instruction } from "../instruction.ts";
+import type { Instruction } from "@chip8nx/core";
 
 /**
  * Formats a decoded CHIP-8 instruction for human-readable presentation.

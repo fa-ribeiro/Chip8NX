@@ -1,4 +1,5 @@
 import {
+  ClassicInstructionFormatter,
   ClassicInstructionTraceFormatter,
   StateChangeInstructionTraceFormatter,
 } from "@chip8nx/inspection";
@@ -7,7 +8,6 @@ import {
   Chip8Runtime,
   CLASSIC_CHIP8_PROFILE,
   ClassicFont,
-  ClassicInstructionFormatter,
   Cpu,
   Decoder,
   DefaultRandomNumberGenerator,

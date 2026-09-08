@@ -4,7 +4,6 @@ import {
   address,
   byte,
   Decoder,
-  type InstructionFormatter,
   InvalidOpcodeError,
   opcode,
   Ram,
@@ -12,6 +11,7 @@ import {
 } from "@chip8nx/core";
 
 import { Disassembler } from "./disassembler.ts";
+import type { InstructionFormatter } from "../instruction/formatting/instruction-formatter.ts";
 
 const formatter: InstructionFormatter = { format: () => "CUSTOM" };
 const disassembler = new Disassembler(new Decoder(), formatter);
