@@ -4,11 +4,12 @@ import {
   address,
   ClassicInstructionFormatter,
   Decoder,
-  Disassembler,
   MemoryImage,
   MemoryImageLoader,
   Ram,
-} from "../../mod.ts";
+} from "@chip8nx/core";
+
+import { Disassembler } from "../../mod.ts";
 
 Deno.test("public API disassembles a CHIP-8 program", () => {
   // prettier-ignore

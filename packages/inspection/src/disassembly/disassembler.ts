@@ -1,9 +1,13 @@
-import { type Address, address } from "../core/types/address.ts";
-import { opcode } from "../core/types/opcode.ts";
-import { INSTRUCTION_SIZE } from "../cpu/program-counter/program-counter.ts";
-import { Decoder } from "../instruction/decoder.ts";
-import type { InstructionFormatter } from "../instruction/formatting/instruction-formatter.ts";
-import type { Memory } from "../memory/memory.ts";
+import {
+  type Address,
+  address,
+  Decoder,
+  INSTRUCTION_SIZE,
+  type InstructionFormatter,
+  type Memory,
+  opcode,
+} from "@chip8nx/core";
+
 import type { DisassembledInstruction } from "./disassembled-instruction.ts";
 
 /**
@@ -40,7 +44,6 @@ export class Disassembler {
   public disassembleAt(memory: Memory, sourceAddress: Address): DisassembledInstruction {
     const highByte = memory.read(sourceAddress);
     const lowByte = memory.read(address(sourceAddress + 1));
-
     const fetchedOpcode = opcode((highByte << 8) | lowByte);
 
     const instruction = this.decoder.decode(fetchedOpcode);

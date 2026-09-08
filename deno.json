@@ -1,17 +1,27 @@
 {
-  "workspace": ["./packages/core", "./apps/terminal", "./apps/web", "./apps/disassembler"],
+  "workspace": [
+    "./packages/core",
+    "./packages/inspection",
+    "./apps/terminal",
+    "./apps/web",
+    "./apps/disassembler"
+  ],
   "tasks": {
-    "terminal": "deno run --allow-read apps/terminal/main.ts",
-    "test": "deno test --allow-read packages/core/src/ packages/core/tests/integration/ apps/terminal/src/ apps/web/src/",
-    "test:watch": "deno test --watch --allow-read packages/core/src/ packages/core/tests/integration/ apps/terminal/src/ apps/web/src/",
+    "test": "deno test --allow-read packages/core/src/ packages/core/tests/integration/ packages/inspection/ apps/terminal/src/ apps/web/src/",
+    "test:watch": "deno test --watch --allow-read packages/core/src/ packages/core/tests/integration/ packages/inspection/ apps/terminal/src/ apps/web/src/",
     "test:conformance": "deno test --allow-read packages/core/tests/conformance/",
     "test:all": "deno task test && deno task test:conformance",
-    "check": "deno check packages/core/mod.ts packages/core/src/ packages/core/tests/ apps/terminal/ apps/web/ apps/disassembler/ && deno fmt --check && deno lint",
+
+    "check": "deno check packages/core/mod.ts packages/core/src/ packages/core/tests/ packages/inspection/ apps/terminal/ apps/web/ apps/disassembler/ && deno fmt --check && deno lint",
+
     "ci": "deno task check && deno task test && deno task web:build",
     "fmt": "deno fmt",
     "lint": "deno lint",
+
     "docs:build": "deno doc --html --name='Chip8NX Core' --output=build/docs/api packages/core/mod.ts",
     "docs:check": "deno doc --lint packages/core/mod.ts",
+
+    "terminal": "deno run --allow-read apps/terminal/main.ts",
     "terminal:example:components": "deno run --allow-read apps/terminal/examples/01-components.ts",
     "terminal:example:standard": "deno run --allow-read apps/terminal/examples/02-standard-compositions.ts",
     "terminal:example:host": "deno run --allow-read apps/terminal/examples/03-standard-host.ts",

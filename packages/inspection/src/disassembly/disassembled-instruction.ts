@@ -1,5 +1,4 @@
-import type { Address } from "../core/types/address.ts";
-import type { Instruction } from "../instruction/instruction.ts";
+import type { Address, Instruction } from "@chip8nx/core";
 
 /**
  * Represents one successfully decoded instruction at a specific memory address.

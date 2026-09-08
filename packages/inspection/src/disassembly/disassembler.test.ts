@@ -1,12 +1,16 @@
 import { assertEquals, assertThrows } from "@std/assert";
 
-import { address } from "../core/types/address.ts";
-import { byte } from "../core/types/byte.ts";
-import { opcode } from "../core/types/opcode.ts";
-import { registerIndex } from "../cpu/registers/register-index.ts";
-import { Decoder, InvalidOpcodeError } from "../instruction/decoder.ts";
-import type { InstructionFormatter } from "../instruction/formatting/instruction-formatter.ts";
-import { Ram } from "../memory/ram.ts";
+import {
+  address,
+  byte,
+  Decoder,
+  type InstructionFormatter,
+  InvalidOpcodeError,
+  opcode,
+  Ram,
+  registerIndex,
+} from "@chip8nx/core";
+
 import { Disassembler } from "./disassembler.ts";
 
 const formatter: InstructionFormatter = { format: () => "CUSTOM" };
