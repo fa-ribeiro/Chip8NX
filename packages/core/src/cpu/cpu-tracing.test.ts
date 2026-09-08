@@ -12,8 +12,8 @@ import { CLASSIC_CHIP8_PROFILE } from "../machine/classic/classic-chip8-profile.
 import { Ram } from "../memory/ram.ts";
 import { TestRandomNumberGenerator } from "../random/test-random-number-generator.ts";
 import { Timer } from "../timer/timer.ts";
-import type { InstructionTrace } from "../tracing/instruction-trace.ts";
-import type { InstructionTraceObserver } from "../tracing/instruction-trace-observer.ts";
+import type { InstructionTrace } from "../cpu/observation/instruction-trace.ts";
+import type { InstructionTraceObserver } from "../cpu/observation/instruction-trace-observer.ts";
 import { Cpu } from "./cpu.ts";
 import type { ExecutionContext } from "./execution-context.ts";
 import { IndexRegister } from "./index-register/index-register.ts";

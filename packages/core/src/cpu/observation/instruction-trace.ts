@@ -1,6 +1,6 @@
-import type { Opcode } from "../core/types/opcode.ts";
-import type { CpuState } from "../cpu/state/cpu-state.ts";
-import type { Instruction } from "../instruction/instruction.ts";
+import type { Opcode } from "../../core/types/opcode.ts";
+import type { CpuState } from "../../cpu/state/cpu-state.ts";
+import type { Instruction } from "../../instruction/instruction.ts";
 
 /**
  * Observation of one CPU instruction attempt.

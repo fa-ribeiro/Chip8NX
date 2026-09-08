@@ -5,8 +5,8 @@ import type { Instruction } from "../instruction/instruction.ts";
 import type {
   FailedInstructionTrace,
   SuccessfulInstructionTrace,
-} from "../tracing/instruction-trace.ts";
-import type { InstructionTraceObserver } from "../tracing/instruction-trace-observer.ts";
+} from "./observation/instruction-trace.ts";
+import type { InstructionTraceObserver } from "./observation/instruction-trace-observer.ts";
 import type { ExecutionContext } from "./execution-context.ts";
 import { InstructionExecutor } from "./instruction-executor.ts";
 import type { CpuState } from "./state/cpu-state.ts";

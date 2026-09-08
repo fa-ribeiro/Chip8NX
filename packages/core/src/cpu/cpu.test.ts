@@ -20,8 +20,8 @@ import { ProgramCounter } from "./program-counter/program-counter.ts";
 import { registerIndex } from "./registers/register-index.ts";
 import { Registers } from "./registers/registers.ts";
 import { Stack } from "./stack/stack.ts";
-import type { InstructionTrace } from "../tracing/instruction-trace.ts";
-import type { InstructionTraceObserver } from "../tracing/instruction-trace-observer.ts";
+import type { InstructionTrace } from "../cpu/observation/instruction-trace.ts";
+import type { InstructionTraceObserver } from "../cpu/observation/instruction-trace-observer.ts";
 
 import { CLASSIC_CHIP8_PROFILE } from "../machine/classic/classic-chip8-profile.ts";
 
