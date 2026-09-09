@@ -142,21 +142,12 @@
         </section>
 
         <div class="instruction-column">
-          <section class="current-instruction" aria-labelledby="current-instruction-heading">
-            <h2 id="current-instruction-heading">Current instruction</h2>
+          <section class="nearby-instructions" aria-labelledby="nearby-instructions-heading">
+            <h2 id="nearby-instructions-heading">Nearby instructions</h2>
 
-            <p id="current-instruction-empty">No machine loaded.</p>
+            <p id="nearby-instructions-empty">No machine loaded.</p>
 
-            <code id="current-instruction-available" hidden>
-              <span id="current-instruction-address">0x000</span>
-              <span id="current-instruction-opcode">0000</span>
-              <span id="current-instruction-text"></span>
-            </code>
-
-            <p id="current-instruction-unavailable" hidden>
-              <code id="current-instruction-unavailable-address">0x000</code>
-              <span id="current-instruction-unavailable-reason"></span>
-            </p>
+            <ol id="nearby-instructions-list"></ol>
           </section>
 
           <section class="instruction-history" aria-labelledby="instruction-history-heading">

@@ -4,7 +4,7 @@ import type { DisassembledInstruction, InstructionTraceFormatter } from "@chip8n
 
 export interface WebInspectionViewModel {
   readonly cpu: CpuInspectionViewModel;
-  readonly currentInstruction: CurrentInstructionViewModel;
+  readonly nearbyInstructions: readonly NearbyInstructionViewModel[];
   readonly traces: readonly InstructionTraceRowViewModel[];
 }
 
@@ -30,37 +30,38 @@ export interface InstructionTraceRowViewModel {
   readonly text: string;
 }
 
-export type CurrentInstructionInspection =
-  | SuccessfulCurrentInstructionInspection
-  | FailedCurrentInstructionInspection;
+export interface NearbyInstructionInspection {
+  readonly address: Address;
+  readonly current: boolean;
+  readonly result:
+    | SuccessfulNearbyInstructionInspectionResult
+    | FailedNearbyInstructionInspectionResult;
+}
 
-export interface SuccessfulCurrentInstructionInspection {
+export interface SuccessfulNearbyInstructionInspectionResult {
   readonly outcome: "success";
   readonly instruction: DisassembledInstruction;
 }
 
-export interface FailedCurrentInstructionInspection {
+export interface FailedNearbyInstructionInspectionResult {
   readonly outcome: "failure";
-  readonly address: Address;
   readonly error: unknown;
 }
 
-export type CurrentInstructionViewModel =
-  | AvailableCurrentInstructionViewModel
-  | UnavailableCurrentInstructionViewModel;
-
-export interface AvailableCurrentInstructionViewModel {
-  readonly availability: "available";
-
+export interface NearbyInstructionViewModel {
   readonly address: string;
+  readonly current: boolean;
+  readonly content: AvailableNearbyInstructionViewModel | UnavailableNearbyInstructionViewModel;
+}
+
+export interface AvailableNearbyInstructionViewModel {
+  readonly availability: "available";
   readonly opcode: string;
   readonly text: string;
 }
 
-export interface UnavailableCurrentInstructionViewModel {
+export interface UnavailableNearbyInstructionViewModel {
   readonly availability: "unavailable";
-
-  readonly address: string;
   readonly reason: string;
 }
 
@@ -72,7 +73,7 @@ export interface UnavailableCurrentInstructionViewModel {
  */
 export function createWebInspectionViewModel(
   cpuState: CpuState,
-  currentInstruction: CurrentInstructionInspection,
+  nearbyInstructions: readonly NearbyInstructionInspection[],
   traces: readonly InstructionTrace[],
   traceFormatter: InstructionTraceFormatter,
 ): WebInspectionViewModel {
@@ -92,7 +93,7 @@ export function createWebInspectionViewModel(
       soundTimer: formatByte(cpuState.soundTimer),
     },
 
-    currentInstruction: createCurrentInstructionViewModel(currentInstruction),
+    nearbyInstructions: createNearbyInstructionViewModels(nearbyInstructions),
 
     traces: traces.map((trace) => ({
       outcome: trace.outcome,
@@ -101,26 +102,34 @@ export function createWebInspectionViewModel(
   };
 }
 
-/**
- * Converts the result of passive current-instruction inspection into
- * display-ready Web data.
- */
-export function createCurrentInstructionViewModel(
-  inspection: CurrentInstructionInspection,
-): CurrentInstructionViewModel {
-  if (inspection.outcome === "failure") {
+export function createNearbyInstructionViewModels(
+  inspections: readonly NearbyInstructionInspection[],
+): readonly NearbyInstructionViewModel[] {
+  return inspections.map(createNearbyInstructionViewModel);
+}
+
+function createNearbyInstructionViewModel(
+  inspection: NearbyInstructionInspection,
+): NearbyInstructionViewModel {
+  if (inspection.result.outcome === "failure") {
     return {
-      availability: "unavailable",
       address: formatAddress(inspection.address),
-      reason: formatInspectionError(inspection.error),
+      current: inspection.current,
+      content: {
+        availability: "unavailable",
+        reason: formatInspectionError(inspection.result.error),
+      },
     };
   }
 
   return {
-    availability: "available",
-    address: formatAddress(inspection.instruction.address),
-    opcode: formatOpcode(inspection.instruction.instruction.opcode),
-    text: inspection.instruction.text,
+    address: formatAddress(inspection.address),
+    current: inspection.current,
+    content: {
+      availability: "available",
+      opcode: formatOpcode(inspection.result.instruction.instruction.opcode),
+      text: inspection.result.instruction.text,
+    },
   };
 }
 

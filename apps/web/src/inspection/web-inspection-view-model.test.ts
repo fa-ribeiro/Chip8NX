@@ -1,7 +1,6 @@
 import { assertEquals } from "@std/assert";
 
 import {
-  type Address,
   address,
   byte,
   type CpuState,
@@ -13,9 +12,9 @@ import {
 import type { InstructionTraceFormatter } from "@chip8nx/inspection";
 
 import {
-  createCurrentInstructionViewModel,
+  createNearbyInstructionViewModels,
   createWebInspectionViewModel,
-  type CurrentInstructionInspection,
+  type NearbyInstructionInspection,
 } from "./web-inspection-view-model.ts";
 
 function cpuState(overrides: Partial<CpuState> = {}): CpuState {
@@ -27,14 +26,6 @@ function cpuState(overrides: Partial<CpuState> = {}): CpuState {
     delayTimer: byte(0),
     soundTimer: byte(0),
     ...overrides,
-  };
-}
-
-function unavailableCurrentInstruction(sourceAddress: Address): CurrentInstructionInspection {
-  return {
-    outcome: "failure",
-    address: sourceAddress,
-    error: new Error("Unavailable"),
   };
 }
 
@@ -60,18 +51,7 @@ Deno.test("creates display-ready CPU state", () => {
     },
   };
 
-  const viewModel = createWebInspectionViewModel(
-    state,
-    unavailableCurrentInstruction(state.programCounter),
-    [],
-    unusedFormatter,
-  );
-
-  assertEquals(viewModel.currentInstruction, {
-    availability: "unavailable",
-    address: "0x020",
-    reason: "Unavailable",
-  });
+  const viewModel = createWebInspectionViewModel(state, [], [], unusedFormatter);
 
   assertEquals(viewModel.cpu, {
     registers: [
@@ -103,6 +83,8 @@ Deno.test("creates display-ready CPU state", () => {
   });
 
   assertEquals(viewModel.traces, []);
+
+  assertEquals(viewModel.nearbyInstructions, []);
 });
 
 Deno.test("preserves trace order and delegates trace text formatting", () => {
@@ -138,12 +120,7 @@ Deno.test("preserves trace order and delegates trace text formatting", () => {
     },
   };
 
-  const viewModel = createWebInspectionViewModel(
-    state,
-    unavailableCurrentInstruction(state.programCounter),
-    [success, failure],
-    formatter,
-  );
+  const viewModel = createWebInspectionViewModel(state, [], [success, failure], formatter);
 
   assertEquals(viewModel.traces, [
     {
@@ -157,41 +134,159 @@ Deno.test("preserves trace order and delegates trace text formatting", () => {
   ]);
 });
 
-Deno.test("creates an available current instruction view", () => {
-  const currentInstruction: CurrentInstructionInspection = {
-    outcome: "success",
-    instruction: {
-      address: address(0x234),
-      instruction: {
-        kind: "clear-screen",
-        opcode: opcode(0x00e0),
+Deno.test("creates nearby instruction views preserving order and current marker", () => {
+  const inspections: readonly NearbyInstructionInspection[] = [
+    {
+      address: address(0x25e),
+      current: false,
+      result: {
+        outcome: "success",
+        instruction: {
+          address: address(0x25e),
+          instruction: {
+            kind: "clear-screen",
+            opcode: opcode(0x00e0),
+          },
+          text: "CLS",
+        },
       },
-      text: "CLS",
+    },
+    {
+      address: address(0x260),
+      current: true,
+      result: {
+        outcome: "success",
+        instruction: {
+          address: address(0x260),
+          instruction: {
+            kind: "return",
+            opcode: opcode(0x00ee),
+          },
+          text: "RET",
+        },
+      },
+    },
+  ];
+
+  const viewModels = createNearbyInstructionViewModels(inspections);
+
+  assertEquals(viewModels, [
+    {
+      address: "0x25E",
+      current: false,
+      content: {
+        availability: "available",
+        opcode: "00E0",
+        text: "CLS",
+      },
+    },
+    {
+      address: "0x260",
+      current: true,
+      content: {
+        availability: "available",
+        opcode: "00EE",
+        text: "RET",
+      },
+    },
+  ]);
+});
+
+Deno.test("creates an unavailable nearby instruction view without losing its address", () => {
+  const inspections: readonly NearbyInstructionInspection[] = [
+    {
+      address: address(0x25e),
+      current: false,
+      result: {
+        outcome: "failure",
+        error: new Error("Invalid opcode: 0xFFFF"),
+      },
+    },
+  ];
+
+  const viewModels = createNearbyInstructionViewModels(inspections);
+
+  assertEquals(viewModels, [
+    {
+      address: "0x25E",
+      current: false,
+      content: {
+        availability: "unavailable",
+        reason: "Invalid opcode: 0xFFFF",
+      },
+    },
+  ]);
+});
+
+Deno.test("includes nearby instructions in the Web inspection view", () => {
+  const state = cpuState({
+    programCounter: address(0x202),
+  });
+
+  const nearbyInstructions: readonly NearbyInstructionInspection[] = [
+    {
+      address: address(0x200),
+      current: false,
+      result: {
+        outcome: "success",
+        instruction: {
+          address: address(0x200),
+          instruction: {
+            kind: "clear-screen",
+            opcode: opcode(0x00e0),
+          },
+          text: "CLS",
+        },
+      },
+    },
+    {
+      address: address(0x202),
+      current: true,
+      result: {
+        outcome: "success",
+        instruction: {
+          address: address(0x202),
+          instruction: {
+            kind: "return",
+            opcode: opcode(0x00ee),
+          },
+          text: "RET",
+        },
+      },
+    },
+  ];
+
+  const unusedFormatter: InstructionTraceFormatter = {
+    format: () => {
+      throw new Error("No trace should be formatted");
     },
   };
 
-  const viewModel = createCurrentInstructionViewModel(currentInstruction);
+  const viewModel = createWebInspectionViewModel(
+    state,
+    nearbyInstructions,
+    [],
+    unusedFormatter,
+  );
 
-  assertEquals(viewModel, {
-    availability: "available",
-    address: "0x234",
-    opcode: "00E0",
-    text: "CLS",
-  });
-});
-
-Deno.test("creates an unavailable current instruction view", () => {
-  const currentInstruction: CurrentInstructionInspection = {
-    outcome: "failure",
-    address: address(0xabc),
-    error: new Error("Invalid opcode: 0xFFFF"),
-  };
-
-  const viewModel = createCurrentInstructionViewModel(currentInstruction);
-
-  assertEquals(viewModel, {
-    availability: "unavailable",
-    address: "0xABC",
-    reason: "Invalid opcode: 0xFFFF",
-  });
+  assertEquals(viewModel.nearbyInstructions, [
+    {
+      address: "0x200",
+      current: false,
+      content: {
+        availability: "available",
+        opcode: "00E0",
+        text: "CLS",
+      },
+    },
+    {
+      address: "0x202",
+      current: true,
+      content: {
+        availability: "available",
+        opcode: "00EE",
+        text: "RET",
+      },
+    },
+  ]);
 });

@@ -77,7 +77,7 @@ header p {
 }
 
 .cpu-state,
-.current-instruction,
+.nearby-instructions,
 .instruction-history {
   min-width: 0;
   padding: 1rem;
@@ -88,7 +88,7 @@ header p {
 }
 
 .cpu-state h2,
-.current-instruction h2,
+.nearby-instructions h2,
 .instruction-history h2 {
   margin: 0 0 1rem;
 
@@ -96,7 +96,7 @@ header p {
 }
 
 #cpu-state-empty,
-#current-instruction-empty,
+#nearby-instructions-empty,
 #instruction-history-empty {
   margin: 0;
   color: #a8a8a8;
@@ -110,37 +110,61 @@ header p {
   align-content: start;
 }
 
-#current-instruction-available {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem 0.75rem;
+#nearby-instructions-list {
+  display: grid;
+  gap: 0.25rem;
+
+  margin: 0;
+  padding: 0;
+
+  list-style: none;
+}
+
+.nearby-instruction-row {
+  display: grid;
+  grid-template-columns:
+    1rem
+    max-content
+    max-content
+    minmax(0, 1fr);
+
+  gap: 0.75rem;
+
+  align-items: baseline;
+
+  padding: 0.2rem 0.35rem;
+
+  border-radius: 0.25rem;
 
   font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
   font-size: 0.9rem;
 }
 
-#current-instruction-available[hidden] {
-  display: none;
+.nearby-instruction-marker {
+  text-align: center;
 }
 
-#current-instruction-address,
-#current-instruction-opcode {
-  flex: 0 0 auto;
+.nearby-instruction-address,
+.nearby-instruction-opcode {
+  white-space: nowrap;
 }
 
-#current-instruction-text {
-  flex: 1 1 16rem;
+.nearby-instruction-text {
   min-width: 0;
+  overflow-wrap: anywhere;
 }
 
-#current-instruction-unavailable {
-  margin: 0;
+.nearby-instruction-row[data-current="true"] {
+  background: #303030;
+  font-weight: 600;
+}
 
+.nearby-instruction-row[data-availability="unavailable"] {
   color: #ff8a8a;
 }
 
-#current-instruction-unavailable-address {
-  margin-right: 0.5rem;
+.nearby-instruction-row[data-availability="unavailable"] .nearby-instruction-text {
+  grid-column: 3 / -1;
 }
 
 .register-grid,

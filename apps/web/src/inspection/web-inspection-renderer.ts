@@ -1,6 +1,6 @@
 import type {
-  CurrentInstructionViewModel,
   InstructionTraceRowViewModel,
+  NearbyInstructionViewModel,
   WebInspectionViewModel,
 } from "./web-inspection-view-model.ts";
 
@@ -21,16 +21,8 @@ export class WebInspectionRenderer {
   private readonly soundTimer: HTMLElement;
   private readonly stack: HTMLElement;
 
-  private readonly currentInstructionEmpty: HTMLElement;
-
-  private readonly currentInstructionAvailable: HTMLElement;
-  private readonly currentInstructionAddress: HTMLElement;
-  private readonly currentInstructionOpcode: HTMLElement;
-  private readonly currentInstructionText: HTMLElement;
-
-  private readonly currentInstructionUnavailable: HTMLElement;
-  private readonly currentInstructionUnavailableAddress: HTMLElement;
-  private readonly currentInstructionUnavailableReason: HTMLElement;
+  private readonly nearbyInstructionsEmpty: HTMLElement;
+  private readonly nearbyInstructionsList: HTMLOListElement;
 
   private readonly instructionHistoryEmpty: HTMLElement;
   private readonly instructionHistoryList: HTMLOListElement;
@@ -54,32 +46,11 @@ export class WebInspectionRenderer {
 
     this.stack = requireDescendant(root, "#cpu-stack");
 
-    this.currentInstructionEmpty = requireDescendant(root, "#current-instruction-empty");
+    this.nearbyInstructionsEmpty = requireDescendant(root, "#nearby-instructions-empty");
 
-    this.currentInstructionAvailable = requireDescendant(
+    this.nearbyInstructionsList = requireDescendant<HTMLOListElement>(
       root,
-      "#current-instruction-available",
-    );
-
-    this.currentInstructionAddress = requireDescendant(root, "#current-instruction-address");
-
-    this.currentInstructionOpcode = requireDescendant(root, "#current-instruction-opcode");
-
-    this.currentInstructionText = requireDescendant(root, "#current-instruction-text");
-
-    this.currentInstructionUnavailable = requireDescendant(
-      root,
-      "#current-instruction-unavailable",
-    );
-
-    this.currentInstructionUnavailableAddress = requireDescendant(
-      root,
-      "#current-instruction-unavailable-address",
-    );
-
-    this.currentInstructionUnavailableReason = requireDescendant(
-      root,
-      "#current-instruction-unavailable-reason",
+      "#nearby-instructions-list",
     );
 
     this.instructionHistoryEmpty = requireDescendant(root, "#instruction-history-empty");
@@ -98,7 +69,7 @@ export class WebInspectionRenderer {
     }
 
     this.renderCpuState(viewModel);
-    this.renderCurrentInstruction(viewModel.currentInstruction);
+    this.renderNearbyInstructions(viewModel.nearbyInstructions);
     this.renderInstructionHistory(viewModel.traces);
   }
 
@@ -106,9 +77,8 @@ export class WebInspectionRenderer {
     this.cpuStateEmpty.hidden = false;
     this.cpuStateValues.hidden = true;
 
-    this.currentInstructionEmpty.hidden = false;
-    this.currentInstructionAvailable.hidden = true;
-    this.currentInstructionUnavailable.hidden = true;
+    this.nearbyInstructionsEmpty.hidden = false;
+    this.nearbyInstructionsList.replaceChildren();
 
     this.instructionHistoryEmpty.hidden = false;
     this.instructionHistoryList.replaceChildren();
@@ -139,26 +109,63 @@ export class WebInspectionRenderer {
       : viewModel.cpu.stack.join(" → ");
   }
 
-  private renderCurrentInstruction(instruction: CurrentInstructionViewModel): void {
-    this.currentInstructionEmpty.hidden = true;
+  private renderNearbyInstructions(instructions: readonly NearbyInstructionViewModel[]): void {
+    this.nearbyInstructionsList.replaceChildren();
 
-    if (instruction.availability === "available") {
-      this.currentInstructionAvailable.hidden = false;
-      this.currentInstructionUnavailable.hidden = true;
-
-      this.currentInstructionAddress.textContent = instruction.address;
-      this.currentInstructionOpcode.textContent = instruction.opcode;
-      this.currentInstructionText.textContent = instruction.text;
+    if (instructions.length === 0) {
+      this.nearbyInstructionsEmpty.hidden = false;
 
       return;
     }
 
-    this.currentInstructionAvailable.hidden = true;
-    this.currentInstructionUnavailable.hidden = false;
+    this.nearbyInstructionsEmpty.hidden = true;
 
-    this.currentInstructionUnavailableAddress.textContent = instruction.address;
+    const fragment = this.document.createDocumentFragment();
 
-    this.currentInstructionUnavailableReason.textContent = instruction.reason;
+    for (const instruction of instructions) {
+      const item = this.document.createElement("li");
+
+      item.className = "nearby-instruction-row";
+      item.dataset.current = String(instruction.current);
+      item.dataset.availability = instruction.content.availability;
+
+      if (instruction.current) {
+        item.setAttribute("aria-current", "true");
+      }
+
+      const marker = this.document.createElement("span");
+      marker.className = "nearby-instruction-marker";
+      marker.textContent = instruction.current ? "▶" : "";
+      marker.setAttribute("aria-hidden", "true");
+
+      const instructionAddress = this.document.createElement("span");
+      instructionAddress.className = "nearby-instruction-address";
+      instructionAddress.textContent = instruction.address;
+
+      item.append(marker, instructionAddress);
+
+      if (instruction.content.availability === "available") {
+        const opcode = this.document.createElement("span");
+        opcode.className = "nearby-instruction-opcode";
+        opcode.textContent = instruction.content.opcode;
+
+        const text = this.document.createElement("span");
+        text.className = "nearby-instruction-text";
+        text.textContent = instruction.content.text;
+
+        item.append(opcode, text);
+      } else {
+        const reason = this.document.createElement("span");
+        reason.className = "nearby-instruction-text";
+        reason.textContent = instruction.content.reason;
+
+        item.append(reason);
+      }
+
+      fragment.append(item);
+    }
+
+    this.nearbyInstructionsList.append(fragment);
   }
 
   private renderInstructionHistory(traces: readonly InstructionTraceRowViewModel[]): void {

@@ -1,4 +1,6 @@
 import {
+  type Address,
+  address,
   Chip8Runtime,
   CLASSIC_CHIP8_PROFILE,
   ClassicFont,
@@ -9,9 +11,11 @@ import {
   type ExecutionContext,
   Frequency,
   IndexRegister,
+  INSTRUCTION_SIZE,
   InstructionExecutor,
   KeyboardState,
   MachineInitializer,
+  type Memory,
   MemoryImage,
   MemoryImageLoader,
   PerformanceClock,
@@ -38,7 +42,7 @@ import { VirtualKeypad } from "./keyboard/virtual-keypad.ts";
 import { WebAudioBeeper } from "./audio/web-audio-beeper.ts";
 import {
   createWebInspectionViewModel,
-  type CurrentInstructionInspection,
+  type NearbyInstructionInspection,
   type WebInspectionViewModel,
 } from "./inspection/web-inspection-view-model.ts";
 import { WebInspectionRenderer } from "./inspection/web-inspection-renderer.ts";
@@ -47,6 +51,9 @@ import "./style.css";
 
 const CPU_FREQUENCY = Frequency.fromInteger(500n);
 const TRACE_HISTORY_CAPACITY = 32;
+
+const DISASSEMBLY_INSTRUCTIONS_BEFORE = 2;
+const DISASSEMBLY_INSTRUCTIONS_AFTER = 4;
 
 interface WebMachineSession {
   readonly romName: string;
@@ -254,24 +261,15 @@ function createMachine(romName: string, program: MemoryImage): WebMachineSession
   const snapshotInspection = (): WebInspectionViewModel => {
     const cpuState = cpu.snapshot();
 
-    let currentInstruction: CurrentInstructionInspection;
-
-    try {
-      currentInstruction = {
-        outcome: "success",
-        instruction: disassembler.disassembleAt(context.memory, cpuState.programCounter),
-      };
-    } catch (error) {
-      currentInstruction = {
-        outcome: "failure",
-        address: cpuState.programCounter,
-        error,
-      };
-    }
+    const nearbyInstructions = inspectNearbyInstructions(
+      context.memory,
+      cpuState.programCounter,
+      disassembler,
+    );
 
     return createWebInspectionViewModel(
       cpuState,
-      currentInstruction,
+      nearbyInstructions,
       traceHistory.snapshot(),
       traceFormatter,
     );
@@ -492,4 +490,52 @@ function unlockAudio(): void {
      */
     console.warn("Web Audio is unavailable:", error);
   });
+}
+
+function inspectNearbyInstructions(
+  memory: Memory,
+  programCounter: Address,
+  disassembler: Disassembler,
+): readonly NearbyInstructionInspection[] {
+  const inspections: NearbyInstructionInspection[] = [];
+
+  for (
+    let relativeInstruction = -DISASSEMBLY_INSTRUCTIONS_BEFORE;
+    relativeInstruction <= DISASSEMBLY_INSTRUCTIONS_AFTER;
+    relativeInstruction++
+  ) {
+    const sourceValue = programCounter + relativeInstruction * INSTRUCTION_SIZE;
+
+    /*
+     * Only include addresses from which a complete CHIP-8 instruction
+     * can be read.
+     */
+    if (sourceValue < 0 || sourceValue + INSTRUCTION_SIZE > memory.size) {
+      continue;
+    }
+
+    const sourceAddress = address(sourceValue);
+
+    try {
+      inspections.push({
+        address: sourceAddress,
+        current: sourceAddress === programCounter,
+        result: {
+          outcome: "success",
+          instruction: disassembler.disassembleAt(memory, sourceAddress),
+        },
+      });
+    } catch (error) {
+      inspections.push({
+        address: sourceAddress,
+        current: sourceAddress === programCounter,
+        result: {
+          outcome: "failure",
+          error,
+        },
+      });
+    }
+  }
+
+  return inspections;
 }
