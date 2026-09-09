@@ -23,15 +23,28 @@ import {
   Timer,
   VerticalBlank,
 } from "@chip8nx/core";
+
+import {
+  ClassicInstructionFormatter,
+  ClassicInstructionTraceFormatter,
+  InstructionTraceBuffer,
+} from "@chip8nx/inspection";
+
 import { CanvasDisplay } from "./display/canvas-display.ts";
 import { BrowserKeyboard } from "./keyboard/browser-keyboard.ts";
 import { KeyboardInputHub } from "./keyboard/keyboard-input-hub.ts";
 import { VirtualKeypad } from "./keyboard/virtual-keypad.ts";
 import { WebAudioBeeper } from "./audio/web-audio-beeper.ts";
+import {
+  createWebInspectionViewModel,
+  type WebInspectionViewModel,
+} from "./inspection/web-inspection-view-model.ts";
+import { WebInspectionRenderer } from "./inspection/web-inspection-renderer.ts";
 
 import "./style.css";
 
 const CPU_FREQUENCY = Frequency.fromInteger(500n);
+const TRACE_HISTORY_CAPACITY = 32;
 
 interface WebMachineSession {
   readonly romName: string;
@@ -40,7 +53,12 @@ interface WebMachineSession {
   readonly context: ExecutionContext;
   readonly initializer: MachineInitializer;
 
+  readonly cpu: Cpu;
   readonly runtime: Chip8Runtime;
+
+  readonly traceHistory: InstructionTraceBuffer;
+  readonly snapshotInspection: () => WebInspectionViewModel;
+
   readonly displayBuffer: DisplayBuffer;
   readonly soundTimer: Timer;
 
@@ -61,6 +79,9 @@ const virtualKeypadElement = requireElement<HTMLElement>("#virtual-keypad");
 
 const display = new CanvasDisplay(canvas);
 
+const inspectionElement = requireElement<HTMLElement>(".inspection");
+const inspection = new WebInspectionRenderer(inspectionElement);
+
 const beeper = new WebAudioBeeper();
 
 let machine: WebMachineSession | undefined;
@@ -68,6 +89,7 @@ let machine: WebMachineSession | undefined;
 let animationFrameId: number | undefined;
 
 updateControls();
+inspection.render(undefined);
 
 romInput.addEventListener("change", () => {
   const rom = romInput.files?.[0];
@@ -118,6 +140,8 @@ async function loadAndRun(rom: File): Promise<void> {
 
   updateControls();
 
+  inspection.render(undefined);
+
   setStatus(`Loading ${rom.name}...`);
 
   try {
@@ -130,7 +154,7 @@ async function loadAndRun(rom: File): Promise<void> {
 
     machine.runtime.resume();
 
-    display.render(machine.displayBuffer);
+    renderMachine(machine);
 
     updateControls();
 
@@ -200,7 +224,13 @@ function createMachine(romName: string, program: MemoryImage): WebMachineSession
 
   initializer.initialize(context, profile, program);
 
-  const cpu = new Cpu(context, new Decoder(), new InstructionExecutor());
+  const traceHistory = new InstructionTraceBuffer(TRACE_HISTORY_CAPACITY);
+
+  const traceFormatter = new ClassicInstructionTraceFormatter(
+    new ClassicInstructionFormatter(),
+  );
+
+  const cpu = new Cpu(context, new Decoder(), new InstructionExecutor(), traceHistory);
 
   const scheduler = new Scheduler(new PerformanceClock());
 
@@ -220,9 +250,17 @@ function createMachine(romName: string, program: MemoryImage): WebMachineSession
   return {
     romName,
     program,
+
     context,
     initializer,
+
+    cpu,
     runtime,
+
+    traceHistory,
+    snapshotInspection: () =>
+      createWebInspectionViewModel(cpu.snapshot(), traceHistory.snapshot(), traceFormatter),
+
     displayBuffer,
     browserKeyboard,
     virtualKeypad,
@@ -255,7 +293,7 @@ function pauseMachine(): void {
 
   beeper.setActive(false);
 
-  display.render(machine.displayBuffer);
+  renderMachine(machine);
 
   setStatus(`Paused ${machine.romName}`);
 
@@ -270,7 +308,7 @@ function stepMachine(): void {
   try {
     machine.runtime.step();
 
-    display.render(machine.displayBuffer);
+    renderMachine(machine);
 
     setStatus(`Paused ${machine.romName} — stepped one instruction.`);
   } catch (error) {
@@ -294,7 +332,9 @@ function resetMachine(): void {
   try {
     machine.initializer.initialize(machine.context, CLASSIC_CHIP8_PROFILE, machine.program);
 
-    display.render(machine.displayBuffer);
+    machine.traceHistory.clear();
+
+    renderMachine(machine);
 
     setStatus(`Reset ${machine.romName} — paused at program start.`);
 
@@ -333,7 +373,7 @@ function runHostLoop(session: WebMachineSession): void {
 
       beeper.setActive(session.soundTimer.getValue() > 0);
 
-      display.render(session.displayBuffer);
+      renderMachine(session);
 
       animationFrameId = requestAnimationFrame(frame);
     } catch (error) {
@@ -345,6 +385,8 @@ function runHostLoop(session: WebMachineSession): void {
       session.virtualKeypad.stop();
 
       beeper.setActive(false);
+
+      renderMachine(session);
 
       setStatus(`Emulation stopped: ${describeError(error)}`, true);
 
@@ -383,6 +425,11 @@ function updateControls(): void {
   pauseButton.disabled = paused;
   stepButton.disabled = !paused;
   resetButton.disabled = false;
+}
+
+function renderMachine(session: WebMachineSession): void {
+  display.render(session.displayBuffer);
+  inspection.render(session.snapshotInspection());
 }
 
 function setStatus(message: string, error = false): void {

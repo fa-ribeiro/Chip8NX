@@ -68,6 +68,112 @@ header p {
   image-rendering: pixelated;
 }
 
+.inspection {
+  display: grid;
+  grid-template-columns: minmax(15rem, 1fr) minmax(0, 2fr);
+
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.cpu-state,
+.instruction-history {
+  min-width: 0;
+  padding: 1rem;
+
+  background: #1d1d1d;
+  border: 1px solid #444;
+  border-radius: 0.4rem;
+}
+
+.cpu-state h2,
+.instruction-history h2 {
+  margin: 0 0 1rem;
+
+  font-size: 1rem;
+}
+
+#cpu-state-empty,
+#instruction-history-empty {
+  margin: 0;
+  color: #a8a8a8;
+}
+
+.register-grid,
+.cpu-special-state {
+  margin: 0;
+}
+
+.register-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+
+  gap: 0.5rem;
+}
+
+.register-grid div,
+.cpu-special-state div {
+  display: flex;
+  justify-content: space-between;
+
+  gap: 0.5rem;
+}
+
+.register-grid dt,
+.cpu-special-state dt {
+  color: #a8a8a8;
+}
+
+.register-grid dd,
+.cpu-special-state dd {
+  margin: 0;
+
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.cpu-special-state {
+  display: grid;
+  gap: 0.5rem;
+
+  margin-top: 1rem;
+  padding-top: 1rem;
+
+  border-top: 1px solid #333;
+}
+
+#cpu-stack {
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.instruction-history {
+  overflow: hidden;
+}
+
+#instruction-history-list {
+  max-height: 18rem;
+  margin: 0;
+  padding-left: 2.25rem;
+
+  overflow: auto;
+}
+
+#instruction-history-list li {
+  padding: 0.2rem 0;
+}
+
+#instruction-history-list code {
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: 0.9rem;
+
+  white-space: nowrap;
+}
+
+#instruction-history-list li[data-outcome="failure"] {
+  color: #ff8a8a;
+}
+
 .controls {
   display: flex;
   flex-wrap: wrap;
@@ -151,4 +257,10 @@ header p {
 .virtual-keypad button:disabled {
   opacity: 0.4;
   cursor: default;
+}
+
+@media (max-width: 700px) {
+  .inspection {
+    grid-template-columns: 1fr;
+  }
 }

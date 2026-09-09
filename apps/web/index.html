@@ -42,6 +42,114 @@
         ></canvas>
       </section>
 
+      <section class="inspection" aria-label="Machine inspection">
+        <section class="cpu-state" aria-labelledby="cpu-state-heading">
+          <h2 id="cpu-state-heading">CPU state</h2>
+
+          <p id="cpu-state-empty">No machine loaded.</p>
+
+          <div id="cpu-state-values" hidden>
+            <dl class="register-grid">
+              <div>
+                <dt>V0</dt>
+                <dd data-register="V0">0x00</dd>
+              </div>
+              <div>
+                <dt>V1</dt>
+                <dd data-register="V1">0x00</dd>
+              </div>
+              <div>
+                <dt>V2</dt>
+                <dd data-register="V2">0x00</dd>
+              </div>
+              <div>
+                <dt>V3</dt>
+                <dd data-register="V3">0x00</dd>
+              </div>
+              <div>
+                <dt>V4</dt>
+                <dd data-register="V4">0x00</dd>
+              </div>
+              <div>
+                <dt>V5</dt>
+                <dd data-register="V5">0x00</dd>
+              </div>
+              <div>
+                <dt>V6</dt>
+                <dd data-register="V6">0x00</dd>
+              </div>
+              <div>
+                <dt>V7</dt>
+                <dd data-register="V7">0x00</dd>
+              </div>
+              <div>
+                <dt>V8</dt>
+                <dd data-register="V8">0x00</dd>
+              </div>
+              <div>
+                <dt>V9</dt>
+                <dd data-register="V9">0x00</dd>
+              </div>
+              <div>
+                <dt>VA</dt>
+                <dd data-register="VA">0x00</dd>
+              </div>
+              <div>
+                <dt>VB</dt>
+                <dd data-register="VB">0x00</dd>
+              </div>
+              <div>
+                <dt>VC</dt>
+                <dd data-register="VC">0x00</dd>
+              </div>
+              <div>
+                <dt>VD</dt>
+                <dd data-register="VD">0x00</dd>
+              </div>
+              <div>
+                <dt>VE</dt>
+                <dd data-register="VE">0x00</dd>
+              </div>
+              <div>
+                <dt>VF</dt>
+                <dd data-register="VF">0x00</dd>
+              </div>
+            </dl>
+
+            <dl class="cpu-special-state">
+              <div>
+                <dt>I</dt>
+                <dd id="cpu-index-register">0x000</dd>
+              </div>
+              <div>
+                <dt>PC</dt>
+                <dd id="cpu-program-counter">0x000</dd>
+              </div>
+              <div>
+                <dt>DT</dt>
+                <dd id="cpu-delay-timer">0x00</dd>
+              </div>
+              <div>
+                <dt>ST</dt>
+                <dd id="cpu-sound-timer">0x00</dd>
+              </div>
+              <div>
+                <dt>Stack</dt>
+                <dd id="cpu-stack">—</dd>
+              </div>
+            </dl>
+          </div>
+        </section>
+
+        <section class="instruction-history" aria-labelledby="instruction-history-heading">
+          <h2 id="instruction-history-heading">Recent instructions</h2>
+
+          <p id="instruction-history-empty">No instruction attempts yet.</p>
+
+          <ol id="instruction-history-list"></ol>
+        </section>
+      </section>
+
       <section class="keypad" aria-label="Virtual CHIP-8 keypad">
         <h2>Keypad</h2>
 
