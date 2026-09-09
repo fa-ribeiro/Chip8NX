@@ -27,26 +27,29 @@ import {
   Timer,
   VerticalBlank,
 } from "@chip8nx/core";
-
 import {
   ClassicInstructionFormatter,
   ClassicInstructionTraceFormatter,
   Disassembler,
   InstructionTraceBuffer,
 } from "@chip8nx/inspection";
-
-import { CanvasDisplay } from "./display/canvas-display.ts";
-import { BrowserKeyboard } from "./keyboard/browser-keyboard.ts";
-import { KeyboardInputHub } from "./keyboard/keyboard-input-hub.ts";
-import { VirtualKeypad } from "./keyboard/virtual-keypad.ts";
 import { WebAudioBeeper } from "./audio/web-audio-beeper.ts";
+import { CanvasDisplay, type CanvasDisplayPalette } from "./display/canvas-display.ts";
 import {
   createWebInspectionViewModel,
   type NearbyInstructionInspection,
   type WebInspectionViewModel,
 } from "./inspection/web-inspection-view-model.ts";
 import { WebInspectionRenderer } from "./inspection/web-inspection-renderer.ts";
-
+import { BrowserKeyboard } from "./keyboard/browser-keyboard.ts";
+import { KeyboardInputHub } from "./keyboard/keyboard-input-hub.ts";
+import { VirtualKeypad } from "./keyboard/virtual-keypad.ts";
+import {
+  loadWebTheme,
+  parseWebTheme,
+  storeWebTheme,
+  type WebTheme,
+} from "./theme/web-theme.ts";
 import "./style.css";
 
 const CPU_FREQUENCY = Frequency.fromInteger(500n);
@@ -64,7 +67,6 @@ interface WebMachineSession {
 
   readonly cpu: Cpu;
   readonly runtime: Chip8Runtime;
-
   readonly traceHistory: InstructionTraceBuffer;
   readonly snapshotInspection: () => WebInspectionViewModel;
 
@@ -79,14 +81,21 @@ const romInput = requireElement<HTMLInputElement>("#rom-input");
 const canvas = requireElement<HTMLCanvasElement>("#chip8-display");
 const status = requireElement<HTMLElement>("#status");
 
-const startButton = requireElement<HTMLButtonElement>("#start-button");
-const pauseButton = requireElement<HTMLButtonElement>("#pause-button");
+const runToggleButton = requireElement<HTMLButtonElement>("#run-toggle-button");
+
 const stepButton = requireElement<HTMLButtonElement>("#step-button");
 const resetButton = requireElement<HTMLButtonElement>("#reset-button");
 
+const themeSelect = requireElement<HTMLSelectElement>("#theme-select");
+
 const virtualKeypadElement = requireElement<HTMLElement>("#virtual-keypad");
 
-const display = new CanvasDisplay(canvas);
+const initialTheme = loadWebTheme(globalThis.localStorage);
+
+document.documentElement.dataset.theme = initialTheme;
+themeSelect.value = initialTheme;
+
+const display = new CanvasDisplay(canvas, readCanvasDisplayPalette());
 
 const inspectionElement = requireElement<HTMLElement>(".inspection");
 const inspection = new WebInspectionRenderer(inspectionElement);
@@ -112,14 +121,8 @@ romInput.addEventListener("change", () => {
   void loadAndRun(rom);
 });
 
-startButton.addEventListener("click", () => {
-  unlockAudio();
-
-  startMachine();
-});
-
-pauseButton.addEventListener("click", () => {
-  pauseMachine();
+runToggleButton.addEventListener("click", () => {
+  toggleMachineRunning();
 });
 
 stepButton.addEventListener("click", () => {
@@ -128,6 +131,20 @@ stepButton.addEventListener("click", () => {
 
 resetButton.addEventListener("click", () => {
   resetMachine();
+});
+
+themeSelect.addEventListener("change", () => {
+  const theme = parseWebTheme(themeSelect.value);
+
+  if (theme === undefined) {
+    themeSelect.value = document.documentElement.dataset.theme ?? initialTheme;
+
+    return;
+  }
+
+  applyWebTheme(theme);
+
+  storeWebTheme(globalThis.localStorage, theme);
 });
 
 document.addEventListener("visibilitychange", () => {
@@ -140,7 +157,6 @@ async function loadAndRun(rom: File): Promise<void> {
   stopHostLoop();
 
   beeper.setActive(false);
-
   machine?.runtime.pause();
   machine?.browserKeyboard.stop();
   machine?.virtualKeypad.stop();
@@ -166,7 +182,6 @@ async function loadAndRun(rom: File): Promise<void> {
     renderMachine(machine);
 
     updateControls();
-
     setStatus(`Running ${rom.name}`);
 
     runHostLoop(machine);
@@ -194,7 +209,6 @@ function createMachine(romName: string, program: MemoryImage): WebMachineSession
   const soundTimer = new Timer();
 
   const verticalBlank = new VerticalBlank();
-
   const displayBuffer = new DisplayBuffer(profile.display.width, profile.display.height);
 
   const keyboard = new KeyboardState();
@@ -209,7 +223,6 @@ function createMachine(romName: string, program: MemoryImage): WebMachineSession
     registers: new Registers(),
 
     memory: new Ram(profile.memorySize),
-
     stack: new Stack(profile.stackCapacity),
 
     programCounter: new ProgramCounter(profile.programStartAddress),
@@ -295,13 +308,27 @@ function createMachine(romName: string, program: MemoryImage): WebMachineSession
   };
 }
 
+function toggleMachineRunning(): void {
+  if (machine === undefined) {
+    return;
+  }
+
+  if (machine.runtime.isPaused) {
+    unlockAudio();
+    startMachine();
+
+    return;
+  }
+
+  pauseMachine();
+}
+
 function startMachine(): void {
   if (machine === undefined || !machine.runtime.isPaused) {
     return;
   }
 
   machine.runtime.resume();
-
   setStatus(`Running ${machine.romName}`);
 
   updateControls();
@@ -407,7 +434,6 @@ function runHostLoop(session: WebMachineSession): void {
       animationFrameId = requestAnimationFrame(frame);
     } catch (error) {
       animationFrameId = undefined;
-
       session.runtime.pause();
 
       session.browserKeyboard.stop();
@@ -434,14 +460,14 @@ function stopHostLoop(): void {
   }
 
   cancelAnimationFrame(animationFrameId);
-
   animationFrameId = undefined;
 }
 
 function updateControls(): void {
   if (machine === undefined) {
-    startButton.disabled = true;
-    pauseButton.disabled = true;
+    runToggleButton.disabled = true;
+    runToggleButton.textContent = "Start";
+
     stepButton.disabled = true;
     resetButton.disabled = true;
 
@@ -450,8 +476,9 @@ function updateControls(): void {
 
   const paused = machine.runtime.isPaused;
 
-  startButton.disabled = !paused;
-  pauseButton.disabled = paused;
+  runToggleButton.disabled = false;
+  runToggleButton.textContent = paused ? "Start" : "Pause";
+
   stepButton.disabled = !paused;
   resetButton.disabled = false;
 }
@@ -459,6 +486,42 @@ function updateControls(): void {
 function renderMachine(session: WebMachineSession): void {
   display.render(session.displayBuffer);
   inspection.render(session.snapshotInspection());
+}
+
+function applyWebTheme(theme: WebTheme): void {
+  document.documentElement.dataset.theme = theme;
+
+  display.setPalette(readCanvasDisplayPalette());
+
+  /*
+   * CSS updates the application chrome immediately.
+   *
+   * Canvas pixels are an independent bitmap, so redraw the current
+   * framebuffer when a machine exists.
+   */
+  if (machine !== undefined) {
+    display.render(machine.displayBuffer);
+  }
+}
+
+function readCanvasDisplayPalette(): CanvasDisplayPalette {
+  const styles = getComputedStyle(document.documentElement);
+
+  return {
+    background: requireCssCustomProperty(styles, "--color-display-background"),
+
+    foreground: requireCssCustomProperty(styles, "--color-display-foreground"),
+  };
+}
+
+function requireCssCustomProperty(styles: CSSStyleDeclaration, propertyName: string): string {
+  const value = styles.getPropertyValue(propertyName).trim();
+
+  if (value.length === 0) {
+    throw new Error(`Required CSS custom property not found: ${propertyName}`);
+  }
+
+  return value;
 }
 
 function setStatus(message: string, error = false): void {

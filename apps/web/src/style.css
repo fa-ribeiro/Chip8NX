@@ -1,4 +1,6 @@
 :root {
+  color-scheme: dark;
+
   font-family:
     system-ui,
     -apple-system,
@@ -6,12 +8,101 @@
     "Segoe UI",
     sans-serif;
 
-  color: #f5f5f5;
-  background: #161616;
+  color: var(--color-text);
+  background: var(--color-background);
+}
+
+:root,
+:root[data-theme="retro-green"] {
+  --color-background: #0d100d;
+
+  --color-surface: #151a15;
+  --color-surface-raised: #1b221b;
+  --color-surface-hover: #253025;
+
+  --color-border: #344034;
+  --color-border-strong: #536553;
+
+  --color-text: #edf5ed;
+  --color-text-muted: #94a394;
+
+  --color-accent: #63e86f;
+  --color-accent-strong: #79ff85;
+  --color-accent-surface: #1d3a21;
+  --color-on-accent: #071008;
+
+  --color-display-background: #020502;
+  --color-display-foreground: #63e86f;
+  --color-display-glow: #63e86f40;
+
+  --color-danger: #ff8a8a;
+
+  --color-shadow: #0008;
+  --color-toolbar-background: #151a15f2;
+}
+
+:root[data-theme="retro-amber"] {
+  --color-background: #100d08;
+
+  --color-surface: #1a1510;
+  --color-surface-raised: #221b13;
+  --color-surface-hover: #302419;
+
+  --color-border: #463a29;
+  --color-border-strong: #6d593b;
+
+  --color-text: #f7efe0;
+  --color-text-muted: #aa9b82;
+
+  --color-accent: #ffb347;
+  --color-accent-strong: #ffc766;
+  --color-accent-surface: #3b2914;
+  --color-on-accent: #160d02;
+
+  --color-display-background: #050300;
+  --color-display-foreground: #ffb347;
+  --color-display-glow: #ffb34740;
+
+  --color-danger: #ff8a8a;
+
+  --color-shadow: #0008;
+  --color-toolbar-background: #1a1510f2;
+}
+
+:root[data-theme="dark-theme"] {
+  --color-background: #161616;
+
+  --color-surface: #1d1d1d;
+  --color-surface-raised: #2a2a2a;
+  --color-surface-hover: #383838;
+
+  --color-border: #444;
+  --color-border-strong: #555;
+
+  --color-text: #f5f5f5;
+  --color-text-muted: #a8a8a8;
+
+  --color-accent: #d0d0d0;
+  --color-accent-strong: #ffffff;
+  --color-accent-surface: #303030;
+  --color-on-accent: #161616;
+
+  --color-display-background: #000000;
+  --color-display-foreground: #ffffff;
+  --color-display-glow: #ffffff20;
+
+  --color-danger: #ff8a8a;
+
+  --color-shadow: #0008;
+  --color-toolbar-background: #1d1d1df2;
 }
 
 * {
   box-sizing: border-box;
+}
+
+html {
+  background: var(--color-background);
 }
 
 body {
@@ -19,61 +110,338 @@ body {
   min-width: 320px;
 }
 
+button,
+input,
+select {
+  font: inherit;
+}
+
+/*
+ * Application shell
+ */
+
 .app {
-  width: min(960px, calc(100% - 2rem));
+  display: grid;
+  gap: 1rem;
+
+  width: min(1440px, calc(100% - 2rem));
   margin: 0 auto;
-  padding: 2rem 0;
+  padding: 1rem 0 1.25rem;
 }
 
-header h1 {
-  margin-bottom: 0.25rem;
+.app-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+
+  gap: 1rem;
+
+  padding: 0.25rem 0;
 }
 
-header p {
-  margin-top: 0;
-  color: #a8a8a8;
+.app-header h1 {
+  margin: 0;
+}
+
+.app-header p {
+  margin: 0;
+
+  color: var(--color-text-muted);
+}
+
+/*
+ * Main toolbar
+ */
+
+.toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+
+  gap: 1rem;
+
+  padding: 0.75rem;
+
+  background: var(--color-toolbar-background);
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+
+  box-shadow: 0 0.35rem 1rem var(--color-shadow);
+
+  backdrop-filter: blur(8px);
 }
 
 .rom-loader {
-  margin: 2rem 0;
+  display: grid;
+  grid-template-columns: auto minmax(12rem, 1fr);
+  align-items: center;
+
+  flex: 1 1 26rem;
+
+  gap: 0.75rem;
+
+  margin: 0;
 }
 
 .rom-loader label {
-  display: block;
-  margin-bottom: 0.5rem;
   font-weight: 600;
 }
 
-#status {
-  min-height: 1.5rem;
-  color: #a8a8a8;
+#rom-input {
+  min-width: 0;
+  width: 100%;
+
+  color: var(--color-text);
 }
 
-#status[data-state="error"] {
-  color: #ff8a8a;
+#rom-input::file-selector-button {
+  margin-right: 0.75rem;
+  padding: 0.55rem 0.8rem;
+
+  font: inherit;
+  font-weight: 600;
+
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+
+  border: 1px solid var(--color-border-strong);
+  border-radius: 0.3rem;
+
+  cursor: pointer;
 }
+
+#rom-input::file-selector-button:hover {
+  background: var(--color-surface-hover);
+}
+
+.controls {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+
+  gap: 0.5rem;
+
+  margin: 0;
+}
+
+.controls button {
+  min-width: 5.5rem;
+  padding: 0.6rem 0.9rem;
+
+  font-weight: 600;
+
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+
+  border: 1px solid var(--color-border-strong);
+  border-radius: 0.3rem;
+
+  cursor: pointer;
+}
+
+.controls button:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+}
+
+.controls button:disabled {
+  opacity: 0.45;
+
+  cursor: default;
+}
+
+#run-toggle-button {
+  color: var(--color-on-accent);
+  background: var(--color-accent);
+
+  border-color: var(--color-accent);
+}
+
+#run-toggle-button:hover:not(:disabled) {
+  background: var(--color-accent-strong);
+  border-color: var(--color-accent-strong);
+}
+
+.theme-picker {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+
+  gap: 0.5rem;
+}
+
+.theme-picker label {
+  font-weight: 600;
+}
+
+#theme-select {
+  padding: 0.55rem 0.7rem;
+
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+
+  border: 1px solid var(--color-border-strong);
+  border-radius: 0.3rem;
+
+  cursor: pointer;
+}
+
+#theme-select:hover {
+  background: var(--color-surface-hover);
+}
+
+/*
+ * Main workspace
+ *
+ * The play area owns the display and keypad.
+ * Inspection lives beside it rather than between them.
+ */
+
+.workspace {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 2fr)
+    minmax(24rem, 1fr);
+
+  gap: 1rem;
+
+  align-items: start;
+}
+
+.play-area {
+  display: grid;
+  min-width: 0;
+
+  gap: 1rem;
+}
+
+/*
+ * CHIP-8 display
+ */
 
 .display {
-  width: 100%;
+  min-width: 0;
+  padding: 0.75rem;
+
+  background: var(--color-surface);
+
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
 }
 
 #chip8-display {
   display: block;
+
   width: 100%;
   aspect-ratio: 2 / 1;
 
-  background: #000;
-  border: 1px solid #555;
+  background: var(--color-display-background);
+
+  border: 1px solid var(--color-border-strong);
+  border-radius: 0.3rem;
+
+  box-shadow: 0 0 1rem var(--color-display-glow);
 
   image-rendering: pixelated;
 }
 
-.inspection {
+/*
+ * Virtual keypad
+ *
+ * Wide, shallow keys are intentional here. Square buttons would consume
+ * too much vertical space in the docked play-area layout.
+ */
+
+.keypad {
+  min-width: 0;
+  margin: 0;
+  padding: 1rem;
+
+  background: var(--color-surface);
+
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+}
+
+.keypad h2 {
+  margin: 0 0 0.75rem;
+
+  font-size: 1rem;
+}
+
+.virtual-keypad {
   display: grid;
-  grid-template-columns: minmax(15rem, 1fr) minmax(0, 2fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+
+  gap: 0.5rem;
+
+  width: 100%;
+
+  touch-action: none;
+  user-select: none;
+}
+
+.virtual-keypad button {
+  min-width: 0;
+  min-height: 3rem;
+
+  padding: 0.6rem 1rem;
+
+  font-size: 1.1rem;
+  font-weight: 700;
+
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+
+  border: 1px solid var(--color-border-strong);
+  border-radius: 0.4rem;
+
+  cursor: pointer;
+}
+
+.virtual-keypad button:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+}
+
+.virtual-keypad button[data-pressed="true"] {
+  color: var(--color-on-accent);
+  background: var(--color-accent);
+
+  border-color: var(--color-accent);
+
+  transform: translateY(1px);
+}
+
+.virtual-keypad button:disabled {
+  opacity: 0.4;
+
+  cursor: default;
+}
+
+/*
+ * Inspector
+ */
+
+.inspection {
+  position: sticky;
+  top: 5.5rem;
+
+  display: grid;
+  min-width: 0;
+  max-height: calc(100vh - 6.5rem);
 
   gap: 1rem;
-  margin-top: 1.5rem;
+
+  margin: 0;
+  padding-right: 0.25rem;
+
+  overflow: auto;
+
+  align-content: start;
+  scrollbar-gutter: stable;
 }
 
 .cpu-state,
@@ -82,9 +450,10 @@ header p {
   min-width: 0;
   padding: 1rem;
 
-  background: #1d1d1d;
-  border: 1px solid #444;
-  border-radius: 0.4rem;
+  background: var(--color-surface);
+
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
 }
 
 .cpu-state h2,
@@ -99,12 +468,73 @@ header p {
 #nearby-instructions-empty,
 #instruction-history-empty {
   margin: 0;
-  color: #a8a8a8;
+
+  color: var(--color-text-muted);
 }
+
+/*
+ * CPU state
+ */
+
+.register-grid,
+.cpu-special-state {
+  margin: 0;
+}
+
+.register-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(4.25rem, 1fr));
+
+  gap: 0.5rem;
+}
+
+.register-grid div,
+.cpu-special-state div {
+  display: flex;
+  justify-content: space-between;
+
+  gap: 0.5rem;
+}
+
+.register-grid dt,
+.cpu-special-state dt {
+  color: var(--color-text-muted);
+}
+
+.register-grid dd,
+.cpu-special-state dd {
+  margin: 0;
+
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+
+  font-variant-numeric: tabular-nums;
+}
+
+.cpu-special-state {
+  display: grid;
+
+  gap: 0.5rem;
+
+  margin-top: 1rem;
+  padding-top: 1rem;
+
+  border-top: 1px solid var(--color-border);
+}
+
+#cpu-stack {
+  overflow-wrap: anywhere;
+
+  text-align: right;
+}
+
+/*
+ * Instruction inspection
+ */
 
 .instruction-column {
   display: grid;
   min-width: 0;
+
   gap: 1rem;
 
   align-content: start;
@@ -112,6 +542,7 @@ header p {
 
 #nearby-instructions-list {
   display: grid;
+
   gap: 0.25rem;
 
   margin: 0;
@@ -128,7 +559,7 @@ header p {
     max-content
     minmax(0, 1fr);
 
-  gap: 0.75rem;
+  gap: 0.5rem;
 
   align-items: baseline;
 
@@ -137,7 +568,8 @@ header p {
   border-radius: 0.25rem;
 
   font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
-  font-size: 0.9rem;
+
+  font-size: 0.85rem;
 }
 
 .nearby-instruction-marker {
@@ -151,68 +583,27 @@ header p {
 
 .nearby-instruction-text {
   min-width: 0;
+
   overflow-wrap: anywhere;
 }
 
 .nearby-instruction-row[data-current="true"] {
-  background: #303030;
+  background: var(--color-accent-surface);
+
   font-weight: 600;
 }
 
-.nearby-instruction-row[data-availability="unavailable"] {
-  color: #ff8a8a;
+.nearby-instruction-row[data-current="true"] .nearby-instruction-marker {
+  color: var(--color-accent-strong);
+}
+
+.nearby-instruction-row[data-availability="unavailable"],
+#instruction-history-list li[data-outcome="failure"] {
+  color: var(--color-danger);
 }
 
 .nearby-instruction-row[data-availability="unavailable"] .nearby-instruction-text {
   grid-column: 3 / -1;
-}
-
-.register-grid,
-.cpu-special-state {
-  margin: 0;
-}
-
-.register-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-
-  gap: 0.5rem;
-}
-
-.register-grid div,
-.cpu-special-state div {
-  display: flex;
-  justify-content: space-between;
-
-  gap: 0.5rem;
-}
-
-.register-grid dt,
-.cpu-special-state dt {
-  color: #a8a8a8;
-}
-
-.register-grid dd,
-.cpu-special-state dd {
-  margin: 0;
-
-  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
-  font-variant-numeric: tabular-nums;
-}
-
-.cpu-special-state {
-  display: grid;
-  gap: 0.5rem;
-
-  margin-top: 1rem;
-  padding-top: 1rem;
-
-  border-top: 1px solid #333;
-}
-
-#cpu-stack {
-  overflow-wrap: anywhere;
-  text-align: right;
 }
 
 .instruction-history {
@@ -220,7 +611,8 @@ header p {
 }
 
 #instruction-history-list {
-  max-height: 18rem;
+  max-height: 14rem;
+
   margin: 0;
   padding-left: 2.25rem;
 
@@ -233,102 +625,162 @@ header p {
 
 #instruction-history-list code {
   font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
-  font-size: 0.9rem;
+
+  font-size: 0.85rem;
 
   white-space: nowrap;
 }
 
-#instruction-history-list li[data-outcome="failure"] {
-  color: #ff8a8a;
+/*
+ * Bottom status strip
+ */
+
+.app-status {
+  min-width: 0;
+  padding: 0.65rem 0.85rem;
+
+  background: var(--color-surface);
+
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
 }
 
-.controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  margin: 1rem 0 2rem;
+#status {
+  min-height: 1.5rem;
+
+  margin: 0;
+
+  color: var(--color-text-muted);
 }
 
-.controls button {
-  min-width: 6rem;
-  padding: 0.6rem 1rem;
-
-  font: inherit;
-  font-weight: 600;
-
-  color: #f5f5f5;
-  background: #2a2a2a;
-
-  border: 1px solid #555;
-  border-radius: 0.25rem;
-
-  cursor: pointer;
+#status[data-state="error"] {
+  color: var(--color-danger);
 }
 
-.controls button:hover:not(:disabled) {
-  background: #383838;
+/*
+ * Keyboard accessibility
+ */
+
+button:focus-visible,
+#rom-input:focus-visible,
+#rom-input::file-selector-button:focus-visible,
+#theme-select:focus-visible {
+  outline: 2px solid var(--color-accent-strong);
+  outline-offset: 2px;
 }
 
-.controls button:disabled {
-  opacity: 0.45;
-  cursor: default;
+/*
+ * Narrow desktop / tablet
+ *
+ * The play area remains first. The inspector moves underneath it but uses
+ * the available horizontal space efficiently.
+ */
+
+@media (max-width: 1100px) {
+  .app {
+    width: min(100% - 1.5rem, 960px);
+  }
+
+  .toolbar {
+    flex-wrap: wrap;
+  }
+
+  .rom-loader {
+    flex-basis: 100%;
+  }
+
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .inspection {
+    position: static;
+
+    grid-template-columns:
+      minmax(15rem, 0.8fr)
+      minmax(0, 1.2fr);
+
+    max-height: none;
+
+    padding-right: 0;
+
+    overflow: visible;
+  }
 }
 
-.keypad {
-  margin-top: 2rem;
-}
-
-.keypad h2 {
-  font-size: 1rem;
-  margin-bottom: 0.75rem;
-}
-
-.virtual-keypad {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(3rem, 1fr));
-
-  gap: 0.5rem;
-
-  width: min(100%, 24rem);
-
-  touch-action: none;
-  user-select: none;
-}
-
-.virtual-keypad button {
-  aspect-ratio: 1;
-
-  min-width: 3rem;
-
-  font: inherit;
-  font-size: 1.1rem;
-  font-weight: 700;
-
-  color: #f5f5f5;
-  background: #2a2a2a;
-
-  border: 1px solid #555;
-  border-radius: 0.4rem;
-
-  cursor: pointer;
-}
-
-.virtual-keypad button:hover:not(:disabled) {
-  background: #383838;
-}
-
-.virtual-keypad button[data-pressed="true"] {
-  background: #555;
-  transform: translateY(1px);
-}
-
-.virtual-keypad button:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
+/*
+ * Mobile / narrow viewport
+ */
 
 @media (max-width: 700px) {
+  .app {
+    width: calc(100% - 1rem);
+    padding-top: 0.5rem;
+  }
+
+  .app-header {
+    display: block;
+  }
+
+  .app-header p {
+    margin-top: 0.25rem;
+  }
+
+  .toolbar {
+    align-items: stretch;
+
+    padding: 0.65rem;
+  }
+
+  .rom-loader {
+    grid-template-columns: 1fr;
+
+    gap: 0.4rem;
+  }
+
+  .controls {
+    display: grid;
+    grid-template-columns:
+      minmax(0, 2fr)
+      minmax(0, 1fr)
+      minmax(0, 1fr);
+
+    width: 100%;
+  }
+
+  .controls button {
+    min-width: 0;
+  }
+
+  .theme-picker {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  #theme-select {
+    flex: 1 1 auto;
+    max-width: 14rem;
+  }
+
+  .display {
+    padding: 0.5rem;
+  }
+
+  .keypad {
+    padding: 0.75rem;
+  }
+
+  .virtual-keypad button {
+    min-height: 3.25rem;
+
+    padding: 0.5rem;
+  }
+
   .inspection {
     grid-template-columns: 1fr;
+  }
+
+  .register-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

@@ -10,181 +10,203 @@
 
   <body>
     <main class="app">
-      <header>
+      <header class="app-header">
         <h1>Chip8NX</h1>
         <p>Classic CHIP-8 web host</p>
       </header>
 
-      <section class="rom-loader" aria-label="ROM loader">
-        <label for="rom-input"> Choose ROM </label>
-
-        <input id="rom-input" type="file" accept=".ch8,application/octet-stream" />
-
-        <p id="status" role="status">Choose a CHIP-8 ROM to begin.</p>
-      </section>
-
-      <section class="controls" aria-label="Emulation controls">
-        <button id="start-button" type="button" disabled>Start</button>
-
-        <button id="pause-button" type="button" disabled>Pause</button>
-
-        <button id="step-button" type="button" disabled>Step</button>
-
-        <button id="reset-button" type="button" disabled>Reset</button>
-      </section>
-
-      <section class="display" aria-label="CHIP-8 display">
-        <canvas
-          id="chip8-display"
-          width="64"
-          height="32"
-          aria-label="CHIP-8 framebuffer"
-        ></canvas>
-      </section>
-
-      <section class="inspection" aria-label="Machine inspection">
-        <section class="cpu-state" aria-labelledby="cpu-state-heading">
-          <h2 id="cpu-state-heading">CPU state</h2>
-
-          <p id="cpu-state-empty">No machine loaded.</p>
-
-          <div id="cpu-state-values" hidden>
-            <dl class="register-grid">
-              <div>
-                <dt>V0</dt>
-                <dd data-register="V0">0x00</dd>
-              </div>
-              <div>
-                <dt>V1</dt>
-                <dd data-register="V1">0x00</dd>
-              </div>
-              <div>
-                <dt>V2</dt>
-                <dd data-register="V2">0x00</dd>
-              </div>
-              <div>
-                <dt>V3</dt>
-                <dd data-register="V3">0x00</dd>
-              </div>
-              <div>
-                <dt>V4</dt>
-                <dd data-register="V4">0x00</dd>
-              </div>
-              <div>
-                <dt>V5</dt>
-                <dd data-register="V5">0x00</dd>
-              </div>
-              <div>
-                <dt>V6</dt>
-                <dd data-register="V6">0x00</dd>
-              </div>
-              <div>
-                <dt>V7</dt>
-                <dd data-register="V7">0x00</dd>
-              </div>
-              <div>
-                <dt>V8</dt>
-                <dd data-register="V8">0x00</dd>
-              </div>
-              <div>
-                <dt>V9</dt>
-                <dd data-register="V9">0x00</dd>
-              </div>
-              <div>
-                <dt>VA</dt>
-                <dd data-register="VA">0x00</dd>
-              </div>
-              <div>
-                <dt>VB</dt>
-                <dd data-register="VB">0x00</dd>
-              </div>
-              <div>
-                <dt>VC</dt>
-                <dd data-register="VC">0x00</dd>
-              </div>
-              <div>
-                <dt>VD</dt>
-                <dd data-register="VD">0x00</dd>
-              </div>
-              <div>
-                <dt>VE</dt>
-                <dd data-register="VE">0x00</dd>
-              </div>
-              <div>
-                <dt>VF</dt>
-                <dd data-register="VF">0x00</dd>
-              </div>
-            </dl>
-
-            <dl class="cpu-special-state">
-              <div>
-                <dt>I</dt>
-                <dd id="cpu-index-register">0x000</dd>
-              </div>
-              <div>
-                <dt>PC</dt>
-                <dd id="cpu-program-counter">0x000</dd>
-              </div>
-              <div>
-                <dt>DT</dt>
-                <dd id="cpu-delay-timer">0x00</dd>
-              </div>
-              <div>
-                <dt>ST</dt>
-                <dd id="cpu-sound-timer">0x00</dd>
-              </div>
-              <div>
-                <dt>Stack</dt>
-                <dd id="cpu-stack">—</dd>
-              </div>
-            </dl>
-          </div>
+      <section class="toolbar" aria-label="Emulator toolbar">
+        <section class="rom-loader" aria-label="ROM loader">
+          <label for="rom-input">Choose ROM</label>
+          <input id="rom-input" type="file" accept=".ch8,application/octet-stream" />
         </section>
 
-        <div class="instruction-column">
-          <section class="nearby-instructions" aria-labelledby="nearby-instructions-heading">
-            <h2 id="nearby-instructions-heading">Nearby instructions</h2>
+        <section class="controls" aria-label="Emulation controls">
+          <button id="run-toggle-button" type="button" disabled>Start</button>
 
-            <p id="nearby-instructions-empty">No machine loaded.</p>
+          <button id="step-button" type="button" disabled>Step</button>
 
-            <ol id="nearby-instructions-list"></ol>
-          </section>
+          <button id="reset-button" type="button" disabled>Reset</button>
+        </section>
 
-          <section class="instruction-history" aria-labelledby="instruction-history-heading">
-            <h2 id="instruction-history-heading">Recent instructions</h2>
+        <section class="theme-picker" aria-label="Appearance">
+          <label for="theme-select">Theme</label>
 
-            <p id="instruction-history-empty">No instruction attempts yet.</p>
-
-            <ol id="instruction-history-list"></ol>
-          </section>
-        </div>
+          <select id="theme-select">
+            <option value="retro-green">Retro Green</option>
+            <option value="retro-amber">Retro Amber</option>
+            <option value="dark-theme">Dark</option>
+          </select>
+        </section>
       </section>
 
-      <section class="keypad" aria-label="Virtual CHIP-8 keypad">
-        <h2>Keypad</h2>
+      <div class="workspace">
+        <section class="play-area" aria-label="CHIP-8 play area">
+          <section class="display" aria-label="CHIP-8 display">
+            <canvas
+              id="chip8-display"
+              width="64"
+              height="32"
+              aria-label="CHIP-8 framebuffer"
+            ></canvas>
+          </section>
 
-        <div id="virtual-keypad" class="virtual-keypad">
-          <button type="button" data-chip8-key="1" disabled>1</button>
-          <button type="button" data-chip8-key="2" disabled>2</button>
-          <button type="button" data-chip8-key="3" disabled>3</button>
-          <button type="button" data-chip8-key="C" disabled>C</button>
+          <section class="keypad" aria-label="Virtual CHIP-8 keypad">
+            <h2>Keypad</h2>
 
-          <button type="button" data-chip8-key="4" disabled>4</button>
-          <button type="button" data-chip8-key="5" disabled>5</button>
-          <button type="button" data-chip8-key="6" disabled>6</button>
-          <button type="button" data-chip8-key="D" disabled>D</button>
+            <div id="virtual-keypad" class="virtual-keypad">
+              <button type="button" data-chip8-key="1" disabled>1</button>
+              <button type="button" data-chip8-key="2" disabled>2</button>
+              <button type="button" data-chip8-key="3" disabled>3</button>
+              <button type="button" data-chip8-key="C" disabled>C</button>
 
-          <button type="button" data-chip8-key="7" disabled>7</button>
-          <button type="button" data-chip8-key="8" disabled>8</button>
-          <button type="button" data-chip8-key="9" disabled>9</button>
-          <button type="button" data-chip8-key="E" disabled>E</button>
+              <button type="button" data-chip8-key="4" disabled>4</button>
+              <button type="button" data-chip8-key="5" disabled>5</button>
+              <button type="button" data-chip8-key="6" disabled>6</button>
+              <button type="button" data-chip8-key="D" disabled>D</button>
 
-          <button type="button" data-chip8-key="A" disabled>A</button>
-          <button type="button" data-chip8-key="0" disabled>0</button>
-          <button type="button" data-chip8-key="B" disabled>B</button>
-          <button type="button" data-chip8-key="F" disabled>F</button>
-        </div>
-      </section>
+              <button type="button" data-chip8-key="7" disabled>7</button>
+              <button type="button" data-chip8-key="8" disabled>8</button>
+              <button type="button" data-chip8-key="9" disabled>9</button>
+              <button type="button" data-chip8-key="E" disabled>E</button>
+
+              <button type="button" data-chip8-key="A" disabled>A</button>
+              <button type="button" data-chip8-key="0" disabled>0</button>
+              <button type="button" data-chip8-key="B" disabled>B</button>
+              <button type="button" data-chip8-key="F" disabled>F</button>
+            </div>
+          </section>
+        </section>
+
+        <aside class="inspection" aria-label="Machine inspection">
+          <section class="cpu-state" aria-labelledby="cpu-state-heading">
+            <h2 id="cpu-state-heading">CPU state</h2>
+
+            <p id="cpu-state-empty">No machine loaded.</p>
+
+            <div id="cpu-state-values" hidden>
+              <dl class="register-grid">
+                <div>
+                  <dt>V0</dt>
+                  <dd data-register="V0">0x00</dd>
+                </div>
+                <div>
+                  <dt>V1</dt>
+                  <dd data-register="V1">0x00</dd>
+                </div>
+                <div>
+                  <dt>V2</dt>
+                  <dd data-register="V2">0x00</dd>
+                </div>
+                <div>
+                  <dt>V3</dt>
+                  <dd data-register="V3">0x00</dd>
+                </div>
+
+                <div>
+                  <dt>V4</dt>
+                  <dd data-register="V4">0x00</dd>
+                </div>
+                <div>
+                  <dt>V5</dt>
+                  <dd data-register="V5">0x00</dd>
+                </div>
+                <div>
+                  <dt>V6</dt>
+                  <dd data-register="V6">0x00</dd>
+                </div>
+                <div>
+                  <dt>V7</dt>
+                  <dd data-register="V7">0x00</dd>
+                </div>
+
+                <div>
+                  <dt>V8</dt>
+                  <dd data-register="V8">0x00</dd>
+                </div>
+                <div>
+                  <dt>V9</dt>
+                  <dd data-register="V9">0x00</dd>
+                </div>
+                <div>
+                  <dt>VA</dt>
+                  <dd data-register="VA">0x00</dd>
+                </div>
+                <div>
+                  <dt>VB</dt>
+                  <dd data-register="VB">0x00</dd>
+                </div>
+
+                <div>
+                  <dt>VC</dt>
+                  <dd data-register="VC">0x00</dd>
+                </div>
+                <div>
+                  <dt>VD</dt>
+                  <dd data-register="VD">0x00</dd>
+                </div>
+                <div>
+                  <dt>VE</dt>
+                  <dd data-register="VE">0x00</dd>
+                </div>
+                <div>
+                  <dt>VF</dt>
+                  <dd data-register="VF">0x00</dd>
+                </div>
+              </dl>
+
+              <dl class="cpu-special-state">
+                <div>
+                  <dt>I</dt>
+                  <dd id="cpu-index-register">0x000</dd>
+                </div>
+
+                <div>
+                  <dt>PC</dt>
+                  <dd id="cpu-program-counter">0x000</dd>
+                </div>
+
+                <div>
+                  <dt>DT</dt>
+                  <dd id="cpu-delay-timer">0x00</dd>
+                </div>
+
+                <div>
+                  <dt>ST</dt>
+                  <dd id="cpu-sound-timer">0x00</dd>
+                </div>
+
+                <div>
+                  <dt>Stack</dt>
+                  <dd id="cpu-stack">—</dd>
+                </div>
+              </dl>
+            </div>
+          </section>
+
+          <div class="instruction-column">
+            <section class="nearby-instructions" aria-labelledby="nearby-instructions-heading">
+              <h2 id="nearby-instructions-heading">Nearby instructions</h2>
+
+              <p id="nearby-instructions-empty">No machine loaded.</p>
+
+              <ol id="nearby-instructions-list"></ol>
+            </section>
+
+            <section class="instruction-history" aria-labelledby="instruction-history-heading">
+              <h2 id="instruction-history-heading">Recent instructions</h2>
+
+              <p id="instruction-history-empty">No instruction attempts yet.</p>
+
+              <ol id="instruction-history-list"></ol>
+            </section>
+          </div>
+        </aside>
+      </div>
+
+      <footer class="app-status">
+        <p id="status" role="status">Choose a CHIP-8 ROM to begin.</p>
+      </footer>
     </main>
 
     <script type="module" src="/src/main.ts"></script>

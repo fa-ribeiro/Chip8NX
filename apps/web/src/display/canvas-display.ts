@@ -1,5 +1,10 @@
 import { type Display, DisplayBuffer } from "@chip8nx/core";
 
+export interface CanvasDisplayPalette {
+  readonly background: string;
+  readonly foreground: string;
+}
+
 /**
  * Browser display adapter backed by an HTML canvas.
  *
@@ -12,7 +17,12 @@ import { type Display, DisplayBuffer } from "@chip8nx/core";
 export class CanvasDisplay implements Display {
   private readonly context: CanvasRenderingContext2D;
 
-  public constructor(private readonly canvas: HTMLCanvasElement) {
+  private palette: CanvasDisplayPalette;
+
+  public constructor(
+    private readonly canvas: HTMLCanvasElement,
+    palette: CanvasDisplayPalette,
+  ) {
     const context = canvas.getContext("2d");
 
     if (context === null) {
@@ -20,6 +30,17 @@ export class CanvasDisplay implements Display {
     }
 
     this.context = context;
+    this.palette = palette;
+  }
+
+  /**
+   * Changes the presentation palette used by future renders.
+   *
+   * This affects only browser presentation. It does not alter the
+   * underlying CHIP-8 DisplayBuffer.
+   */
+  public setPalette(palette: CanvasDisplayPalette): void {
+    this.palette = palette;
   }
 
   /**
@@ -28,11 +49,11 @@ export class CanvasDisplay implements Display {
   public render(buffer: DisplayBuffer): void {
     this.resizeBackingStore(buffer);
 
-    this.context.fillStyle = "#000000";
+    this.context.fillStyle = this.palette.background;
 
     this.context.fillRect(0, 0, buffer.width, buffer.height);
 
-    this.context.fillStyle = "#ffffff";
+    this.context.fillStyle = this.palette.foreground;
 
     for (let y = 0; y < buffer.height; y++) {
       for (let x = 0; x < buffer.width; x++) {
