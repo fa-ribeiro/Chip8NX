@@ -27,6 +27,7 @@ import {
 import {
   ClassicInstructionFormatter,
   ClassicInstructionTraceFormatter,
+  Disassembler,
   InstructionTraceBuffer,
 } from "@chip8nx/inspection";
 
@@ -37,6 +38,7 @@ import { VirtualKeypad } from "./keyboard/virtual-keypad.ts";
 import { WebAudioBeeper } from "./audio/web-audio-beeper.ts";
 import {
   createWebInspectionViewModel,
+  type CurrentInstructionInspection,
   type WebInspectionViewModel,
 } from "./inspection/web-inspection-view-model.ts";
 import { WebInspectionRenderer } from "./inspection/web-inspection-renderer.ts";
@@ -226,9 +228,11 @@ function createMachine(romName: string, program: MemoryImage): WebMachineSession
 
   const traceHistory = new InstructionTraceBuffer(TRACE_HISTORY_CAPACITY);
 
-  const traceFormatter = new ClassicInstructionTraceFormatter(
-    new ClassicInstructionFormatter(),
-  );
+  const instructionFormatter = new ClassicInstructionFormatter();
+
+  const disassembler = new Disassembler(new Decoder(), instructionFormatter);
+
+  const traceFormatter = new ClassicInstructionTraceFormatter(instructionFormatter);
 
   const cpu = new Cpu(context, new Decoder(), new InstructionExecutor(), traceHistory);
 
@@ -247,6 +251,32 @@ function createMachine(romName: string, program: MemoryImage): WebMachineSession
     profile.display.refreshFrequency,
   );
 
+  const snapshotInspection = (): WebInspectionViewModel => {
+    const cpuState = cpu.snapshot();
+
+    let currentInstruction: CurrentInstructionInspection;
+
+    try {
+      currentInstruction = {
+        outcome: "success",
+        instruction: disassembler.disassembleAt(context.memory, cpuState.programCounter),
+      };
+    } catch (error) {
+      currentInstruction = {
+        outcome: "failure",
+        address: cpuState.programCounter,
+        error,
+      };
+    }
+
+    return createWebInspectionViewModel(
+      cpuState,
+      currentInstruction,
+      traceHistory.snapshot(),
+      traceFormatter,
+    );
+  };
+
   return {
     romName,
     program,
@@ -258,8 +288,7 @@ function createMachine(romName: string, program: MemoryImage): WebMachineSession
     runtime,
 
     traceHistory,
-    snapshotInspection: () =>
-      createWebInspectionViewModel(cpu.snapshot(), traceHistory.snapshot(), traceFormatter),
+    snapshotInspection,
 
     displayBuffer,
     browserKeyboard,

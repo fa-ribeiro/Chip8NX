@@ -198,8 +198,7 @@ This milestone establishes the inspection foundation needed for later debugger, 
 
 The Web frontend can load and run Classic CHIP-8 programs with Canvas framebuffer presentation, physical and virtual keyboard input, execution lifecycle controls, and Web Audio sound presentation.
 
-The Web application also completes the second-host composition case study.
-Comparison with the Terminal host validates the existing Core host boundaries while showing that host-level composition structures should be allowed to differ according to platform responsibilities.
+The Web application also completes the second-host composition case study. Comparison with the Terminal host validates the existing Core host boundaries while showing that host-level composition structures should be allowed to differ according to platform responsibilities.
 
 The Terminal Level 1 / Level 2 / Level 3 model therefore remains a terminal-specific composition model, while application-owned composition remains the project-wide rule.
 
@@ -256,8 +255,7 @@ Level 3 — Ready-to-use host
 
 All three levels are built from the same underlying components and preserve the ability to mix standard and custom subsystems.
 
-This provides concrete evidence for the layered-composition model without yet generalizing it to the reusable Core. The pattern will be evaluated again while developing a second, substantially different host before any project-wide composition abstraction is adopted.
-Terminal feature development is considered complete for this milestone. Further terminal changes should be limited to bug fixes, documentation corrections, or architectural issues revealed by future hosts.
+This provides concrete evidence for the layered-composition model without yet generalizing it to the reusable Core. The pattern will be evaluated again while developing a second, substantially different host before any project-wide composition abstraction is adopted. Terminal feature development is considered complete for this milestone. Further terminal changes should be limited to bug fixes, documentation corrections, or architectural issues revealed by future hosts.
 
 ## [0.2.0] - 2026-09-02 - Classic CHIP-8 Baseline
 
@@ -296,8 +294,7 @@ Chip8NX `v0.2.0` passes:
 - Timendus Quirks in Classic CHIP-8 mode;
 - Timendus Keypad.
 
-The Classic opcode audit confirms that every Classic opcode family is intentionally handled by the implementation.
-Ordinary CHIP-8 virtual-machine instructions have executable semantics and direct unit coverage. The historical `0mmm` instruction is recognized and decoded but intentionally rejected because it transfers execution to native CDP1802 machine code outside the scope of the generic CHIP-8 core.
+The Classic opcode audit confirms that every Classic opcode family is intentionally handled by the implementation. Ordinary CHIP-8 virtual-machine instructions have executable semantics and direct unit coverage. The historical `0mmm` instruction is recognized and decoded but intentionally rejected because it transfers execution to native CDP1802 machine code outside the scope of the generic CHIP-8 core.
 
 ### Milestone
 

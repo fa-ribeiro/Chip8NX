@@ -77,6 +77,7 @@ header p {
 }
 
 .cpu-state,
+.current-instruction,
 .instruction-history {
   min-width: 0;
   padding: 1rem;
@@ -87,6 +88,7 @@ header p {
 }
 
 .cpu-state h2,
+.current-instruction h2,
 .instruction-history h2 {
   margin: 0 0 1rem;
 
@@ -94,9 +96,51 @@ header p {
 }
 
 #cpu-state-empty,
+#current-instruction-empty,
 #instruction-history-empty {
   margin: 0;
   color: #a8a8a8;
+}
+
+.instruction-column {
+  display: grid;
+  min-width: 0;
+  gap: 1rem;
+
+  align-content: start;
+}
+
+#current-instruction-available {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: 0.9rem;
+}
+
+#current-instruction-available[hidden] {
+  display: none;
+}
+
+#current-instruction-address,
+#current-instruction-opcode {
+  flex: 0 0 auto;
+}
+
+#current-instruction-text {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+#current-instruction-unavailable {
+  margin: 0;
+
+  color: #ff8a8a;
+}
+
+#current-instruction-unavailable-address {
+  margin-right: 0.5rem;
 }
 
 .register-grid,

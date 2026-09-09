@@ -1708,35 +1708,25 @@ boundedness
 
 The tracing architecture follows these stable rules:
 
-1. **One trace represents one CPU attempt.**
-   `Cpu.step()` owns the fetch/decode/execute observation boundary; the runtime owns when scheduled attempts occur.
+1. **One trace represents one CPU attempt.** `Cpu.step()` owns the fetch/decode/execute observation boundary; the runtime owns when scheduled attempts occur.
 
-2. **Observation is optional and non-interfering.**
-   Without an observer, the CPU creates no trace snapshots. Observer failures cannot alter machine behavior or replace execution errors.
+2. **Observation is optional and non-interfering.** Without an observer, the CPU creates no trace snapshots. Observer failures cannot alter machine behavior or replace execution errors.
 
-3. **Trace records preserve semantic execution data.**
-   Success and failure are explicit variants, decoded instructions are retained when available, and `before` / `after` describe actual CPU state rather than an imagined transactional rollback.
+3. **Trace records preserve semantic execution data.** Success and failure are explicit variants, decoded instructions are retained when available, and `before` / `after` describe actual CPU state rather than an imagined transactional rollback.
 
-4. **CPU snapshots are intentionally scoped.**
-   `CpuState` captures CPU-visible state, not complete memory, display, input, or runtime state.
+4. **CPU snapshots are intentionally scoped.** `CpuState` captures CPU-visible state, not complete memory, display, input, or runtime state.
 
-5. **Core owns the probe and signal.**
-   `InstructionTrace` and `InstructionTraceObserver` belong to `@chip8nx/core`.
+5. **Core owns the probe and signal.** `InstructionTrace` and `InstructionTraceObserver` belong to `@chip8nx/core`.
 
-6. **Passive consumers live in Inspection.**
-   Formatting and bounded history belong to `@chip8nx/inspection`; Core has no dependency on those tools.
+6. **Passive consumers live in Inspection.** Formatting and bounded history belong to `@chip8nx/inspection`; Core has no dependency on those tools.
 
-7. **Presentation remains application-owned.**
-   Console output, DOM rendering, files, and other host presentation stay outside both reusable packages.
+7. **Presentation remains application-owned.** Console output, DOM rendering, files, and other host presentation stay outside both reusable packages.
 
-8. **History is bounded and observational.**
-   `InstructionTraceBuffer` uses constant-time ring-buffer writes, produces chronological snapshots on demand, and never controls execution.
+8. **History is bounded and observational.** `InstructionTraceBuffer` uses constant-time ring-buffer writes, produces chronological snapshots on demand, and never controls execution.
 
-9. **Retries remain visible.**
-   Waiting `Fx0A` and vblank-gated `Dxyn` attempts are preserved individually even when presentation later chooses to summarize them.
+9. **Retries remain visible.** Waiting `Fx0A` and vblank-gated `Dxyn` attempts are preserved individually even when presentation later chooses to summarize them.
 
-10. **Public boundaries are executable architecture.**
-    Core observation and Core-plus-Inspection composition are verified separately through their public APIs.
+10. **Public boundaries are executable architecture.** Core observation and Core-plus-Inspection composition are verified separately through their public APIs.
 
 Together these rules provide enough observability for diagnostics and interactive inspection without making tracing itself a debugger or execution controller.
 

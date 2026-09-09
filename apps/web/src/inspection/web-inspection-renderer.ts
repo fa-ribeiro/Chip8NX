@@ -1,4 +1,5 @@
 import type {
+  CurrentInstructionViewModel,
   InstructionTraceRowViewModel,
   WebInspectionViewModel,
 } from "./web-inspection-view-model.ts";
@@ -19,6 +20,17 @@ export class WebInspectionRenderer {
   private readonly delayTimer: HTMLElement;
   private readonly soundTimer: HTMLElement;
   private readonly stack: HTMLElement;
+
+  private readonly currentInstructionEmpty: HTMLElement;
+
+  private readonly currentInstructionAvailable: HTMLElement;
+  private readonly currentInstructionAddress: HTMLElement;
+  private readonly currentInstructionOpcode: HTMLElement;
+  private readonly currentInstructionText: HTMLElement;
+
+  private readonly currentInstructionUnavailable: HTMLElement;
+  private readonly currentInstructionUnavailableAddress: HTMLElement;
+  private readonly currentInstructionUnavailableReason: HTMLElement;
 
   private readonly instructionHistoryEmpty: HTMLElement;
   private readonly instructionHistoryList: HTMLOListElement;
@@ -42,6 +54,34 @@ export class WebInspectionRenderer {
 
     this.stack = requireDescendant(root, "#cpu-stack");
 
+    this.currentInstructionEmpty = requireDescendant(root, "#current-instruction-empty");
+
+    this.currentInstructionAvailable = requireDescendant(
+      root,
+      "#current-instruction-available",
+    );
+
+    this.currentInstructionAddress = requireDescendant(root, "#current-instruction-address");
+
+    this.currentInstructionOpcode = requireDescendant(root, "#current-instruction-opcode");
+
+    this.currentInstructionText = requireDescendant(root, "#current-instruction-text");
+
+    this.currentInstructionUnavailable = requireDescendant(
+      root,
+      "#current-instruction-unavailable",
+    );
+
+    this.currentInstructionUnavailableAddress = requireDescendant(
+      root,
+      "#current-instruction-unavailable-address",
+    );
+
+    this.currentInstructionUnavailableReason = requireDescendant(
+      root,
+      "#current-instruction-unavailable-reason",
+    );
+
     this.instructionHistoryEmpty = requireDescendant(root, "#instruction-history-empty");
 
     this.instructionHistoryList = requireDescendant<HTMLOListElement>(
@@ -58,12 +98,17 @@ export class WebInspectionRenderer {
     }
 
     this.renderCpuState(viewModel);
+    this.renderCurrentInstruction(viewModel.currentInstruction);
     this.renderInstructionHistory(viewModel.traces);
   }
 
   private renderNoMachine(): void {
     this.cpuStateEmpty.hidden = false;
     this.cpuStateValues.hidden = true;
+
+    this.currentInstructionEmpty.hidden = false;
+    this.currentInstructionAvailable.hidden = true;
+    this.currentInstructionUnavailable.hidden = true;
 
     this.instructionHistoryEmpty.hidden = false;
     this.instructionHistoryList.replaceChildren();
@@ -89,8 +134,31 @@ export class WebInspectionRenderer {
     this.delayTimer.textContent = viewModel.cpu.delayTimer;
     this.soundTimer.textContent = viewModel.cpu.soundTimer;
 
-    this.stack.textContent =
-      viewModel.cpu.stack.length === 0 ? "—" : viewModel.cpu.stack.join(" → ");
+    this.stack.textContent = viewModel.cpu.stack.length === 0
+      ? "—"
+      : viewModel.cpu.stack.join(" → ");
+  }
+
+  private renderCurrentInstruction(instruction: CurrentInstructionViewModel): void {
+    this.currentInstructionEmpty.hidden = true;
+
+    if (instruction.availability === "available") {
+      this.currentInstructionAvailable.hidden = false;
+      this.currentInstructionUnavailable.hidden = true;
+
+      this.currentInstructionAddress.textContent = instruction.address;
+      this.currentInstructionOpcode.textContent = instruction.opcode;
+      this.currentInstructionText.textContent = instruction.text;
+
+      return;
+    }
+
+    this.currentInstructionAvailable.hidden = true;
+    this.currentInstructionUnavailable.hidden = false;
+
+    this.currentInstructionUnavailableAddress.textContent = instruction.address;
+
+    this.currentInstructionUnavailableReason.textContent = instruction.reason;
   }
 
   private renderInstructionHistory(traces: readonly InstructionTraceRowViewModel[]): void {
@@ -127,8 +195,7 @@ export class WebInspectionRenderer {
   }
 
   private isFollowingLatestInstruction(): boolean {
-    const distanceFromBottom =
-      this.instructionHistoryList.scrollHeight -
+    const distanceFromBottom = this.instructionHistoryList.scrollHeight -
       this.instructionHistoryList.scrollTop -
       this.instructionHistoryList.clientHeight;
 

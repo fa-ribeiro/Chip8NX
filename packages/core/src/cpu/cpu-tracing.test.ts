@@ -59,7 +59,9 @@ Deno.test("CPU emits a successful instruction trace", () => {
   const trace = traces[0];
   assert(trace !== undefined);
   assertEquals(trace.outcome, "success");
-  if (trace.outcome !== "success") throw new Error("Expected success trace");
+  if (trace.outcome !== "success") {
+    throw new Error("Expected success trace");
+  }
   assertEquals(trace.instruction.opcode, opcode(0x6a42));
   assertEquals(trace.before.programCounter, address(0x200));
   assertEquals(trace.after.programCounter, address(0x202));

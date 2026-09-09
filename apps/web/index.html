@@ -141,13 +141,32 @@
           </div>
         </section>
 
-        <section class="instruction-history" aria-labelledby="instruction-history-heading">
-          <h2 id="instruction-history-heading">Recent instructions</h2>
+        <div class="instruction-column">
+          <section class="current-instruction" aria-labelledby="current-instruction-heading">
+            <h2 id="current-instruction-heading">Current instruction</h2>
 
-          <p id="instruction-history-empty">No instruction attempts yet.</p>
+            <p id="current-instruction-empty">No machine loaded.</p>
 
-          <ol id="instruction-history-list"></ol>
-        </section>
+            <code id="current-instruction-available" hidden>
+              <span id="current-instruction-address">0x000</span>
+              <span id="current-instruction-opcode">0000</span>
+              <span id="current-instruction-text"></span>
+            </code>
+
+            <p id="current-instruction-unavailable" hidden>
+              <code id="current-instruction-unavailable-address">0x000</code>
+              <span id="current-instruction-unavailable-reason"></span>
+            </p>
+          </section>
+
+          <section class="instruction-history" aria-labelledby="instruction-history-heading">
+            <h2 id="instruction-history-heading">Recent instructions</h2>
+
+            <p id="instruction-history-empty">No instruction attempts yet.</p>
+
+            <ol id="instruction-history-list"></ol>
+          </section>
+        </div>
       </section>
 
       <section class="keypad" aria-label="Virtual CHIP-8 keypad">
