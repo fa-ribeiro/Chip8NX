@@ -339,6 +339,8 @@ function stepMachine(): void {
 
     setStatus(`Paused ${machine.romName} — stepped one instruction.`);
   } catch (error) {
+    renderMachine(machine);
+
     setStatus(`Unable to step: ${describeError(error)}`, true);
 
     console.error(error);
