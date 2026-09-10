@@ -134,7 +134,7 @@ Those responsibilities do not naturally form the same three composition levels u
 
 Instead, the Web host acts directly as its own composition root:
 
-```text id="3txdgt"
+```text
 @chip8nx/core
     machine execution
     runtime
@@ -194,7 +194,7 @@ For now, explicit construction remains useful architectural documentation. Revis
 
 It retains the references required by the browser application's demonstrated lifecycle and presentation needs:
 
-```text id="e0lv50"
+```text
 ROM lifecycle
     program
     context

@@ -30,7 +30,7 @@ Current topics include:
 - [machine lifecycle](./architecture/machine-lifecycle.md), including construction, initialization, paused/running transitions, single stepping, reset sequencing, and application/runtime ownership;
 - [disassembly](./architecture/disassembly.md), including Core decoding semantics, Inspection-owned disassembly and instruction formatting, strict reusable behavior, and application-level exploratory traversal policy;
 - [tracing](./architecture/tracing.md), including Core CPU-attempt observation, success/failure records, retry visibility, non-interference guarantees, and Inspection-owned formatting and bounded history;
-- host composition across the Terminal and Web applications, including the Web host's composition of Core execution with Inspection-owned CPU-state, nearby-disassembly, and recent-attempt presentation.
+- host composition across the Terminal and Web applications, including the Web host's composition of Core execution and CPU-state observation with Inspection-owned disassembly and recent-attempt tooling.
 
 ### Guides
 

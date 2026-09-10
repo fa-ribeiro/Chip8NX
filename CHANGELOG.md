@@ -98,14 +98,6 @@ This milestone also establishes the Web host's first deliberate usability layer:
 
 Breakpoints, watchpoints, pause conditions, step-over/step-out behavior, memory editing, CHIP-8 variant/profile selection, and other active debugger semantics remain deliberately deferred until concrete use cases demonstrate the need for them.
 
-### Added
-
-- Added the host-independent `@chip8nx/inspection` workspace package for passive CHIP-8 inspection tooling.
-- Added public-package integration coverage proving that Core semantics and observation contracts compose with Inspection disassembly, formatting, and bounded trace history through public APIs only.
-- Added a focused Core public-API integration test for the CPU instruction-observation contract.
-
-### Changed
-
 - Moved instruction formatting, disassembly, bounded trace history, and trace formatting from `@chip8nx/core` to `@chip8nx/inspection`.
 - Reduced Core tracing ownership to the minimal CPU observation boundary: `InstructionTrace`, its success/failure variants, and `InstructionTraceObserver`.
 - Reorganized the private Core observation source under `cpu/observation`, reflecting that instruction traces are produced by `Cpu.step()` rather than by a separate Core tracing subsystem.
