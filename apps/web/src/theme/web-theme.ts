@@ -17,9 +17,9 @@ export interface WebThemeStorage {
 
 export function parseWebTheme(value: string | null): WebTheme | undefined {
   switch (value) {
+    case "dark-theme":
     case "retro-green":
     case "retro-amber":
-    case "dark-theme":
       return value;
 
     default:

@@ -28,11 +28,11 @@ function memoryStorage(initialValue: string | null = null): {
 }
 
 Deno.test("parses supported Web themes", () => {
+  assertEquals(parseWebTheme("dark-theme"), "dark-theme");
+
   assertEquals(parseWebTheme("retro-green"), "retro-green");
 
   assertEquals(parseWebTheme("retro-amber"), "retro-amber");
-
-  assertEquals(parseWebTheme("dark-theme"), "dark-theme");
 
   assertEquals(parseWebTheme("unknown"), undefined);
 });

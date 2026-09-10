@@ -78,6 +78,9 @@ interface WebMachineSession {
 }
 
 const romInput = requireElement<HTMLInputElement>("#rom-input");
+const romLoadButton = requireElement<HTMLButtonElement>("#rom-load-button");
+const romFileName = requireElement<HTMLElement>("#rom-file-name");
+
 const canvas = requireElement<HTMLCanvasElement>("#chip8-display");
 const status = requireElement<HTMLElement>("#status");
 
@@ -85,6 +88,9 @@ const runToggleButton = requireElement<HTMLButtonElement>("#run-toggle-button");
 
 const stepButton = requireElement<HTMLButtonElement>("#step-button");
 const resetButton = requireElement<HTMLButtonElement>("#reset-button");
+
+const machineState = requireElement<HTMLElement>("#machine-state");
+const machineStateLabel = requireElement<HTMLElement>("#machine-state-label");
 
 const themeSelect = requireElement<HTMLSelectElement>("#theme-select");
 
@@ -108,6 +114,16 @@ let animationFrameId: number | undefined;
 
 updateControls();
 inspection.render(undefined);
+
+romLoadButton.addEventListener("click", () => {
+  /*
+   * Clear the native input first so choosing the same file again still
+   * produces a change event and can be used as an explicit ROM reload.
+   */
+  romInput.value = "";
+
+  romInput.click();
+});
 
 romInput.addEventListener("change", () => {
   const rom = romInput.files?.[0];
@@ -166,6 +182,7 @@ async function loadAndRun(rom: File): Promise<void> {
   updateControls();
 
   inspection.render(undefined);
+  romFileName.textContent = "No ROM loaded";
 
   setStatus(`Loading ${rom.name}...`);
 
@@ -185,6 +202,8 @@ async function loadAndRun(rom: File): Promise<void> {
     setStatus(`Running ${rom.name}`);
 
     runHostLoop(machine);
+
+    romFileName.textContent = rom.name;
   } catch (error) {
     machine = undefined;
 
@@ -471,6 +490,9 @@ function updateControls(): void {
     stepButton.disabled = true;
     resetButton.disabled = true;
 
+    machineState.dataset.state = "empty";
+    machineStateLabel.textContent = "No ROM";
+
     return;
   }
 
@@ -481,6 +503,10 @@ function updateControls(): void {
 
   stepButton.disabled = !paused;
   resetButton.disabled = false;
+
+  machineState.dataset.state = paused ? "paused" : "running";
+
+  machineStateLabel.textContent = paused ? "Paused" : "Running";
 }
 
 function renderMachine(session: WebMachineSession): void {
