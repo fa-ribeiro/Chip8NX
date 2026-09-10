@@ -12,6 +12,92 @@ During the `0.x` development phase:
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-09-10 - Web Inspection Workbench
+
+### Added
+
+- Added the host-independent `@chip8nx/inspection` workspace package for passive CHIP-8 inspection tooling.
+- Added public-package integration coverage proving that Core semantics and observation contracts compose with Inspection disassembly, formatting, and bounded trace history through public APIs only.
+- Added a focused Core public-API integration test for the CPU instruction-observation contract.
+- Added a read-only Web inspection workbench showing:
+  - current CPU register, index-register, program-counter, stack, and timer state;
+  - a bounded best-effort disassembly window around the current program counter;
+  - bounded recent CPU instruction-attempt history.
+
+- Added passive inspection of failed CPU attempts so manual stepping and runtime failures can expose the actual post-failure CPU state and retained failed trace.
+- Added a responsive Web workspace that keeps the CHIP-8 display, virtual keypad, execution controls, and inspection information readily accessible across desktop and narrow layouts.
+- Added persistent Web appearance themes:
+  - Retro Green;
+  - Retro Amber;
+  - Dark.
+
+- Added theme-aware Canvas framebuffer presentation so CHIP-8 foreground and background colors follow the selected Web theme.
+- Added a compact machine-state indicator showing whether no ROM is loaded, execution is running, or execution is paused.
+- Added an explicit physical-keyboard to CHIP-8 keypad mapping alongside the virtual keypad.
+- Added lightweight inline SVG icons for emulator commands and inspection-panel headings.
+
+### Changed
+
+- Moved instruction formatting, disassembly, bounded trace history, and trace formatting from `@chip8nx/core` to `@chip8nx/inspection`.
+- Reduced Core tracing ownership to the minimal CPU observation boundary: `InstructionTrace`, its success/failure variants, and `InstructionTraceObserver`.
+- Reorganized the private Core observation source under `cpu/observation`, reflecting that instruction traces are produced by `Cpu.step()` rather than by a separate Core tracing subsystem.
+- Updated Terminal and disassembler applications to compose `@chip8nx/core` with `@chip8nx/inspection` where passive inspection capabilities are required.
+- Extended generated API documentation and documentation linting to cover the public entrypoints of both reusable packages.
+- Reconciled architecture, tracing, disassembly, usage, CI, and project documentation with the Core / Inspection responsibility boundary.
+- Clarified that Core owns machine semantics, runtime mechanisms, and authoritative observation signals; Inspection owns passive consumers; applications own host-specific presentation and lifecycle policy.
+- Kept debugger execution-control behavior deliberately deferred until concrete reusable needs such as breakpoints, watchpoints, or step-over semantics are demonstrated.
+- Changed the Web host from a primarily vertical emulator page into a responsive play-and-inspection workspace with the display and keypad grouped together and the inspector positioned alongside them on larger viewports.
+- Replaced separate Start and Pause controls with one runtime-state-driven Start/Pause control.
+- Replaced the native visible ROM file input with a compact application-styled ROM loader while retaining the browser file-input mechanism underneath.
+- Made the selected ROM name persistent in the toolbar and kept transient lifecycle/error information in the separate status area.
+- Restyled emulator command controls as one consistent theme-aware, worn/backlit visual family.
+- Reorganized and consolidated Web CSS around semantic theme variables, shared component tokens, responsive layout rules, and reusable surface/control styling.
+
+### Milestone
+
+`v0.7.0` turns the Web host into Chip8NX's first interactive inspection workbench.
+
+The reusable architecture remains deliberately split by responsibility:
+
+```text
+@chip8nx/core
+    machine semantics
+    runtime mechanisms
+    CPU observation signal
+          ↓
+@chip8nx/inspection
+    instruction formatting
+    disassembly
+    bounded trace history
+    trace formatting
+          ↓
+apps/web
+    inspection policy
+    lifecycle
+    browser presentation
+```
+
+The Web host now composes both reusable packages to provide complementary views of a running or paused machine:
+
+```text
+CPU state
+    → what the processor contains now
+
+Nearby instructions
+    → how bytes around the current PC decode
+
+Recent instructions
+    → what CPU attempts actually occurred
+```
+
+Nearby disassembly is intentionally best-effort at the application boundary: each neighboring address is inspected independently, so undecodable bytes remain visible as unavailable rows without turning passive inspection into an emulator failure.
+
+Execution observation remains passive. The inspector can expose successful attempts, failed attempts, retry behavior, and post-failure CPU state, but it does not decide when execution pauses or resumes.
+
+This milestone also establishes the Web host's first deliberate usability layer: responsive play and inspection regions, compact execution controls, explicit keyboard mapping, persistent appearance themes, and theme-aware framebuffer presentation.
+
+Breakpoints, watchpoints, pause conditions, step-over/step-out behavior, memory editing, CHIP-8 variant/profile selection, and other active debugger semantics remain deliberately deferred until concrete use cases demonstrate the need for them.
+
 ### Added
 
 - Added the host-independent `@chip8nx/inspection` workspace package for passive CHIP-8 inspection tooling.

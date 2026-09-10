@@ -10,7 +10,41 @@ The project focuses first on accurate **Classic CHIP-8** behavior while keeping 
 
 ## Status
 
-### Current release: `v0.6.0` — Tracing and Execution Observation
+### Current release: `v0.7.0` — Web Inspection Workbench
+
+`v0.7.0` turns the browser host into Chip8NX's first interactive inspection workbench while preserving the separation between machine semantics, passive inspection tooling, and host-specific presentation.
+
+The Web application now composes `@chip8nx/core` with `@chip8nx/inspection` to provide three complementary read-only views of the machine:
+
+```text
+CPU state
+    → what the processor contains now
+
+Nearby instructions
+    → how bytes around the current program counter decode
+
+Recent instructions
+    → what CPU instruction attempts actually occurred
+```
+
+Nearby disassembly is best-effort at the Web application boundary: neighboring addresses are inspected independently, so undecodable bytes remain visible without turning passive inspection into an emulator failure.
+
+Execution observation likewise remains passive. Successful and failed CPU attempts can be retained and presented, including the actual post-failure CPU state, while inspection itself does not decide when execution pauses or resumes.
+
+The Web host also now provides a responsive play-and-inspection workspace with compact execution controls, explicit physical-keyboard mapping, persistent Retro Green, Retro Amber, and Dark appearance themes, and theme-aware framebuffer presentation.
+
+The Classic CHIP-8 Core remains at the `v0.2.0` conformance baseline, with intentional coverage for the complete Classic opcode set and the project's current external conformance suite:
+
+- IBM Logo;
+- original corax89 opcode test;
+- Timendus Corax+;
+- Timendus Flags;
+- Timendus Quirks in Classic CHIP-8 mode;
+- Timendus Keypad.
+
+`0mmm` is recognized and decoded but intentionally rejected because it transfers execution to native CDP1802 code outside the generic CHIP-8 virtual machine.
+
+Additional Classic conformance remains useful when it provides new behavioral evidence, but it no longer blocks feature development.
 
 `v0.6.0` establishes a reusable execution-observation boundary in Chip8NX Core.
 
@@ -196,9 +230,23 @@ Start the Vite development server:
 deno task web
 ```
 
-Open the URL reported by Vite in a browser, select a CHIP-8 ROM file, and the Web host will load and run it.
+Open the URL reported by Vite in a browser, load a CHIP-8 ROM file, and the Web host will initialize and run it.
 
-The Web host provides Canvas framebuffer rendering, physical and virtual keyboard input, execution controls, and Web Audio sound presentation.
+The Web host provides:
+
+- Canvas framebuffer presentation;
+- physical and virtual CHIP-8 keyboard input;
+- Start/Pause, Step, and Reset execution controls;
+- Web Audio sound presentation;
+- live CPU-state inspection;
+- best-effort nearby disassembly around the current program counter;
+- bounded recent instruction-attempt history;
+- responsive desktop and narrow-screen layouts;
+- persistent Retro Green, Retro Amber, and Dark appearance themes.
+
+![Chip8NX Web Inspection Workbench running the IBM Logo ROM](./docs/images/web-inspection-workbench-ibm-logo.png)
+
+_Chip8NX Web Inspection Workbench running the IBM Logo ROM._
 
 To verify the production Web build:
 
@@ -316,9 +364,24 @@ Terminal-specific rendering, keyboard adaptation, CLI options, and output policy
 
 The Web application hosts the CHIP-8 machine in a browser.
 
-It owns browser-specific rendering, audio, keyboard input, ROM loading, and UI lifecycle concerns.
+It composes both reusable packages:
 
-The current Web host primarily composes Core. Inspection capabilities can be added as the interactive inspection UI evolves.
+```text
+@chip8nx/core
+    machine execution
+    runtime and scheduling
+    authoritative CPU observation
+
+@chip8nx/inspection
+    instruction formatting
+    nearby disassembly
+    bounded trace history
+    trace formatting
+```
+
+The application owns the browser-specific policy around those capabilities: Canvas rendering, audio presentation, keyboard adaptation, ROM loading, execution controls, inspection-window selection, responsive DOM presentation, appearance themes, and UI lifecycle.
+
+Passive inspection failures remain application-visible data rather than emulator failures. The Web inspector can therefore expose undecodable nearby bytes and failed CPU attempts without giving the Inspection package execution-control responsibility.
 
 ### `apps/disassembler`
 
@@ -403,17 +466,28 @@ The Terminal `--trace` mode provides the first external proof of concept while k
 
 Together with the `v0.5.0` disassembly boundary, this milestone establishes the reusable inspection foundation for future debugger and analysis tooling without prematurely adding breakpoints, execution control, event infrastructure, replay, or whole-machine tracing.
 
+### `v0.7.0` — Web Inspection Workbench ✓
+
+The Web host becomes Chip8NX's first interactive inspection workbench.
+
+It composes the Core CPU-observation boundary with the extracted `@chip8nx/inspection` package to provide live CPU state, bounded best-effort disassembly around the current program counter, and recent successful or failed CPU instruction attempts.
+
+The release also evolves the browser host into a responsive play-and-inspection workspace with unified Start/Pause control, compact ROM loading, explicit keyboard mapping, machine-state presentation, theme-aware command controls, and persistent Retro Green, Retro Amber, and Dark themes whose palettes also drive Canvas framebuffer presentation.
+
+Inspection remains deliberately read-only: breakpoints, watchpoints, pause conditions, step-over/step-out behavior, memory editing, and other debugger execution-control semantics remain deferred until concrete reusable requirements emerge.
+
 ## Future work
 
-Post-`v0.6.0` development can proceed across areas such as:
+Post-`v0.7.0` development can proceed across areas such as:
 
-- debugger and richer inspection tooling built on the completed disassembly and execution-tracing boundaries;
-- Web-host refinement when concrete debugger, inspection, or other interactive use cases justify it;
+- active debugger behavior built on the completed read-only Web inspection workbench, when concrete needs such as breakpoints, watchpoints, or richer stepping semantics are demonstrated;
+- CHIP-8 variant and profile selection when the project is ready to expose multiple machine behaviors through host configuration;
+- richer memory or static-analysis inspection when concrete application workflows justify it;
 - public reusable-package APIs and composition ergonomics when additional architectural evidence creates concrete pressure for change;
 - desktop hosts;
-- additional CHIP-8-family profiles when the project is ready to model variant differences explicitly.
+- additional CHIP-8-family profiles when variant differences are ready to be modeled explicitly.
 
-The current tracing boundary deliberately remains observational. Breakpoints, execution control, observer fan-out, timestamps, replay, whole-machine snapshots, persistent trace formats, and richer history-query APIs should be introduced only when concrete debugger or analysis consumers demonstrate the need.
+The current CPU-observation boundary deliberately remains observational. Breakpoints, execution-control policy, observer fan-out, timestamps, replay, whole-machine snapshots, persistent trace formats, and richer history-query APIs should be introduced only when concrete debugger or analysis consumers demonstrate the need.
 
 The current disassembler likewise remains a small inspection foundation rather than a full static-analysis system. Features such as control-flow analysis, code/data classification, labels, descriptions, and richer tolerant-disassembly models should be introduced only when concrete consumers justify them.
 

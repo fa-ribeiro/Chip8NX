@@ -15,7 +15,9 @@ The comparison supports two conclusions:
 - the Terminal Level 1 / Level 2 / Level 3 structure remains useful for the Terminal host;
 - it should not be generalized into a mandatory Core or project-wide composition framework.
 
-What generalized successfully was not the host hierarchy, but the **Core boundaries** beneath it.
+What generalized successfully was not the host hierarchy, but the **reusable boundaries** beneath it.
+
+Core remains the common machine foundation. Where passive inspection is required, applications can additionally compose `@chip8nx/inspection` without changing Core or adopting a shared host hierarchy.
 
 > Convenience layers may assemble lower-level components and provide good defaults, but they should arise from real application responsibilities and must not remove lower-level capability.
 
@@ -115,16 +117,41 @@ The Web application has different composition pressures:
 - physical browser keyboard input;
 - virtual keypad input;
 - `KeyboardInputHub` for simultaneous input sources;
-- Canvas presentation;
+- Canvas framebuffer presentation;
 - Web Audio presentation;
-- ROM replacement;
-- start, pause, step, and reset controls;
+- ROM replacement and reload lifecycle;
+- unified Start/Pause, Step, and Reset controls;
 - browser visibility handling;
 - a `requestAnimationFrame` host loop;
 - browser audio unlocking;
+- persistent appearance themes;
+- live CPU-state presentation;
+- best-effort nearby disassembly through `@chip8nx/inspection`;
+- bounded recent instruction-attempt history through `@chip8nx/inspection`;
 - a persistent `WebMachineSession` application-state aggregate.
 
-Those responsibilities do not naturally form the same three composition levels used by the Terminal host. There is no demonstrated need for a Web equivalent of `StandardTerminalHost`.
+Those responsibilities do not naturally form the same three composition levels used by the Terminal host.
+
+Instead, the Web host acts directly as its own composition root:
+
+```text id="3txdgt"
+@chip8nx/core
+    machine execution
+    runtime
+    authoritative observation
+          ↓
+@chip8nx/inspection
+    passive disassembly
+    formatting
+    bounded trace retention
+          ↓
+apps/web
+    lifecycle
+    policy
+    browser presentation
+```
+
+There is still no demonstrated need for a Web equivalent of `StandardTerminalHost`.
 
 ## Application-owned composition
 
@@ -140,7 +167,7 @@ The comparison does not demonstrate a need for:
 - a dependency-injection container;
 - a project-wide Level 1 / Level 2 / Level 3 framework.
 
-This keeps host-specific lifecycle and presentation outside the reusable Core.
+This keeps host-specific lifecycle, policy, interaction, and presentation outside the reusable Core and Inspection packages.
 
 ## Repeated Classic machine assembly
 
@@ -165,18 +192,52 @@ For now, explicit construction remains useful architectural documentation. Revis
 
 `WebMachineSession` remains a Web application aggregate rather than a missing Core machine abstraction.
 
-It retains the references needed by the browser application's lifecycle: ROM reset, runtime control, rendering, audio, and browser input adapters.
+It retains the references required by the browser application's demonstrated lifecycle and presentation needs:
 
-Other hosts do not necessarily share that lifecycle or need the same retained references.
+```text id="e0lv50"
+ROM lifecycle
+    program
+    context
+    initializer
+
+execution
+    cpu
+    runtime
+
+inspection
+    traceHistory
+    snapshotInspection()
+
+presentation
+    displayBuffer
+    soundTimer
+
+browser input
+    browserKeyboard
+    virtualKeypad
+```
+
+The addition of inspection responsibilities strengthens rather than weakens the case for keeping this aggregate host-local.
+
+For example, another host might use the same Core CPU observation signal without retaining a trace buffer, might inspect memory without presenting nearby instructions, or might have no interactive inspection UI at all.
+
+Those hosts would not necessarily need the same retained references or lifecycle.
+
+`WebMachineSession` should therefore remain application-owned until multiple consumers demonstrate a stable shared machine-session abstraction.
 
 ## Conclusion
 
-The second-host evaluation is complete enough to answer the original question:
+The second-host evaluation remains complete enough to answer the original composition question:
 
 - the Terminal three-level model remains useful inside the Terminal host;
 - the Web host is free to use different host-local compositions;
-- the Core boundaries have held up across both applications;
+- the reusable Core boundaries have held across both applications;
+- passive Inspection capabilities can be composed where required without becoming mandatory machine infrastructure;
 - application-owned composition remains the project-wide rule;
-- repeated Classic machine assembly is worth observing, but not yet extracting.
+- repeated Classic machine assembly remains worth observing, but not yet extracting.
+
+The subsequent Web inspection workbench provides additional evidence for the same conclusion.
+
+Adding CPU-state presentation, nearby disassembly, trace history, themes, and richer browser lifecycle behavior did not require a universal host abstraction or a Core `Chip8Machine` aggregate. The application instead composed existing reusable boundaries and retained the host-specific policy locally.
 
 No new Core composition abstraction is introduced as a result of this evaluation.

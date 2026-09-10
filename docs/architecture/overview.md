@@ -354,7 +354,9 @@ Current applications illustrate different composition needs:
 
 - the Terminal host composes Core with selected Inspection formatting tools for optional trace output;
 - the disassembler application composes Core decoding and memory semantics with Inspection disassembly and instruction formatting;
-- the Web host currently focuses primarily on running the machine and may adopt additional Inspection capabilities as its interactive inspection interface evolves.
+- the Web host composes Core execution and CPU observation with Inspection disassembly, bounded trace history, and formatting to provide live CPU state, nearby instructions, and recent instruction-attempt presentation.
+
+The Web host remains responsible for the policy around that composition. It chooses the nearby-disassembly window, trace-history capacity, refresh cadence, DOM presentation, and lifecycle behavior without moving those concerns into either reusable package.
 
 Applications remain responsible for host-specific concerns such as rendering, audio presentation, physical input mapping, filesystem access, DOM or terminal interaction, and lifecycle integration.
 

@@ -460,6 +460,7 @@ That makes Core traces safe for passive consumers such as:
 ```text
 Inspection formatting
 bounded Inspection history
+Web inspection presentation
 tests
 future debugger presentation
 ```
@@ -1319,7 +1320,7 @@ step-over state
 execution-control commands
 ```
 
-A Web inspection panel may, for example, compose:
+The current Web inspection workbench composes:
 
 ```text
 Core CPU observation
@@ -1331,7 +1332,9 @@ Web UI reads snapshot()
 render recent attempts
 ```
 
-The buffer remains reusable because nothing in that flow makes it aware of the browser or of debugger policy.
+The Web host currently retains a bounded history of 32 CPU attempts and renders that history as its Recent Instructions view.
+
+The buffer remains reusable because nothing in that flow makes it aware of the browser, presentation layout, or debugger policy.
 
 ### Why history belongs to Inspection
 
@@ -2043,7 +2046,21 @@ Inspection
     bounded in-memory trace history
 
 Applications
-    host-specific presentation
+    host-specific composition and presentation
 ```
 
-That is sufficient to support the next interactive inspection/UI phase without pre-designing the debugger itself.
+This scope now supports two demonstrated consumers:
+
+```text
+Terminal
+    → optional line-oriented trace presentation
+
+Web
+    → bounded recent-attempt inspection
+      alongside live CPU state
+      and nearby disassembly
+```
+
+The Web inspection workbench demonstrates that the current observation boundary is sufficient for useful interactive inspection without introducing debugger control semantics.
+
+Breakpoints, watch conditions, pause reasons, step-over/step-out behavior, observer fan-out, persistent recording, and richer machine observation remain deliberately deferred until concrete consumers demonstrate the corresponding requirements.
