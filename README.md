@@ -46,45 +46,6 @@ The Classic CHIP-8 Core remains at the `v0.2.0` conformance baseline, with inten
 
 Additional Classic conformance remains useful when it provides new behavioral evidence, but it no longer blocks feature development.
 
-`v0.6.0` establishes a reusable execution-observation boundary in Chip8NX Core.
-
-`Cpu` can optionally emit structured `InstructionTrace` records for real CPU instruction attempts. Successful and failed attempts preserve the semantic information available at that point, including before/after CPU state, while observer failures remain isolated from emulated execution and failed attempts preserve the original CPU error.
-
-Current development builds on that milestone by separating passive inspection tooling into `@chip8nx/inspection`. Core retains the CPU observation signal and observer contract, while instruction formatting, disassembly, bounded trace history, and trace formatting belong to the Inspection package. Host-specific output and interaction remain application-owned.
-
-The Terminal application provides the first tracing proof of concept:
-
-```bash
-deno task terminal --trace <rom-path>
-```
-
-Disassembly and tracing intentionally observe different things:
-
-```text
-disassembly
-    → inspect encoded instructions without executing them
-
-tracing
-    → observe instruction attempts that actually execute
-```
-
-Together, the `v0.5.0` disassembly boundary and the `v0.6.0` tracing boundary establish the inspection foundation for future debugger and analysis tools across different host applications.
-
-See [Tracing architecture](./docs/architecture/tracing.md).
-
-The Classic CHIP-8 Core remains at the `v0.2.0` conformance baseline, with intentional coverage for the complete Classic opcode set and the project's current external conformance suite:
-
-- IBM Logo;
-- original corax89 opcode test;
-- Timendus Corax+;
-- Timendus Flags;
-- Timendus Quirks in Classic CHIP-8 mode;
-- Timendus Keypad.
-
-`0mmm` is recognized and decoded but intentionally rejected because it transfers execution to native CDP1802 code outside the generic CHIP-8 virtual machine.
-
-Additional Classic conformance remains useful when it provides new behavioral evidence, but it no longer blocks feature development.
-
 ## Goals
 
 This project is intended both as an emulator and as a learning exercise.

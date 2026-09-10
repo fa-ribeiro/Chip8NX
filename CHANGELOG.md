@@ -23,14 +23,12 @@ During the `0.x` development phase:
   - current CPU register, index-register, program-counter, stack, and timer state;
   - a bounded best-effort disassembly window around the current program counter;
   - bounded recent CPU instruction-attempt history.
-
 - Added passive inspection of failed CPU attempts so manual stepping and runtime failures can expose the actual post-failure CPU state and retained failed trace.
 - Added a responsive Web workspace that keeps the CHIP-8 display, virtual keypad, execution controls, and inspection information readily accessible across desktop and narrow layouts.
 - Added persistent Web appearance themes:
   - Retro Green;
   - Retro Amber;
   - Dark.
-
 - Added theme-aware Canvas framebuffer presentation so CHIP-8 foreground and background colors follow the selected Web theme.
 - Added a compact machine-state indicator showing whether no ROM is loaded, execution is running, or execution is paused.
 - Added an explicit physical-keyboard to CHIP-8 keypad mapping alongside the virtual keypad.
@@ -98,15 +96,6 @@ This milestone also establishes the Web host's first deliberate usability layer:
 
 Breakpoints, watchpoints, pause conditions, step-over/step-out behavior, memory editing, CHIP-8 variant/profile selection, and other active debugger semantics remain deliberately deferred until concrete use cases demonstrate the need for them.
 
-- Moved instruction formatting, disassembly, bounded trace history, and trace formatting from `@chip8nx/core` to `@chip8nx/inspection`.
-- Reduced Core tracing ownership to the minimal CPU observation boundary: `InstructionTrace`, its success/failure variants, and `InstructionTraceObserver`.
-- Reorganized the private Core observation source under `cpu/observation`, reflecting that instruction traces are produced by `Cpu.step()` rather than by a separate Core tracing subsystem.
-- Updated Terminal and disassembler applications to compose `@chip8nx/core` with `@chip8nx/inspection` where passive inspection capabilities are required.
-- Extended generated API documentation and documentation linting to cover the public entrypoints of both reusable packages.
-- Reconciled architecture, tracing, disassembly, usage, CI, and project documentation with the new Core / Inspection responsibility boundary.
-- Clarified that Core owns machine semantics, runtime mechanisms, and authoritative observation signals; Inspection owns passive consumers; applications own host-specific presentation and lifecycle policy.
-- Kept debugger execution-control behavior deliberately deferred until concrete reusable needs such as breakpoints, watchpoints, or step-over semantics are demonstrated.
-
 ## [0.6.0] - 2026-09-07 - Tracing and Execution Observation
 
 ### Added
@@ -122,9 +111,11 @@ Breakpoints, watchpoints, pause conditions, step-over/step-out behavior, memory 
 - Bounded-history coverage for capacity validation, ordering, overflow, repeated wraparound, snapshot ownership, object identity, and clearing.
 - Public-API integration coverage proving that tracing observation, history, and formatting compose through `packages/core/mod.ts` without private source imports.
 - Terminal `--trace` mode:
+
   ```text
   deno task terminal --trace <rom-path>
   ```
+
 - Dedicated tracing architecture documentation covering the CPU-attempt observation boundary, success/failure records, non-interference guarantees, retry visibility, formatting boundaries, bounded history, and deliberately deferred debugger concerns.
 - Expanded architecture documentation for instruction execution, runtime and timing, machine state and capabilities, machine initialization, and machine lifecycle.
 
@@ -200,9 +191,11 @@ Breakpoints, execution control, observer fan-out, timestamps, sequence numbers, 
 - Public-API integration coverage exercising ROM loading, memory composition, decoding, formatting, and disassembly through `packages/core/mod.ts`.
 - Command-line disassembler application under `apps/disassembler`.
 - Root `disassemble` task for exploratory ROM inspection:
+
   ```text
   deno task disassemble <rom-path>
   ```
+
 - Tolerant application-level whole-ROM linear traversal that reports unsupported Classic CHIP-8 words as `UNKNOWN` and continues with subsequent words.
 - Dedicated disassembly architecture documentation covering responsibility boundaries, dependency direction, lifecycle, error ownership, extension points, and the relationship between inspection and execution.
 - Practical disassembly guide covering known instruction ranges, single-instruction inspection, custom formatters, error behavior, and the exploratory CLI.
