@@ -10,7 +10,10 @@ const TEST_PALETTE: CanvasDisplayPalette = {
 Deno.test("CanvasDisplay renders CHIP-8 pixels into the canvas backing store", () => {
   const canvas = new RecordingCanvas();
 
-  const display = new CanvasDisplay(canvas as unknown as HTMLCanvasElement, TEST_PALETTE);
+  const display = new CanvasDisplay(
+    canvas as unknown as HTMLCanvasElement,
+    TEST_PALETTE,
+  );
 
   const buffer = new DisplayBuffer(2, 2);
 
@@ -50,7 +53,10 @@ Deno.test("CanvasDisplay renders CHIP-8 pixels into the canvas backing store", (
 Deno.test("CanvasDisplay uses an updated palette on future renders", () => {
   const canvas = new RecordingCanvas();
 
-  const display = new CanvasDisplay(canvas as unknown as HTMLCanvasElement, TEST_PALETTE);
+  const display = new CanvasDisplay(
+    canvas as unknown as HTMLCanvasElement,
+    TEST_PALETTE,
+  );
 
   display.setPalette({
     background: "#221100",
@@ -88,7 +94,11 @@ Deno.test("CanvasDisplay rejects canvases without a 2D rendering context", () =>
   };
 
   assertThrows(
-    () => new CanvasDisplay(canvas as unknown as HTMLCanvasElement, TEST_PALETTE),
+    () =>
+      new CanvasDisplay(
+        canvas as unknown as HTMLCanvasElement,
+        TEST_PALETTE,
+      ),
     Error,
     "Canvas 2D rendering context is unavailable.",
   );
@@ -122,7 +132,12 @@ class RecordingContext {
 
   public readonly calls: FillCall[] = [];
 
-  public fillRect(x: number, y: number, width: number, height: number): void {
+  public fillRect(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+  ): void {
     this.calls.push({
       fillStyle: this.fillStyle,
       x,

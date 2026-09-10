@@ -1,6 +1,16 @@
 :root {
   color-scheme: dark;
 
+  --font-mono: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+
+  --space-layout: 0.75rem;
+  --radius-panel: 0.5rem;
+  --radius-control: 0.3rem;
+  --radius-compact: 0.4rem;
+
+  --color-danger: #ff8a8a;
+  --color-shadow: #0008;
+
   font-family:
     system-ui,
     -apple-system,
@@ -11,6 +21,14 @@
   color: var(--color-text);
   background: var(--color-background);
 }
+
+/*
+ * Theme palettes
+ *
+ * Keep each theme explicit and self-contained. Although some declarations
+ * repeat, they are theme data rather than accidental component duplication.
+ * --color-display-foreground is consumed from TypeScript via getComputedStyle().
+ */
 
 :root,
 :root[data-theme="retro-green"] {
@@ -23,7 +41,7 @@
   --color-border: #344034;
   --color-border-strong: #536553;
 
-  --color-text: #edf5ed;
+  --color-text: #ddffdd;
   --color-text-muted: #94a394;
 
   --color-accent: #63e86f;
@@ -35,10 +53,13 @@
   --color-display-foreground: #63e86f;
   --color-display-glow: #63e86f40;
 
-  --color-danger: #ff8a8a;
-
-  --color-shadow: #0008;
   --color-toolbar-background: #151a15f2;
+
+  --color-command-surface-top: #3b4a31;
+  --color-command-surface-bottom: #26301f;
+  --color-command-border: #596c49;
+  --color-command-text: #b9ff9d;
+  --color-command-glow: #7dff5c66;
 }
 
 :root[data-theme="retro-amber"] {
@@ -51,7 +72,7 @@
   --color-border: #463a29;
   --color-border-strong: #6d593b;
 
-  --color-text: #f7efe0;
+  --color-text: #ffeac5;
   --color-text-muted: #aa9b82;
 
   --color-accent: #ffb347;
@@ -63,10 +84,13 @@
   --color-display-foreground: #ffb347;
   --color-display-glow: #ffb34740;
 
-  --color-danger: #ff8a8a;
-
-  --color-shadow: #0008;
   --color-toolbar-background: #1a1510f2;
+
+  --color-command-surface-top: #514027;
+  --color-command-surface-bottom: #342817;
+  --color-command-border: #79603a;
+  --color-command-text: #ffd082;
+  --color-command-glow: #ffb34766;
 }
 
 :root[data-theme="dark-theme"] {
@@ -91,11 +115,16 @@
   --color-display-foreground: #ffffff;
   --color-display-glow: #ffffff20;
 
-  --color-danger: #ff8a8a;
-
-  --color-shadow: #0008;
   --color-toolbar-background: #1d1d1df2;
+
+  --color-command-surface-top: #3c3c3c;
+  --color-command-surface-bottom: #292929;
+  --color-command-border: #626262;
+  --color-command-text: #f2f2f2;
+  --color-command-glow: #ffffff30;
 }
+
+/* Base */
 
 * {
   box-sizing: border-box;
@@ -106,8 +135,8 @@ html {
 }
 
 body {
-  margin: 0;
   min-width: 320px;
+  margin: 0;
 }
 
 button,
@@ -116,13 +145,30 @@ select {
   font: inherit;
 }
 
-/*
- * Application shell
- */
+.icon-sprite {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.icon {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Application shell */
 
 .app {
   display: grid;
-  gap: 0.75rem;
+  gap: var(--space-layout);
 
   width: min(1440px, calc(100% - 2rem));
   margin: 0 auto;
@@ -133,25 +179,21 @@ select {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-
   gap: 1rem;
 
   padding: 0.25rem 0;
 }
 
-.app-header h1 {
+.app-header h1,
+.app-header p {
   margin: 0;
 }
 
 .app-header p {
-  margin: 0;
-
   color: var(--color-text-muted);
 }
 
-/*
- * Main toolbar
- */
+/* Toolbar */
 
 .toolbar {
   position: sticky;
@@ -161,15 +203,13 @@ select {
   display: flex;
   align-items: center;
   justify-content: space-between;
-
   gap: 1rem;
 
   padding: 0.75rem;
 
   background: var(--color-toolbar-background);
   border: 1px solid var(--color-border);
-  border-radius: 0.5rem;
-
+  border-radius: var(--radius-panel);
   box-shadow: 0 0.35rem 1rem var(--color-shadow);
 
   backdrop-filter: blur(8px);
@@ -178,154 +218,40 @@ select {
 .rom-loader {
   display: flex;
   align-items: center;
-
   flex: 1 1 26rem;
-
-  gap: 0.75rem;
+  gap: var(--space-layout);
 
   min-width: 0;
-  margin: 0;
+}
+
+.rom-loader-label,
+.theme-picker label {
+  font-weight: 600;
 }
 
 .rom-loader-label {
   flex: 0 0 auto;
-
-  font-weight: 600;
 }
 
 #rom-load-button {
   flex: 0 0 auto;
-
-  padding: 0.55rem 0.8rem;
-
-  font-weight: 600;
-
-  color: var(--color-text);
-  background: var(--color-surface-raised);
-
-  border: 1px solid var(--color-border-strong);
-  border-radius: 0.3rem;
-
-  cursor: pointer;
-}
-
-#rom-load-button:hover {
-  background: var(--color-surface-hover);
 }
 
 .rom-file-name {
   min-width: 0;
 
-  color: var(--color-text-muted);
-
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.controls {
-  display: flex;
-  flex: 0 0 auto;
-  flex-wrap: wrap;
-
-  gap: 0.5rem;
-
-  margin: 0;
-}
-
-.controls button {
-  min-width: 5.5rem;
-  padding: 0.6rem 0.9rem;
-
-  font-weight: 600;
-
-  color: var(--color-text);
-  background: var(--color-surface-raised);
-
-  border: 1px solid var(--color-border-strong);
-  border-radius: 0.3rem;
-
-  cursor: pointer;
-}
-
-.controls button:hover:not(:disabled) {
-  background: var(--color-surface-hover);
-}
-
-.controls button:disabled {
-  opacity: 0.45;
-
-  cursor: default;
-}
-
-#run-toggle-button {
-  color: var(--color-on-accent);
-  background: var(--color-accent);
-
-  border-color: var(--color-accent);
-}
-
-#run-toggle-button:hover:not(:disabled) {
-  background: var(--color-accent-strong);
-  border-color: var(--color-accent-strong);
-}
-
-.machine-state {
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-
-  gap: 0.45rem;
-
-  min-width: 5.5rem;
 
   color: var(--color-text-muted);
-
-  font-size: 0.9rem;
-  font-weight: 600;
-
-  white-space: nowrap;
-}
-
-.machine-state-indicator {
-  width: 0.6rem;
-  height: 0.6rem;
-
-  background: var(--color-text-muted);
-
-  border-radius: 50%;
-}
-
-.machine-state[data-state="running"] {
-  color: var(--color-accent-strong);
-}
-
-.machine-state[data-state="running"] .machine-state-indicator {
-  background: var(--color-accent);
-
-  box-shadow: 0 0 0.45rem var(--color-display-glow);
-}
-
-.machine-state[data-state="paused"] .machine-state-indicator {
-  background: var(--color-text-muted);
-}
-
-.machine-state[data-state="empty"] .machine-state-indicator {
-  background: transparent;
-
-  border: 1px solid var(--color-text-muted);
 }
 
 .theme-picker {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
-
   gap: 0.5rem;
-}
-
-.theme-picker label {
-  font-weight: 600;
 }
 
 #theme-select {
@@ -333,9 +259,8 @@ select {
 
   color: var(--color-text);
   background: var(--color-surface-raised);
-
   border: 1px solid var(--color-border-strong);
-  border-radius: 0.3rem;
+  border-radius: var(--radius-control);
 
   cursor: pointer;
 }
@@ -345,82 +270,228 @@ select {
 }
 
 /*
- * Main workspace
+ * Toolbar command buttons
  *
- * The play area owns the display and keypad.
- * Inspection lives beside it rather than between them.
+ * All emulator commands share the same worn, backlit hardware treatment.
  */
+
+#rom-load-button,
+.controls button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+
+  padding: 0.6rem 0.9rem;
+
+  color: var(--color-command-text);
+  background: linear-gradient(
+    180deg,
+    var(--color-command-surface-top) 0%,
+    var(--color-command-surface-bottom) 100%
+  );
+  border: 1px solid var(--color-command-border);
+  border-radius: var(--radius-control);
+
+  box-shadow:
+    inset 0 1px 0 #ffffff12,
+    inset 0 -2px 4px #0007,
+    0 0 0.3rem var(--color-command-glow);
+
+  font-weight: 600;
+  text-shadow: 0 0 0.3rem var(--color-command-glow);
+
+  cursor: pointer;
+
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    box-shadow 120ms ease,
+    transform 80ms ease;
+}
+
+#rom-load-button .icon,
+.controls button .icon {
+  filter: drop-shadow(0 0 0.2rem var(--color-command-glow));
+}
+
+#rom-load-button:hover,
+.controls button:hover:not(:disabled) {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-command-surface-top), var(--color-command-text) 8%),
+    color-mix(in srgb, var(--color-command-surface-bottom), var(--color-command-text) 5%)
+  );
+
+  border-color: var(--color-command-text);
+
+  box-shadow:
+    inset 0 1px 0 #ffffff18,
+    inset 0 -2px 4px #0007,
+    0 0 0.5rem var(--color-command-glow);
+}
+
+#rom-load-button:active,
+.controls button:active:not(:disabled) {
+  transform: translateY(1px);
+
+  box-shadow:
+    inset 0 2px 5px #0009,
+    0 0 0.25rem var(--color-command-glow);
+}
+
+.controls {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.controls button {
+  min-width: 5.5rem;
+}
+
+.controls button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+#run-toggle-button {
+  min-width: 6.75rem;
+}
+
+#run-toggle-button[data-action="start"] .run-toggle-icon-pause,
+#run-toggle-button[data-action="pause"] .run-toggle-icon-start {
+  display: none;
+}
+
+.machine-state {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.45rem;
+
+  min-width: 5.5rem;
+
+  color: var(--color-text-muted);
+
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.machine-state-indicator {
+  width: 0.6rem;
+  height: 0.6rem;
+
+  background: var(--color-text-muted);
+  border-radius: 50%;
+}
+
+.machine-state[data-state="running"] {
+  color: var(--color-accent-strong);
+}
+
+.machine-state[data-state="running"] .machine-state-indicator {
+  background: var(--color-accent);
+  box-shadow: 0 0 0.45rem var(--color-display-glow);
+}
+
+.machine-state[data-state="empty"] .machine-state-indicator {
+  background: transparent;
+  border: 1px solid var(--color-text-muted);
+}
+
+.toolbar-divider {
+  flex: 0 0 auto;
+  width: 1px;
+  height: 2rem;
+
+  background: var(--color-border-strong);
+  opacity: 0.65;
+}
+
+/* Workspace */
 
 .workspace {
   display: grid;
   grid-template-columns:
     minmax(0, 2fr)
     minmax(24rem, 1fr);
-
-  gap: 0.75rem;
-
+  gap: var(--space-layout);
   align-items: start;
 }
 
-.play-area {
+.play-area,
+.instruction-column {
   display: grid;
   min-width: 0;
-
-  gap: 0.75rem;
+  gap: var(--space-layout);
 }
 
-/*
- * CHIP-8 display
- */
+.instruction-column {
+  align-content: start;
+}
 
-.display {
+/* Shared panel surfaces */
+
+.display,
+.keypad,
+.cpu-state,
+.nearby-instructions,
+.instruction-history,
+.app-status {
   min-width: 0;
-  padding: 0.75rem;
 
   background: var(--color-surface);
-
   border: 1px solid var(--color-border);
-  border-radius: 0.5rem;
+  border-radius: var(--radius-panel);
+}
+
+.keypad,
+.cpu-state,
+.nearby-instructions,
+.instruction-history {
+  padding: 1rem;
+}
+
+.panel-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+
+  margin: 0 0 1rem;
+
+  font-size: 1rem;
+}
+
+.panel-heading .icon {
+  color: var(--color-accent-strong);
+}
+
+/* CHIP-8 display */
+
+.display {
+  padding: 0.75rem;
 }
 
 #chip8-display {
   display: block;
-
   width: 100%;
   aspect-ratio: 2 / 1;
 
   background: var(--color-display-background);
-
   border: 1px solid var(--color-border-strong);
-  border-radius: 0.3rem;
-
+  border-radius: var(--radius-control);
   box-shadow: 0 0 1rem var(--color-display-glow);
 
   image-rendering: pixelated;
 }
 
-/*
- * Virtual keypad
- *
- * Wide, shallow keys are intentional here. Square buttons would consume
- * too much vertical space in the docked play-area layout.
- */
+/* Virtual keypad */
 
-.keypad {
-  min-width: 0;
-  margin: 0;
-  padding: 1rem;
-
-  background: var(--color-surface);
-
-  border: 1px solid var(--color-border);
-  border-radius: 0.5rem;
-}
-
-.keypad h2 {
-  margin: 0;
-
-  font-size: 1rem;
+.keypad .panel-heading {
+  margin-bottom: 0;
 }
 
 .keypad-hint {
@@ -434,8 +505,7 @@ select {
 
 .keypad-hint span {
   color: var(--color-text);
-
-  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-family: var(--font-mono);
 }
 
 .keypad-content {
@@ -443,70 +513,13 @@ select {
   grid-template-columns:
     minmax(0, 1fr)
     max-content;
-
   gap: 1rem;
-
   align-items: start;
-}
-
-.keypad-mapping {
-  display: grid;
-
-  width: max-content;
-  max-width: 100%;
-
-  gap: 0.35rem;
-
-  padding: 0.7rem 0.8rem;
-
-  background: var(--color-surface-raised);
-
-  border: 1px solid var(--color-border);
-  border-radius: 0.4rem;
-
-  color: var(--color-text-muted);
-
-  font-size: 0.75rem;
-}
-
-.keypad-mapping h3 {
-  margin: 0 0 0.25rem;
-
-  color: var(--color-text);
-
-  font-size: 0.8rem;
-}
-
-.keypad-mapping-row {
-  display: grid;
-  grid-template-columns:
-    max-content
-    max-content
-    max-content;
-
-  gap: 0.45rem;
-
-  align-items: baseline;
-  justify-content: start;
-}
-
-.keypad-mapping kbd,
-.keypad-mapping code {
-  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
-}
-
-.keypad-mapping kbd {
-  color: var(--color-text);
-}
-
-.keypad-mapping code {
-  color: var(--color-accent-strong);
 }
 
 .virtual-keypad {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-
   gap: 0.5rem;
 
   width: 100%;
@@ -521,14 +534,13 @@ select {
 
   padding: 0.6rem 1rem;
 
-  font-size: 1.1rem;
-  font-weight: 700;
-
   color: var(--color-accent-strong);
   background: var(--color-surface-raised);
-
   border: 1px solid var(--color-border-strong);
-  border-radius: 0.4rem;
+  border-radius: var(--radius-compact);
+
+  font-size: 1.1rem;
+  font-weight: 700;
 
   cursor: pointer;
 }
@@ -540,7 +552,6 @@ select {
 .virtual-keypad button[data-pressed="true"] {
   color: var(--color-on-accent);
   background: var(--color-accent);
-
   border-color: var(--color-accent);
 
   transform: translateY(1px);
@@ -548,13 +559,55 @@ select {
 
 .virtual-keypad button:disabled {
   opacity: 0.4;
-
   cursor: default;
 }
 
-/*
- * Inspector
- */
+.keypad-mapping {
+  display: grid;
+  gap: 0.35rem;
+
+  width: max-content;
+  max-width: 100%;
+  padding: 0.7rem 0.8rem;
+
+  color: var(--color-text-muted);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-compact);
+
+  font-size: 0.75rem;
+}
+
+.keypad-mapping h3 {
+  margin: 0 0 0.25rem;
+
+  color: var(--color-text);
+
+  font-size: 0.8rem;
+}
+
+.keypad-mapping-row {
+  display: grid;
+  grid-template-columns: max-content max-content max-content;
+  align-items: baseline;
+  justify-content: start;
+  gap: 0.45rem;
+}
+
+.keypad-mapping kbd,
+.keypad-mapping code {
+  font-family: var(--font-mono);
+}
+
+.keypad-mapping kbd {
+  color: var(--color-text);
+}
+
+.keypad-mapping code {
+  color: var(--color-accent-strong);
+}
+
+/* Inspector */
 
 .inspection {
   position: sticky;
@@ -563,49 +616,23 @@ select {
   display: grid;
   min-width: 0;
   max-height: calc(100vh - 6.5rem);
+  gap: var(--space-layout);
+  align-content: start;
 
-  gap: 0.75rem;
-
-  margin: 0;
   padding-right: 0.25rem;
 
   overflow: auto;
-
-  align-content: start;
   scrollbar-gutter: stable;
-}
-
-.cpu-state,
-.nearby-instructions,
-.instruction-history {
-  min-width: 0;
-  padding: 1rem;
-
-  background: var(--color-surface);
-
-  border: 1px solid var(--color-border);
-  border-radius: 0.5rem;
-}
-
-.cpu-state h2,
-.nearby-instructions h2,
-.instruction-history h2 {
-  margin: 0 0 1rem;
-
-  font-size: 1rem;
 }
 
 #cpu-state-empty,
 #nearby-instructions-empty,
 #instruction-history-empty {
   margin: 0;
-
   color: var(--color-text-muted);
 }
 
-/*
- * CPU state
- */
+/* CPU state */
 
 .register-grid,
 .cpu-special-state {
@@ -615,7 +642,6 @@ select {
 .register-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(4.25rem, 1fr));
-
   gap: 0.5rem;
 }
 
@@ -623,7 +649,6 @@ select {
 .cpu-special-state div {
   display: flex;
   justify-content: space-between;
-
   gap: 0.5rem;
 }
 
@@ -636,14 +661,12 @@ select {
 .cpu-special-state dd {
   margin: 0;
 
-  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
-
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
 
 .cpu-special-state {
   display: grid;
-
   gap: 0.5rem;
 
   margin-top: 1rem;
@@ -654,26 +677,13 @@ select {
 
 #cpu-stack {
   overflow-wrap: anywhere;
-
   text-align: right;
 }
 
-/*
- * Instruction inspection
- */
-
-.instruction-column {
-  display: grid;
-  min-width: 0;
-
-  gap: 0.75rem;
-
-  align-content: start;
-}
+/* Instruction inspection */
 
 #nearby-instructions-list {
   display: grid;
-
   gap: 0.25rem;
 
   margin: 0;
@@ -689,17 +699,14 @@ select {
     max-content
     max-content
     minmax(0, 1fr);
-
-  gap: 0.5rem;
-
   align-items: baseline;
+  gap: 0.5rem;
 
   padding: 0.2rem 0.35rem;
 
   border-radius: 0.25rem;
 
-  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
-
+  font-family: var(--font-mono);
   font-size: 0.85rem;
 }
 
@@ -714,16 +721,14 @@ select {
 
 .nearby-instruction-text {
   min-width: 0;
-
   overflow-wrap: anywhere;
 }
 
 .nearby-instruction-row[data-current="true"] {
   background: var(--color-accent-surface);
+  box-shadow: inset 2px 0 0 var(--color-accent);
 
   font-weight: 600;
-
-  box-shadow: inset 2px 0 0 var(--color-accent);
 }
 
 .nearby-instruction-row[data-current="true"] .nearby-instruction-marker {
@@ -745,7 +750,6 @@ select {
 
 #instruction-history-list {
   max-height: 16rem;
-
   margin: 0;
   padding-left: 2.25rem;
 
@@ -757,36 +761,24 @@ select {
 }
 
 #instruction-history-list code {
-  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
-
+  font-family: var(--font-mono);
   font-size: 0.85rem;
-
   white-space: nowrap;
 }
 
 #instruction-history-list li:last-child:not([data-outcome="failure"]) {
   color: var(--color-accent-strong);
-
   font-weight: 600;
 }
 
-/*
- * Bottom status strip
- */
+/* Bottom status */
 
 .app-status {
-  min-width: 0;
   padding: 0.65rem 0.85rem;
-
-  background: var(--color-surface);
-
-  border: 1px solid var(--color-border);
-  border-radius: 0.5rem;
 }
 
 #status {
   min-height: 1.5rem;
-
   margin: 0;
 
   color: var(--color-text-muted);
@@ -796,9 +788,7 @@ select {
   color: var(--color-danger);
 }
 
-/*
- * Keyboard accessibility
- */
+/* Keyboard accessibility */
 
 button:focus-visible,
 #theme-select:focus-visible {
@@ -806,12 +796,7 @@ button:focus-visible,
   outline-offset: 2px;
 }
 
-/*
- * Narrow desktop / tablet
- *
- * The play area remains first. The inspector moves underneath it but uses
- * the available horizontal space efficiently.
- */
+/* Narrow desktop / tablet */
 
 @media (max-width: 1100px) {
   .app {
@@ -842,16 +827,13 @@ button:focus-visible,
       minmax(0, 1.2fr);
 
     max-height: none;
-
     padding-right: 0;
 
     overflow: visible;
   }
 }
 
-/*
- * Mobile / narrow viewport
- */
+/* Mobile */
 
 @media (max-width: 700px) {
   .app {
@@ -869,14 +851,12 @@ button:focus-visible,
 
   .toolbar {
     align-items: stretch;
-
     padding: 0.65rem;
   }
 
   .rom-loader {
     display: grid;
     grid-template-columns: auto auto minmax(0, 1fr);
-
     width: 100%;
   }
 
@@ -886,12 +866,19 @@ button:focus-visible,
       minmax(0, 2fr)
       minmax(0, 1fr)
       minmax(0, 1fr);
-
     width: 100%;
   }
 
   .controls button {
     min-width: 0;
+  }
+
+  .machine-state {
+    min-width: 0;
+  }
+
+  .toolbar-divider {
+    display: none;
   }
 
   .theme-picker {
@@ -904,20 +891,6 @@ button:focus-visible,
     max-width: 14rem;
   }
 
-  .machine-state {
-    min-width: 0;
-  }
-
-  .keypad-content {
-    grid-template-columns: 1fr;
-  }
-
-  .keypad-mapping {
-    width: auto;
-
-    font-size: 0.7rem;
-  }
-
   .display {
     padding: 0.5rem;
   }
@@ -926,9 +899,17 @@ button:focus-visible,
     padding: 0.75rem;
   }
 
+  .keypad-content {
+    grid-template-columns: 1fr;
+  }
+
+  .keypad-mapping {
+    width: auto;
+    font-size: 0.7rem;
+  }
+
   .virtual-keypad button {
     min-height: 3.25rem;
-
     padding: 0.5rem;
   }
 

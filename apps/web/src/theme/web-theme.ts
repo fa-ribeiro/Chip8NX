@@ -1,4 +1,7 @@
-export type WebTheme = "dark-theme" | "retro-green" | "retro-amber";
+export type WebTheme =
+  | "dark-theme"
+  | "retro-green"
+  | "retro-amber";
 
 export const DEFAULT_WEB_THEME: WebTheme = "retro-green";
 
@@ -15,7 +18,9 @@ export interface WebThemeStorage {
   setItem(key: string, value: string): void;
 }
 
-export function parseWebTheme(value: string | null): WebTheme | undefined {
+export function parseWebTheme(
+  value: string | null,
+): WebTheme | undefined {
   switch (value) {
     case "dark-theme":
     case "retro-green":
@@ -27,9 +32,13 @@ export function parseWebTheme(value: string | null): WebTheme | undefined {
   }
 }
 
-export function loadWebTheme(storage: WebThemeStorage): WebTheme {
+export function loadWebTheme(
+  storage: WebThemeStorage,
+): WebTheme {
   try {
-    return parseWebTheme(storage.getItem(WEB_THEME_STORAGE_KEY)) ?? DEFAULT_WEB_THEME;
+    return parseWebTheme(
+      storage.getItem(WEB_THEME_STORAGE_KEY),
+    ) ?? DEFAULT_WEB_THEME;
   } catch {
     /*
      * Theme persistence is a presentation convenience. Storage failure
@@ -39,9 +48,15 @@ export function loadWebTheme(storage: WebThemeStorage): WebTheme {
   }
 }
 
-export function storeWebTheme(storage: WebThemeStorage, theme: WebTheme): void {
+export function storeWebTheme(
+  storage: WebThemeStorage,
+  theme: WebTheme,
+): void {
   try {
-    storage.setItem(WEB_THEME_STORAGE_KEY, theme);
+    storage.setItem(
+      WEB_THEME_STORAGE_KEY,
+      theme,
+    );
   } catch {
     /*
      * A theme change remains valid for the current page even when the

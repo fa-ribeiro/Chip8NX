@@ -9,6 +9,61 @@
   </head>
 
   <body>
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      class="icon-sprite"
+      width="0"
+      height="0"
+      style="position: absolute"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <symbol id="icon-folder-open" viewBox="0 0 24 24">
+        <path d="M3 7V5h7l2 2h9v3" />
+        <path d="M4 19h15l2-9H6z" />
+      </symbol>
+
+      <symbol id="icon-play" viewBox="0 0 24 24">
+        <path d="m8 5 11 7-11 7z" />
+      </symbol>
+
+      <symbol id="icon-pause" viewBox="0 0 24 24">
+        <path d="M9 5v14M15 5v14" />
+      </symbol>
+
+      <symbol id="icon-step" viewBox="0 0 24 24">
+        <path d="m5 5 9 7-9 7zM18 5v14" />
+      </symbol>
+
+      <symbol id="icon-reset" viewBox="0 0 24 24">
+        <path d="M20 11a8 8 0 1 0-2.34 5.66" />
+        <path d="M20 4v7h-7" />
+      </symbol>
+
+      <symbol id="icon-keypad" viewBox="0 0 24 24">
+        <path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z" />
+      </symbol>
+
+      <symbol id="icon-cpu" viewBox="0 0 24 24">
+        <rect x="7" y="7" width="10" height="10" rx="2" />
+        <path d="M9 2v3M15 2v3M9 19v3M15 19v3" />
+        <path d="M2 9h3M2 15h3M19 9h3M19 15h3" />
+      </symbol>
+
+      <symbol id="icon-nearby" viewBox="0 0 24 24">
+        <circle cx="5" cy="6" r="1" />
+        <circle cx="5" cy="12" r="1" />
+        <circle cx="5" cy="18" r="1" />
+        <path d="M9 6h11M9 12h11M9 18h11" />
+      </symbol>
+
+      <symbol id="icon-history" viewBox="0 0 24 24">
+        <path d="M4 5v5h5" />
+        <path d="M5.5 16.5A8 8 0 1 0 4 10" />
+        <path d="M12 8v5l3 2" />
+      </symbol>
+    </svg>
+
     <main class="app">
       <header class="app-header">
         <h1>Chip8NX</h1>
@@ -19,20 +74,92 @@
         <section class="rom-loader" aria-label="ROM loader">
           <span class="rom-loader-label">ROM</span>
 
-          <button id="rom-load-button" type="button">Load ROM</button>
+          <button id="rom-load-button" type="button">
+            <svg
+              class="icon"
+              width="16"
+              height="16"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <use href="#icon-folder-open"></use>
+            </svg>
 
-          <span id="rom-file-name" class="rom-file-name"> No ROM loaded </span>
+            <span>Load ROM</span>
+          </button>
 
-          <input id="rom-input" type="file" accept=".ch8,application/octet-stream" hidden />
+          <span id="rom-file-name" class="rom-file-name">
+            No ROM loaded
+          </span>
+
+          <input
+            id="rom-input"
+            type="file"
+            accept=".ch8,application/octet-stream"
+            hidden
+          />
         </section>
 
         <section class="controls" aria-label="Emulation controls">
-          <button id="run-toggle-button" type="button" disabled>Start</button>
+          <button
+            id="run-toggle-button"
+            type="button"
+            data-action="start"
+            disabled
+          >
+            <svg
+              class="icon run-toggle-icon run-toggle-icon-start"
+              width="16"
+              height="16"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <use href="#icon-play"></use>
+            </svg>
 
-          <button id="step-button" type="button" disabled>Step</button>
+            <svg
+              class="icon run-toggle-icon run-toggle-icon-pause"
+              width="16"
+              height="16"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <use href="#icon-pause"></use>
+            </svg>
 
-          <button id="reset-button" type="button" disabled>Reset</button>
+            <span id="run-toggle-label">Start</span>
+          </button>
+
+          <button id="step-button" type="button" disabled>
+            <svg
+              class="icon"
+              width="16"
+              height="16"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <use href="#icon-step"></use>
+            </svg>
+
+            <span>Step</span>
+          </button>
+
+          <button id="reset-button" type="button" disabled>
+            <svg
+              class="icon"
+              width="16"
+              height="16"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <use href="#icon-reset"></use>
+            </svg>
+
+            <span>Reset</span>
+          </button>
         </section>
+
+        <span class="toolbar-divider" aria-hidden="true"></span>
 
         <div
           id="machine-state"
@@ -44,13 +171,23 @@
           <span id="machine-state-label">No ROM</span>
         </div>
 
+        <span class="toolbar-divider" aria-hidden="true"></span>
+
         <section class="theme-picker" aria-label="Appearance">
           <label for="theme-select">Theme</label>
 
           <select id="theme-select">
-            <option value="retro-green">Retro Green</option>
-            <option value="retro-amber">Retro Amber</option>
-            <option value="dark-theme">Dark</option>
+            <option value="retro-green">
+              Retro Green
+            </option>
+
+            <option value="retro-amber">
+              Retro Amber
+            </option>
+
+            <option value="dark-theme">
+              Dark
+            </option>
           </select>
         </section>
       </section>
@@ -67,11 +204,25 @@
           </section>
 
           <section class="keypad" aria-label="Virtual CHIP-8 keypad">
-            <h2>Keypad</h2>
+            <h2 class="panel-heading">
+              <svg
+                class="icon"
+                width="16"
+                height="16"
+                aria-hidden="true"
+                focusable="false"
+              >
+                <use href="#icon-keypad"></use>
+              </svg>
+
+              <span>Keypad</span>
+            </h2>
 
             <p class="keypad-hint">
               Click or press keys:
-              <span> 1, 2, 3, 4, Q, W, E, R, A, S, D, F, Z, X, C, V </span>
+              <span>
+                1, 2, 3, 4, Q, W, E, R, A, S, D, F, Z, X, C, V
+              </span>
             </p>
 
             <div class="keypad-content">
@@ -129,8 +280,23 @@
         </section>
 
         <aside class="inspection" aria-label="Machine inspection">
-          <section class="cpu-state" aria-labelledby="cpu-state-heading">
-            <h2 id="cpu-state-heading">CPU state</h2>
+          <section
+            class="cpu-state"
+            aria-labelledby="cpu-state-heading"
+          >
+            <h2 id="cpu-state-heading" class="panel-heading">
+              <svg
+                class="icon"
+                width="16"
+                height="16"
+                aria-hidden="true"
+                focusable="false"
+              >
+                <use href="#icon-cpu"></use>
+              </svg>
+
+              <span>CPU state</span>
+            </h2>
 
             <p id="cpu-state-empty">No machine loaded.</p>
 
@@ -235,18 +401,58 @@
           </section>
 
           <div class="instruction-column">
-            <section class="nearby-instructions" aria-labelledby="nearby-instructions-heading">
-              <h2 id="nearby-instructions-heading">Nearby instructions</h2>
+            <section
+              class="nearby-instructions"
+              aria-labelledby="nearby-instructions-heading"
+            >
+              <h2
+                id="nearby-instructions-heading"
+                class="panel-heading"
+              >
+                <svg
+                  class="icon"
+                  width="16"
+                  height="16"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <use href="#icon-nearby"></use>
+                </svg>
 
-              <p id="nearby-instructions-empty">No machine loaded.</p>
+                <span>Nearby instructions</span>
+              </h2>
+
+              <p id="nearby-instructions-empty">
+                No machine loaded.
+              </p>
 
               <ol id="nearby-instructions-list"></ol>
             </section>
 
-            <section class="instruction-history" aria-labelledby="instruction-history-heading">
-              <h2 id="instruction-history-heading">Recent instructions</h2>
+            <section
+              class="instruction-history"
+              aria-labelledby="instruction-history-heading"
+            >
+              <h2
+                id="instruction-history-heading"
+                class="panel-heading"
+              >
+                <svg
+                  class="icon"
+                  width="16"
+                  height="16"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <use href="#icon-history"></use>
+                </svg>
 
-              <p id="instruction-history-empty">No instruction attempts yet.</p>
+                <span>Recent instructions</span>
+              </h2>
+
+              <p id="instruction-history-empty">
+                No instruction attempts yet.
+              </p>
 
               <ol id="instruction-history-list"></ol>
             </section>
@@ -255,7 +461,9 @@
       </div>
 
       <footer class="app-status">
-        <p id="status" role="status">Choose a CHIP-8 ROM to begin.</p>
+        <p id="status" role="status">
+          Choose a CHIP-8 ROM to begin.
+        </p>
       </footer>
     </main>
 

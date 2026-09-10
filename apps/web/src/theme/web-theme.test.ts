@@ -8,7 +8,9 @@ import {
   type WebThemeStorage,
 } from "./web-theme.ts";
 
-function memoryStorage(initialValue: string | null = null): {
+function memoryStorage(
+  initialValue: string | null = null,
+): {
   readonly storage: WebThemeStorage;
   readonly readValue: () => string | null;
 } {
@@ -28,27 +30,53 @@ function memoryStorage(initialValue: string | null = null): {
 }
 
 Deno.test("parses supported Web themes", () => {
-  assertEquals(parseWebTheme("dark-theme"), "dark-theme");
+  assertEquals(
+    parseWebTheme("dark-theme"),
+    "dark-theme",
+  );
 
-  assertEquals(parseWebTheme("retro-green"), "retro-green");
+  assertEquals(
+    parseWebTheme("retro-green"),
+    "retro-green",
+  );
 
-  assertEquals(parseWebTheme("retro-amber"), "retro-amber");
+  assertEquals(
+    parseWebTheme("retro-amber"),
+    "retro-amber",
+  );
 
-  assertEquals(parseWebTheme("unknown"), undefined);
+  assertEquals(
+    parseWebTheme("unknown"),
+    undefined,
+  );
 });
 
 Deno.test("loads the default theme when no valid preference exists", () => {
   const { storage } = memoryStorage("unknown");
 
-  assertEquals(loadWebTheme(storage), DEFAULT_WEB_THEME);
+  assertEquals(
+    loadWebTheme(storage),
+    DEFAULT_WEB_THEME,
+  );
 });
 
 Deno.test("loads and stores a Web theme preference", () => {
-  const { storage, readValue } = memoryStorage("retro-green");
+  const { storage, readValue } = memoryStorage(
+    "retro-green",
+  );
 
-  assertEquals(loadWebTheme(storage), "retro-green");
+  assertEquals(
+    loadWebTheme(storage),
+    "retro-green",
+  );
 
-  storeWebTheme(storage, "retro-amber");
+  storeWebTheme(
+    storage,
+    "retro-amber",
+  );
 
-  assertEquals(readValue(), "retro-amber");
+  assertEquals(
+    readValue(),
+    "retro-amber",
+  );
 });
