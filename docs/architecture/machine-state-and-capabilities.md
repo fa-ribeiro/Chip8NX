@@ -121,18 +121,45 @@ Chip8RuntimeConfiguration
     → how the composed machine is driven
 ```
 
-`Chip8Profile` includes characteristics such as:
+`Chip8Profile` includes the complete declarative definition of the emulated machine:
 
 ```text
-memory size
-program start address
-stack capacity
-display geometry
-display refresh frequency
-timer frequency
-font image
-font base address
+machine characteristics
+    memory size
+    program start address
+    stack capacity
+    display geometry
+    display refresh frequency
+    timer frequency
+    font image
+    font base address
+
+compatibility-sensitive semantics
+    shift source
+    memory-transfer index behavior
+    jump-offset source
+    logic-operation flag behavior
+    sprite overflow behavior
+    sprite draw timing
 ```
+
+Compatibility is therefore configuration, not mutable execution state and not an execution capability.
+
+For example:
+
+```text
+shiftSource: "vx"
+```
+
+describes how a machine interprets `8xy6` and `8xyE`. It does not change while that machine executes.
+
+Likewise:
+
+```text
+spriteOverflow: "clip"
+```
+
+configures `DisplayBuffer` behavior when the machine is composed. It is not framebuffer state.
 
 `Chip8RuntimeConfiguration` currently contains:
 
@@ -1160,9 +1187,11 @@ Chip8NX uses both patterns according to whether substitution is justified.
 
 Configuration is descriptive. It does not own mutable execution state or application composition.
 
-### `Chip8Profile` describes the machine
+### `Chip8Profile` describes the complete machine target
 
-The profile currently describes:
+A profile combines architectural machine characteristics with compatibility-sensitive semantics.
+
+The current shape conceptually describes:
 
 ```text
 memorySize
@@ -1177,9 +1206,16 @@ timerFrequency
 
 fontImage
 fontBaseAddress
+
+compatibility.shiftSource
+compatibility.memoryTransferIndex
+compatibility.jumpOffsetSource
+compatibility.logicFlag
+compatibility.spriteOverflow
+compatibility.spriteDrawTiming
 ```
 
-These values guide construction and initialization.
+These values influence different parts of composition.
 
 For example:
 
@@ -1194,8 +1230,11 @@ profile.programStartAddress
     → initial PC
     → program loading address
 
-profile.display
+profile.display.width
+profile.display.height
     → DisplayBuffer geometry
+
+profile.display.refreshFrequency
     → emulated display timing
 
 profile.timerFrequency
@@ -1204,15 +1243,32 @@ profile.timerFrequency
 profile.fontImage
 profile.fontBaseAddress
     → initialization
+
+profile.compatibility
+    → compatibility-sensitive instruction semantics
+
+profile.compatibility.spriteOverflow
+    → DisplayBuffer sprite behavior
 ```
 
-The profile centralizes machine characteristics that would otherwise become scattered literals.
+The profile centralizes facts about the emulated machine that would otherwise become scattered literals and conditionals.
 
-### The Classic profile is data, not a factory
+Chip8NX currently provides two built-in historical profiles:
 
-The Classic profile contains machine facts.
+```text
+CLASSIC_CHIP8_PROFILE
+CHIP48_PROFILE
+```
 
-It does not construct:
+They are independent values implementing the same `Chip8Profile` contract. Neither profile is defined as an object-oriented subtype of the other.
+
+### Profiles are data, not factories
+
+A historical profile contains machine facts and semantic choices.
+
+For example, the Classic and CHIP-48 profiles differ in characteristics such as font placement and timing, and in compatibility behavior such as shift source, `Fx55` / `Fx65` index updates, logic-flag handling, and `Bnnn` interpretation.
+
+A profile still does not construct:
 
 ```text
 Ram
@@ -1230,11 +1286,11 @@ That is deliberate.
 
 The profile answers:
 
-> What characteristics define this machine?
+> What machine should these components emulate?
 
 The application answers:
 
-> Which concrete objects will implement those roles here?
+> Which concrete objects will implement that machine here?
 
 The direction remains:
 
@@ -1256,11 +1312,41 @@ Applications use profile values when constructing compatible components:
 
 ```ts
 const memory = new Ram(profile.memorySize);
+
 const stack = new Stack(profile.stackCapacity);
-const displayBuffer = new DisplayBuffer(profile.display.width, profile.display.height);
+
+const displayBuffer = new DisplayBuffer(
+  profile.display.width,
+  profile.display.height,
+  profile.compatibility.spriteOverflow,
+);
+
+const executor = new InstructionExecutor(profile.compatibility);
 ```
 
 The profile supplies required characteristics; the application chooses concrete implementations.
+
+Different consumers receive profile information according to the responsibility they own.
+
+For example:
+
+```text
+DisplayBuffer
+    → spriteOverflow
+
+InstructionExecutor
+    → compatibility-sensitive instruction semantics
+
+MachineInitializer
+    → memory/font/program initialization characteristics
+
+Chip8Runtime
+    → timer and display frequencies
+```
+
+`ExecutionContext` does not contain `Chip8Compatibility`.
+
+Compatibility is neither mutable machine state nor an execution capability. It configures the semantics of components when the machine is composed.
 
 That distinction leaves room for future alternative implementations without changing machine definition.
 
@@ -1388,82 +1474,160 @@ If no, it is probably host or runtime policy.
 
 This is a design guideline rather than a mechanical rule.
 
-## Future CHIP-8-Family Variants
+## CHIP-8-Family Variation
 
-`Chip8Profile` is the natural place for machine characteristics that genuinely vary, but not every historical compatibility difference should automatically become a profile field.
+Variant support follows demonstrated historical differences rather than a predeclared collection of generic quirk flags.
 
-### Avoid speculative quirk flags
+CHIP-48 2.25 was the first second historical machine used to exercise the profile architecture.
 
-A tempting design would add many booleans immediately:
+### Semantic choices rather than boolean quirk flags
+
+Compatibility-sensitive behavior uses explicit semantic values.
+
+For example:
 
 ```ts
-interface Chip8Profile {
-  shiftUsesVy: boolean;
-  logicClearsVf: boolean;
-  incrementIAfterRegisterTransfer: boolean;
-  drawWaitsForVBlank: boolean;
-}
+shiftSource: "vx";
+
+memoryTransferIndex: "increment-by-x";
+
+jumpOffsetSource: "vx";
+
+logicFlag: "unchanged";
+
+spriteOverflow: "clip";
+
+spriteDrawTiming: "vertical-blank";
 ```
 
-That appears flexible, but it commits the project to a variation model before actual variant implementations have shown which behaviors belong together.
+This is preferred to flags such as:
 
-It also risks turning the profile into an unrelated feature-flag bag.
+```ts
+shiftQuirk: true;
+memoryQuirk: false;
+```
 
-The current approach is:
+because the semantic form states the behavior directly.
 
-> Keep Classic semantics explicit until a real second machine model provides evidence for the correct abstraction.
+It also scales when a historical difference has more than two outcomes.
 
-### Different variations may belong at different boundaries
-
-Future differences may belong in:
+For example, `Fx55` and `Fx65` currently demonstrate three real index-register behaviors:
 
 ```text
-profile
-    → memory / display / timing characteristics
+increment-by-count
+    → I += X + 1
 
-decoder
-    → supported instruction set
+increment-by-x
+    → I += X
 
-instruction semantics
-    → behavior of existing instructions
-
-display implementation
-    → graphical behavior
-
-font
-    → glyph layout
-
-runtime
-    → timing policy
+unchanged
+    → I is unchanged
 ```
 
-The right seam should follow the responsibility that actually varies.
+The `"increment-by-x"` form was added only after CHIP-48 demonstrated that the original two-way model was insufficient.
 
-### Profiles do not require a plugin framework
+### A profile is larger than a compatibility choice
 
-Supporting more profiles can remain simple:
+A compatibility choice represents one varying behavior.
+
+A profile represents the complete machine target.
+
+For example:
+
+```text
+CHIP48_PROFILE
+    ├── memory characteristics
+    ├── stack capacity
+    ├── display geometry and timing
+    ├── timer timing
+    ├── CHIP-48 font image and placement
+    └── CHIP-48 compatibility semantics
+```
+
+Therefore:
+
+```text
+CHIP-48
+    ≠ a quirk
+```
+
+Instead, CHIP-48 is a historical machine profile that selects several compatibility behaviors among its other machine characteristics.
+
+### Named historical profiles remain coherent presets
+
+Built-in named profiles should describe evidence-based historical targets.
+
+For example:
 
 ```text
 CLASSIC_CHIP8_PROFILE
 CHIP48_PROFILE
-SUPER_CHIP_PROFILE
 ```
 
-with additional typed characteristics introduced only as needed.
+should not silently change individual behaviors merely because a particular ROM happens to prefer another interpretation.
 
-If semantic variation requires a strategy or alternate implementation, that seam can be added at the responsible component.
+The `Chip8Profile` type itself remains composable, however. Tests or hosts may deliberately construct custom combinations when doing so is useful.
 
-The profile should remain declarative rather than become a registry of callbacks or component factories.
+This distinction allows:
 
-### Preserve meaningful combinations
+```text
+historical preset
+    → coherent documented machine
 
-Many historical behaviors may belong together as one interpreter family.
+custom profile
+    → deliberate experimental combination
+```
 
-A large set of independent booleans could allow combinations that never describe a real or useful target.
+without requiring separate configuration systems.
 
-When variant work begins, named profiles or richer typed semantic structures may better preserve meaningful combinations.
+### Variation still belongs at the responsible boundary
 
-The current Classic-only baseline deliberately leaves that design space open.
+Not every difference between CHIP-8-family interpreters belongs in `Chip8Compatibility`.
+
+Different variations may belong in:
+
+```text
+profile characteristics
+    → memory / display / timing / fonts
+
+compatibility
+    → differing semantics of otherwise comparable operations
+
+decoder
+    → supported instruction set
+
+display architecture
+    → additional display modes or planes
+
+machine state
+    → additional persistent state
+
+runtime
+    → timing behavior not already represented by profile frequencies
+```
+
+SUPER-CHIP and XO-CHIP, for example, introduce architectural capabilities and instructions beyond the compatibility choices currently represented by Chip8NX.
+
+Those future requirements should extend the architecture only when their concrete implementation creates demonstrated pressure.
+
+### Profiles do not require a plugin framework
+
+Supporting additional profiles can remain simple:
+
+```text
+CLASSIC_CHIP8_PROFILE
+CHIP48_PROFILE
+future SUPER_CHIP_PROFILE
+future XO_CHIP_PROFILE
+```
+
+if and when Core supports the machine characteristics and instruction sets those profiles require.
+
+A profile remains declarative data rather than a registry of callbacks, strategy objects, component factories, or host implementations.
+
+The project rule remains:
+
+> Abstract demonstrated variation and demonstrated composition pressure, not hypothetical future needs.
 
 ## Lifecycle, Reset, and Ownership
 
@@ -1736,6 +1900,8 @@ flowchart TD
     Executor["InstructionExecutor"]
     Runtime["Chip8Runtime"]
 
+    Profile --> App
+
     App --> State
     App --> Caps
 
@@ -1746,7 +1912,10 @@ flowchart TD
     Program --> Initializer
     Context --> Initializer
 
+    Profile -->|"compatibility"| Executor
     Context --> Executor
+
+    Profile -->|"timer / display frequencies"| Runtime
     Context --> Runtime
 
     Initializer -->|"initialize / reset"| State
@@ -1805,13 +1974,13 @@ The machine-state architecture follows a few stable rules:
    `KeyboardState` and deterministic RNG implementations own the internal state required to provide their roles.
 
 7. **Configuration is not live state.**\
-   Profiles describe machine characteristics; runtime configuration describes execution-driving policy.
+   Profiles describe the complete emulated machine, including architectural characteristics and compatibility-sensitive semantics; runtime configuration describes execution-driving policy.
 
 8. **Profiles are descriptions, not factories.**\
-   Applications remain responsible for selecting and constructing concrete implementations.
+   Applications remain responsible for selecting profiles and constructing concrete implementations from their values.
 
-9. **Future variation should follow evidence.**\
-   Do not convert every historical CHIP-8 quirk into a speculative profile flag before real variant support reveals the correct seam.
+9. **Variant abstractions follow demonstrated historical variation.**\
+   Compatibility uses semantic choices rather than speculative boolean flags, and new dimensions or outcomes are introduced only when real machine targets demonstrate the need.
 
 10. **Construction, initialization, pause, and reset remain separate.**\
     Each lifecycle operation has different ownership and semantics.

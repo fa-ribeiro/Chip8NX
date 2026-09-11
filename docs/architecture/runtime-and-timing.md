@@ -106,6 +106,27 @@ CPU frequency
     → Cpu.step()
 ```
 
+The three frequencies do not all have the same configuration ownership.
+
+At application composition:
+
+```text
+Chip8Profile.timerFrequency
+    → Chip8Runtime timer frequency
+
+Chip8Profile.display.refreshFrequency
+    → Chip8Runtime display frequency
+
+Chip8RuntimeConfiguration.cpuFrequency
+    → Chip8Runtime CPU frequency
+```
+
+Timer and display frequencies describe the emulated machine.
+
+CPU frequency describes how the host chooses to drive instruction execution and remains runtime/host policy.
+
+`Chip8Runtime` receives the resulting frequencies explicitly. It does not receive or inspect `Chip8Profile` itself.
+
 It also exposes the execution lifecycle:
 
 ```text
@@ -593,7 +614,7 @@ This order is intentional runtime policy.
 
 ### Vertical blank before CPU
 
-A Classic `Dxyn` may execute at exactly the same emulated instant as a display boundary.
+A `Dxyn` whose active compatibility requires vertical-blank synchronization may execute at exactly the same emulated instant as a display boundary.
 
 If CPU ran first:
 
@@ -620,6 +641,22 @@ CPU deadline
     ↓
 Dxyn may consume it
 ```
+
+Profiles configured for immediate drawing do not consume this opportunity.
+
+The runtime still produces display-boundary signals according to the configured display frequency; instruction semantics decide whether `Dxyn` requires them.
+
+Therefore the responsibility remains:
+
+```text
+Scheduler / Chip8Runtime
+    → when display opportunities occur
+
+InstructionExecutor compatibility
+    → whether Dxyn must consume one
+```
+
+No profile-specific scheduling branch is required.
 
 This is the policy established by [ADR 0013](../decisions/0013-emulated-display-timing.md).
 
@@ -683,7 +720,7 @@ Scheduling determines when events occur. Machine components represent the state 
 
 ### Timers
 
-Classic CHIP-8 has delay and sound timers.
+The CHIP-8 machine profiles currently modeled by Chip8NX expose delay and sound timers.
 
 Both use the same `Timer` implementation because their countdown mechanics are identical.
 
@@ -707,7 +744,7 @@ value = 0
 
 `Timer` does not know how frequently `tick()` should occur.
 
-The configured timer frequency belongs to the profile/runtime layer:
+The configured timer frequency originates in the machine profile and is supplied to the runtime during composition:
 
 ```text
 Chip8Profile.timerFrequency
@@ -718,6 +755,18 @@ Scheduler
           ↓
 Timer.tick()
 ```
+
+For example, the current built-in profiles intentionally differ here:
+
+```text
+Classic CHIP-8
+    → 60 Hz
+
+CHIP-48 2.25
+    → 64 Hz
+```
+
+The timer itself remains unaware of either profile.
 
 Delay and sound timers are separate instances because their semantic use differs even though their mechanics are shared.
 
@@ -781,9 +830,9 @@ one successful consume
 none pending
 ```
 
-### `Dxyn` consumes state, not scheduling machinery
+### `Dxyn` may consume state, but never scheduling machinery
 
-Sprite drawing asks:
+When the active compatibility requires vertical-blank-gated drawing, sprite drawing asks:
 
 ```text
 InstructionExecutor
@@ -795,7 +844,19 @@ The executor does not inspect clocks or scheduler deadlines.
 
 If no opportunity exists, the instruction rewinds its program counter and can be retried at a later CPU opportunity.
 
-The division is:
+For immediate-draw compatibility:
+
+```text
+InstructionExecutor
+      ↓
+do not inspect VerticalBlank
+      ↓
+draw immediately
+```
+
+An already-pending vertical-blank opportunity remains untouched.
+
+The division is therefore:
 
 ```text
 Scheduler / Runtime
@@ -804,11 +865,14 @@ Scheduler / Runtime
 VerticalBlank
     → store availability
 
+InstructionExecutor compatibility
+    → decide whether Dxyn requires availability
+
 InstructionExecutor
-    → consume availability as part of Dxyn semantics
+    → consume availability when required
 ```
 
-This keeps execution independent of the scheduler and timing orchestration independent of instruction internals.
+This keeps execution independent of scheduling machinery while allowing different historical drawing semantics to share the same runtime.
 
 ### Host rendering is separate from emulated vertical blank
 
@@ -915,11 +979,11 @@ Manual steps also do not consume CPU, timer, or display deadlines.
 
 When the runtime later resumes, its normal resume rule rebases the scheduled tasks from the current clock time.
 
-### Draw instructions require a temporary opportunity
+### Stepping supplies a temporary display opportunity
 
 A paused runtime has no scheduled display events.
 
-Without special handling:
+For vertical-blank-gated drawing, that would otherwise produce:
 
 ```text
 step Dxyn
@@ -935,9 +999,11 @@ no vblank
 rewind forever
 ```
 
-The debugger could never step past a draw.
+The debugger could never step past that instruction.
 
-`runtime.step()` therefore supplies one temporary vertical-blank opportunity when none was already pending:
+`Chip8Runtime` deliberately remains unaware of instruction compatibility, so `runtime.step()` does not ask whether the current profile requires vertical blank.
+
+Instead, when no opportunity is already pending, it supplies one temporary opportunity around the CPU attempt:
 
 ```text
 no pending vblank
@@ -945,11 +1011,17 @@ no pending vblank
 signal temporary opportunity
       ↓
 Cpu.step()
+      ↓
+clean up if unused
 ```
+
+For a vertical-blank-gated `Dxyn`, the instruction may consume it.
+
+For immediate-draw `Dxyn`, or for an unrelated instruction, the opportunity remains unused and is removed afterward.
 
 This opportunity is a stepping aid, not a scheduled display event.
 
-It does not advance display time.
+It does not advance display time or scheduler deadlines.
 
 ### Existing state is preserved
 
@@ -1013,7 +1085,11 @@ external input not present
     → remain waiting
 ```
 
-`Dxyn` receives special treatment because its blocking condition comes from the runtime's own suspended display scheduler. `Fx0A` does not because keyboard input is external machine state.
+Vertical-blank-gated `Dxyn` can make use of the temporary display opportunity because its blocking condition normally comes from the runtime's own suspended display scheduler.
+
+Immediate-draw `Dxyn` does not need that aid and simply ignores it.
+
+`Fx0A` receives no comparable synthetic input because keyboard input is external machine state rather than a condition normally produced by the runtime scheduler.
 
 ### Stepping does not temporarily resume
 
@@ -1139,7 +1215,8 @@ They verify machine-wide timing behavior such as:
 - one manual step advances only CPU execution;
 - stepping while running is rejected;
 - display opportunities are produced by runtime timing;
-- manual `Dxyn` can complete while paused.
+- vertical-blank-gated `Dxyn` can complete during manual stepping while paused;
+- unused temporary vertical blank is cleaned up after a manual step.
 
 ### Equal-deadline ordering is verified through machine state
 
@@ -1187,7 +1264,7 @@ The overall rule is:
 
 Examples:
 
-```text
+````text
 timer does not underflow
     → Timer test
 
@@ -1203,7 +1280,10 @@ global chronological ordering
 timer-before-CPU tie
     → Chip8Runtime integration test
 
-manual draw can complete while paused
+vblank-gated manual draw can complete while paused
+    → Chip8Runtime integration test
+
+temporary stepping vblank does not leak
     → Chip8Runtime integration test
 ```
 
@@ -1217,8 +1297,8 @@ The runtime/timing architecture follows a few stable rules:
 2. **The scheduler owns chronology, not CHIP-8 meaning.**\
    Exact periodic deadlines, catch-up, and tie-breaking remain generic.
 
-3. **The runtime owns CHIP-8 timing policy.**\
-   It maps scheduler callbacks to CPU, timers, and vertical blank and chooses their equal-deadline registration order.
+3. **The runtime owns scheduled timing orchestration, not profile semantics.**\
+   It maps configured frequencies onto CPU, timers, and vertical blank and chooses their equal-deadline registration order; instruction compatibility determines whether drawing consumes the produced display opportunities.
 
 4. **Timed state does not schedule itself.**\
    `Timer` and `VerticalBlank` own state and local transitions only.
@@ -1233,6 +1313,10 @@ The runtime/timing architecture follows a few stable rules:
    It performs one CPU attempt while leaving timer and scheduler progression unchanged.
 
 8. **Debugging aids must not become persistent machine state.**\
-   Synthetic vertical blank exists only for the lifetime of the manual step that needs it.
+   Temporary vertical blank supplied for manual stepping exists only for that CPU attempt and is removed if the instruction does not consume it.
+
+9. **Machine timing and host execution policy remain distinct.**\
+   Timer and display frequencies come from `Chip8Profile`; CPU frequency remains host/runtime configuration.
 
 Together these rules keep timing deterministic and testable while leaving host applications free to choose their own event-loop and presentation mechanisms.
+````

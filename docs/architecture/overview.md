@@ -46,11 +46,51 @@ This keeps the reusable dependency graph acyclic and prevents presentation or in
 
 `Chip8Profile` is the declarative description of the machine being emulated.
 
-It supplies characteristics such as memory size, program start address, stack capacity, display geometry and refresh frequency, timer frequency, and font definition. Applications use those values when constructing and initializing compatible components.
+A profile describes the whole emulated machine target. Compatibility-sensitive behavior is one part of that description rather than another name for the profile.
 
-A profile describes machine characteristics; it does not construct components, select host implementations, or represent current mutable state. Runtime execution policy such as CPU frequency remains a separate configuration concern.
+Conceptually:
 
-See [Machine state and capabilities architecture](./machine-state-and-capabilities.md) for the detailed state/configuration model and the project's evidence-driven approach to future CHIP-8-family variation.
+```text
+Chip8Profile
+    ├── machine characteristics
+    │   ├── memory size
+    │   ├── program start address
+    │   ├── stack capacity
+    │   ├── display geometry and refresh frequency
+    │   ├── timer frequency
+    │   └── font image and placement
+    │
+    └── compatibility
+        ├── shift source
+        ├── memory-transfer index behavior
+        ├── jump-offset source
+        ├── logic-operation flag behavior
+        ├── sprite overflow behavior
+        └── sprite draw timing
+```
+
+Chip8NX currently provides two built-in historical profiles:
+
+- `CLASSIC_CHIP8_PROFILE`;
+- `CHIP48_PROFILE`, representing CHIP-48 2.25.
+
+Named historical profiles are coherent presets derived from the behavior of their target interpreters. The same `Chip8Profile` type may also represent deliberate custom combinations when a host or test needs them.
+
+Compatibility choices use semantic values rather than boolean quirk flags. For example:
+
+```ts
+shiftSource: "vx";
+memoryTransferIndex: "increment-by-x";
+spriteOverflow: "clip";
+```
+
+This keeps the selected behavior explicit without requiring callers to interpret what an enabled or disabled "quirk" means.
+
+A profile does not construct components, select host implementations, or represent current mutable state. Applications remain composition roots and provide the relevant profile values to the components they construct.
+
+Runtime execution policy such as CPU frequency is intentionally separate from the machine profile. Timer frequency and emulated display timing belong to the profile because they are characteristics of the emulated machine, while CPU execution frequency remains host/runtime policy.
+
+See [Machine state and capabilities architecture](./machine-state-and-capabilities.md) for the detailed state/configuration model and the project's evidence-driven approach to CHIP-8-family variation.
 
 ## Core instruction execution overview
 
@@ -96,7 +136,14 @@ Applications construct the object graph explicitly, using profile characteristic
 new Stack(profile.stackCapacity);
 
 new ProgramCounter(profile.programStartAddress);
-new DisplayBuffer(profile.display.width, profile.display.height);
+
+new DisplayBuffer(
+  profile.display.width,
+  profile.display.height,
+  profile.compatibility.spriteOverflow,
+);
+
+new InstructionExecutor(profile.compatibility);
 ```
 
 See [Machine state and capabilities architecture](./machine-state-and-capabilities.md) for focused invariant ownership, snapshot-based state observation, capability substitution, profiles and runtime configuration, reset semantics, and lifecycle ownership.
@@ -155,8 +202,16 @@ flowchart LR
 
 `Disassembler` does not implement a second decoder. It reuses Core's `Decoder`, so execution and inspection share the same instruction semantics.
 
-Instruction presentation is delegated to `InstructionFormatter`. `ClassicInstructionFormatter` provides the conventional CHIP-8 assembly representation currently used by the project.
+Instruction presentation is delegated to `InstructionFormatter`.
 
+Inspection currently provides profile-specific formatters for the two built-in historical targets:
+
+- `ClassicInstructionFormatter` presents Classic CHIP-8 instruction semantics;
+- `Chip48InstructionFormatter` presents CHIP-48 semantics where the textual representation differs, while delegating unchanged instructions to the Classic formatter.
+
+This distinction matters for instructions such as `Bnnn` and `8xy6` / `8xyE`, whose decoded operands are shared but whose historical interpretation differs between Classic CHIP-8 and CHIP-48.
+
+Formatter selection remains a composition concern. Inspection does not inspect a global machine profile or choose a formatter implicitly.
 Disassembly is strict over the requested range: invalid complete opcodes remain decoding errors. Policies such as treating unknown bytes as data and continuing through a whole ROM belong to the consuming application rather than the reusable disassembler.
 
 See [Disassembly architecture](./disassembly.md) for the detailed component boundaries, composition model, range semantics, and extension strategy.
@@ -274,6 +329,7 @@ A host renderer is neither of those things.
 
 ```mermaid
 flowchart LR
+    Profile["Chip8Profile"]
     Runtime["Chip8Runtime"]
     VBlank["VerticalBlank"]
     Cpu["Cpu / Dxyn"]
@@ -283,8 +339,12 @@ flowchart LR
     Desktop["Desktop renderer"]
     Tests["Tests / inspection"]
 
+    Profile -->|"display frequency"| Runtime
+    Profile -->|"draw timing"| Cpu
+    Profile -->|"sprite overflow"| Buffer
+
     Runtime -->|"display frame"| VBlank
-    VBlank -->|"permission consumed by Dxyn"| Cpu
+    VBlank -.->|"consumed when profile requires it"| Cpu
     Cpu --> Buffer
 
     Buffer -.-> Terminal
@@ -295,9 +355,13 @@ flowchart LR
 
 A renderer observes the buffer and presents it using host-specific technology.
 
+Whether `Dxyn` must consume a vertical-blank opportunity is an instruction-semantics choice supplied by the active profile. Profiles using immediate drawing do not consult or consume `VerticalBlank`.
+
+Likewise, `DisplayBuffer` owns the selected sprite-overflow behavior without knowing which historical profile selected it.
+
 Host rendering does **not** generate CHIP-8 vertical blank and does not need to run at the exact emulated display refresh frequency.
 
-This separation allows a terminal host, browser host, desktop host, and deterministic tests to share the same display semantics.
+This separation allows terminal hosts, browser hosts, future desktop hosts, and deterministic tests to share the same display state and timing semantics while historical profiles choose the behavior they require.
 
 ## Keyboard boundary
 
@@ -354,9 +418,13 @@ Current applications illustrate different composition needs:
 
 - the Terminal host composes Core with selected Inspection formatting tools for optional trace output;
 - the disassembler application composes Core decoding and memory semantics with Inspection disassembly and instruction formatting;
-- the Web host composes Core execution and CPU observation with Inspection disassembly, bounded trace history, and formatting to provide live CPU state, nearby instructions, and recent instruction-attempt presentation.
+- the Web host composes Core execution and CPU observation with Inspection disassembly, bounded trace history, and profile-appropriate formatting to provide live CPU state, nearby instructions, and recent instruction-attempt presentation. It currently allows the user to choose between Classic CHIP-8 and CHIP-48 2.25.
 
-The Web host remains responsible for the policy around that composition. It chooses the nearby-disassembly window, trace-history capacity, refresh cadence, DOM presentation, and lifecycle behavior without moving those concerns into either reusable package.
+The Web host remains responsible for the policy around that composition. It chooses the active machine profile, corresponding instruction formatter, nearby-disassembly window, trace-history capacity, refresh cadence, DOM presentation, and lifecycle behavior without moving those concerns into either reusable package.
+
+Changing the selected profile while a ROM is loaded creates a fresh Web machine session from the retained ROM image. The new session receives the selected profile consistently across initialization, execution, display behavior, runtime timing, and inspection formatting. Whether the previous session was running or paused is preserved as host lifecycle policy.
+
+Reset is different from profile replacement: it reinitializes the existing machine using the profile already retained by that session.
 
 Applications remain responsible for host-specific concerns such as rendering, audio presentation, physical input mapping, filesystem access, DOM or terminal interaction, and lifecycle integration.
 

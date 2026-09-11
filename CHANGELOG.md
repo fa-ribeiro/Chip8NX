@@ -12,6 +12,163 @@ During the `0.x` development phase:
 
 ## [Unreleased]
 
+### Added
+
+- Added explicit profile-controlled compatibility semantics for CHIP-8-family behavior:
+  - shift source for `8xy6` and `8xyE`;
+  - index-register behavior after `Fx55` and `Fx65`;
+  - register source for `Bnnn` jump offsets;
+  - `VF` handling for `8xy1`, `8xy2`, and `8xy3`;
+  - sprite overflow clipping or wrapping;
+  - vertical-blank-gated or immediate sprite drawing.
+
+- Added a real second historical machine profile, `CHIP48_PROFILE`, modeling CHIP-48 2.25.
+- Added the CHIP-48 hexadecimal font image and profile-specific font placement.
+- Added CHIP-48 profile characteristics including 64 Hz timer and display frequencies.
+- Added public Core profile coverage proving that both `CLASSIC_CHIP8_PROFILE` and `CHIP48_PROFILE` satisfy the shared `Chip8Profile` contract.
+- Added profile-driven execution integration coverage proving that the same ROM executes with different historical semantics under Classic CHIP-8 and CHIP-48.
+- Added `Chip48InstructionFormatter` to `@chip8nx/inspection` for instructions whose conventional presentation differs from Classic CHIP-8, including `Bnnn`, `8xy6`, and `8xyE`.
+- Added a Web machine-profile selector for switching between Classic CHIP-8 and CHIP-48 2.25.
+- Added profile-aware Web machine-session composition so initialization, execution semantics, display behavior, runtime timing, and instruction formatting all follow the selected profile.
+- Added independent multi-profile conformance coverage using Gulrak's Variant Detection Test v1.4.
+- Added external-fixture provenance and checksum documentation for the Gulrak Variant Detection Test without redistributing the ROM.
+
+### Changed
+
+- Expanded `Chip8Profile` from architectural machine characteristics into the complete declarative description of an emulated machine target, including immutable compatibility-sensitive semantics.
+- Replaced implicit or hard-coded Classic compatibility behavior with explicit semantic configuration at composition boundaries.
+- Made `Chip8Compatibility` a required `InstructionExecutor` dependency rather than providing an implicit Classic default.
+- Kept compatibility configuration out of `ExecutionContext`, preserving the distinction between immutable machine configuration and mutable execution state/capabilities.
+- Scoped sprite-overflow configuration directly to `DisplayBuffer` instead of injecting the complete compatibility object into the display subsystem.
+- Expanded `Fx55` / `Fx65` index-register behavior from a two-way model to three explicit outcomes:
+  - `increment-by-count` — `I += X + 1`;
+  - `increment-by-x` — `I += X`;
+  - `unchanged` — `I` is preserved.
+
+- Extended decoded `Bnnn` instructions to retain the encoded X register so CHIP-48 execution can use `Vx` without re-decoding the original opcode inside `InstructionExecutor`.
+- Made sprite-draw timing an instruction-semantics choice while keeping `Scheduler`, `Chip8Runtime`, `VerticalBlank`, and `ExecutionContext` profile-agnostic.
+- Preserved pending vertical blank when immediate-draw semantics are selected.
+- Kept CPU execution frequency as host/runtime policy while timer and display frequencies remain characteristics of `Chip8Profile`.
+- Changed Web Reset to reuse the profile retained by the current machine session rather than relying on a Classic default.
+- Made Web profile switching construct a fresh machine session from the retained ROM image while preserving whether the previous session was running or paused.
+- Kept profile-to-formatter selection as Web composition policy rather than introducing a formatter registry or profile-aware inspection framework.
+- Reconciled architecture documentation around profiles, compatibility, instruction execution, machine lifecycle, runtime timing, display synchronization, and Web composition.
+- Updated the root project documentation to describe Classic CHIP-8 and CHIP-48 2.25 as the currently supported historical machine profiles.
+
+### Conformance
+
+Chip8NX continues to pass the existing Classic CHIP-8 conformance suite:
+
+- IBM Logo;
+- original corax89 opcode test;
+- Timendus Corax+;
+- Timendus Flags;
+- Timendus Quirks in Classic CHIP-8 mode;
+- Timendus Keypad.
+
+Multi-profile compatibility is additionally validated with Gulrak's Variant Detection Test v1.4.
+
+The same independently authored ROM is executed under both built-in historical profiles and checked against separate stable framebuffer results.
+
+The expected compatibility classifications are:
+
+```text
+Classic CHIP-8
+    VFR+  MEM1  SHF-  JMP-  DWTL  WRP-
+
+CHIP-48 2.25
+    VFR-  MEMX  SHF+  JMP+  DWTL  WRP-
+```
+
+This independently exercises the six compatibility dimensions currently modeled by Chip8NX:
+
+```text
+logic VF behavior
+memory-transfer I updates
+shift source
+jump-offset source
+display wait behavior
+sprite overflow behavior
+```
+
+The test also independently demonstrates the need for all three modeled `Fx55` / `Fx65` index-register outcomes:
+
+```text
+MEM1
+    → I += X + 1
+
+MEMX
+    → I += X
+
+MEM0
+    → I unchanged
+```
+
+### Milestone
+
+`v0.8.0 — CHIP-8 Profiles / Variant Foundation` turns the existing `Chip8Profile` abstraction into a demonstrated multi-machine architecture.
+
+Before this milestone, Chip8NX had one concrete historical target:
+
+```text
+CLASSIC_CHIP8_PROFILE
+```
+
+The addition of CHIP-48 exercises the same composition model with a second real target:
+
+```text
+Chip8Profile
+    ├── architectural characteristics
+    │   ├── memory
+    │   ├── program start
+    │   ├── stack
+    │   ├── display
+    │   ├── timing
+    │   └── font
+    │
+    └── compatibility semantics
+        ├── shifts
+        ├── memory transfers
+        ├── jump offsets
+        ├── logic flags
+        ├── sprite overflow
+        └── draw timing
+```
+
+A profile is therefore the complete declarative description of the machine being emulated. Compatibility is one category within that description rather than a separate machine model or a generic "quirk engine."
+
+The milestone also demonstrates a key architectural rule in practice:
+
+> Abstract demonstrated variation and demonstrated composition pressure, not hypothetical future needs.
+
+Real CHIP-48 behavior required the compatibility model to grow where evidence demanded it—most notably from two `Fx55` / `Fx65` index behaviors to three—without introducing strategy hierarchies, generic profile registries, machine factories, mutable quirk managers, or a universal machine-session abstraction.
+
+Responsibility remains deliberately distributed:
+
+```text
+Chip8Profile
+    → describes the machine
+
+InstructionExecutor
+    → owns compatibility-sensitive instruction semantics
+
+DisplayBuffer
+    → owns sprite-overflow semantics
+
+Chip8Runtime
+    → owns scheduled timing orchestration
+
+@chip8nx/inspection
+    → owns passive profile-appropriate presentation
+
+applications
+    → select profiles and compose concrete machines
+```
+
+The Web host is the first interactive consumer of this foundation. It can run the same ROM as either Classic CHIP-8 or CHIP-48 2.25 and rebuild the machine session when the selected historical target changes.
+
+SUPER-CHIP, XO-CHIP, generic profile registries, strategy frameworks, and broader variant-specific instruction-set architecture remain deliberately deferred until concrete implementation pressure demonstrates what abstractions they actually require.
+
 ## [0.7.0] - 2026-09-10 - Web Inspection Workbench
 
 ### Added

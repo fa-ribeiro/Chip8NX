@@ -48,6 +48,68 @@ font base address
 
 Future profile-specific compatibility quirks may also belong here when multiple behaviors actually need to coexist.
 
+## Current Implementation
+
+The profile model has since been exercised by more than one historical machine target.
+
+Chip8NX currently provides built-in profiles for:
+
+- Classic CHIP-8;
+- CHIP-48 2.25.
+
+`Chip8Profile` remains the complete declarative description of the machine being emulated. It now includes both architectural characteristics and compatibility-sensitive behavior.
+
+Conceptually:
+
+```text
+Chip8Profile
+    ├── machine characteristics
+    │   ├── memory size
+    │   ├── program start address
+    │   ├── stack capacity
+    │   ├── display geometry and refresh frequency
+    │   ├── timer frequency
+    │   └── font image and placement
+    │
+    └── compatibility
+        ├── shift source
+        ├── memory-transfer index behavior
+        ├── jump-offset source
+        ├── logic-operation flag behavior
+        ├── sprite overflow behavior
+        └── sprite draw timing
+```
+
+Compatibility is therefore one part of a profile, not another name for a profile.
+
+A named historical profile describes one coherent historical machine target. For example, the CHIP-48 profile combines CHIP-48 machine characteristics with the compatibility semantics documented for CHIP-48 2.25.
+
+The same `Chip8Profile` type may also be used to construct deliberate custom combinations. The type system does not require every profile value to correspond to a named historical interpreter.
+
+Compatibility choices are represented using semantic values rather than boolean quirk flags. For example:
+
+```ts
+shiftSource: "vx";
+memoryTransferIndex: "increment-by-x";
+spriteOverflow: "clip";
+```
+
+This makes the selected behavior explicit without requiring callers to know what an enabled or disabled "quirk" means.
+
+The introduction of CHIP-48 also demonstrated that some compatibility dimensions require more than two choices. `Fx55` and `Fx65`, for example, currently support:
+
+```text
+increment-by-count   I += X + 1
+increment-by-x       I += X
+unchanged            I is not changed
+```
+
+This variation was added only after a real historical profile demonstrated the need for it.
+
+Profiles remain declarative data. They do not construct machine components, contain host adapters, or own runtime policy such as CPU execution frequency.
+
+Applications remain responsible for composition and supply the relevant profile values to the components they construct.
+
 ## Rationale
 
 The resulting model is easier to explain:

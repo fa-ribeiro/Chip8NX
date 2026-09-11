@@ -30,13 +30,13 @@ import {
   VerticalBlank,
 } from "@chip8nx/core";
 import {
+  Chip48InstructionFormatter,
   ClassicInstructionFormatter,
   ClassicInstructionTraceFormatter,
   Disassembler,
+  InstructionFormatter,
   InstructionTraceBuffer,
 } from "@chip8nx/inspection";
-import type { InstructionFormatter } from "@chip8nx/inspection";
-import { Chip48InstructionFormatter } from "@chip8nx/inspection";
 import { WebAudioBeeper } from "./audio/web-audio-beeper.ts";
 import { CanvasDisplay, type CanvasDisplayPalette } from "./display/canvas-display.ts";
 import {

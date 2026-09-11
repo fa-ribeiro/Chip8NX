@@ -15,7 +15,7 @@ ProgramCounter + Memory
         ↓
   typed Instruction
         ↓
-InstructionExecutor
+InstructionExecutor ← Chip8Compatibility
         ↓
  ExecutionContext
         ↓
@@ -23,6 +23,16 @@ machine-state changes
 ```
 
 The central architectural boundary is the typed `Instruction`.
+
+Compatibility-sensitive execution is configured separately from the decoded instruction.
+
+The decoder answers:
+
+> What instruction and operands does this opcode encode?
+
+The active compatibility configuration answers:
+
+> Which historical semantics should execution apply to those operands?
 
 Before that boundary, the implementation deals with encoded instruction bytes and opcode validation. After that boundary, execution works with semantic instruction data and no longer needs to interpret opcode bit fields.
 
@@ -167,7 +177,9 @@ Fx0A cannot complete
 PC restored to 0x200
 ```
 
-Classic sprite drawing uses the same retry pattern when no vertical-blank opportunity is available.
+Sprite drawing uses the same retry pattern when the active profile requires vertical-blank-gated drawing and no vertical-blank opportunity is available.
+
+Profiles configured for immediate drawing do not wait or rewind for vertical blank.
 
 This is normal emulated control flow, not a scheduler pause and not an exception. The CPU step completes, but the program counter again points at the waiting instruction.
 
@@ -268,6 +280,21 @@ The executor therefore receives already-validated semantic operands rather than 
 `Decoder` extracts encoded fields such as `x`, `y`, `n`, `nn`, and `nnn` and converts them into semantic instruction properties.
 
 Once decoding has succeeded, downstream consumers should use those properties rather than decode `instruction.opcode` again.
+
+This is especially important when historical variants assign different semantics to the same encoded operands.
+
+For example, `Bnnn` preserves both:
+
+```text
+NNN target address
+X register encoded by the instruction
+```
+
+in the decoded `JumpWithOffsetInstruction`.
+
+Classic execution uses `V0` as the offset and ignores the decoded X register. CHIP-48 execution uses the decoded `Vx` register.
+
+The executor therefore does not re-decode X from the original opcode when applying CHIP-48 semantics.
 
 ```text
 raw opcode fields
@@ -372,7 +399,27 @@ execute(
 ): void;
 ```
 
-It has no constructor dependencies and retains no per-execution state. Persistent emulator state remains in the components referenced by the context.
+`InstructionExecutor` receives immutable compatibility configuration at construction:
+
+```ts
+new InstructionExecutor(profile.compatibility);
+```
+
+It retains that configuration but no mutable per-execution machine state.
+
+Persistent emulator state remains in the components referenced by `ExecutionContext`.
+
+This distinction is intentional:
+
+```text
+Chip8Compatibility
+    → configures instruction semantics
+
+ExecutionContext
+    → exposes mutable machine state and execution capabilities
+```
+
+Compatibility therefore does not belong inside `ExecutionContext`.
 
 ### Semantic dispatch
 
@@ -445,25 +492,69 @@ VF = flag
 
 `VF` is represented through a single `FLAG_REGISTER = registerIndex(0xf)` domain value rather than a scattered numeric literal.
 
-### Classic semantic choices live in execution
+### Compatibility-sensitive semantics live in execution
 
 Variant-sensitive behavior belongs to instruction semantics rather than opcode decoding.
 
-The current Classic implementation includes behaviors such as:
+The same decoded instruction may therefore execute differently depending on the compatibility supplied to `InstructionExecutor`.
 
-- shifts use `Vy` as the source and write the result to `Vx`;
-- logical register operations clear `VF`;
-- `Fx55` and `Fx65` advance `I` after register transfer;
-- `Fx0A` completes on the required key-release event;
-- `Dxyn` is gated by an emulated vertical-blank opportunity.
+Current compatibility-sensitive dimensions include:
 
-`Decoder` identifies the instruction and its operands. `InstructionExecutor` determines what those operands mean for the current machine semantics.
+```text
+8xy6 / 8xyE
+    → shift Vx or Vy
 
-That distinction is important for future CHIP-8-family variants, where the same encoded form may require different execution behavior.
+8xy1 / 8xy2 / 8xy3
+    → reset VF or leave it unchanged
 
-### Waiting and drawing remain instruction semantics
+Fx55 / Fx65
+    → I += X + 1
+    → I += X
+    → I unchanged
 
-`Fx0A` and vblank-gated drawing demonstrate that the executor can coordinate temporal machine state without owning the scheduler.
+Bnnn
+    → offset from V0
+    → offset from encoded Vx
+
+Dxyn
+    → wait for vertical blank
+    → draw immediately
+```
+
+Sprite overflow is also compatibility-sensitive, but that behavior belongs to `DisplayBuffer` because the buffer owns sprite-pixel placement.
+
+This gives a responsibility split:
+
+```text
+Decoder
+    → identify instruction and operands
+
+InstructionExecutor
+    → apply compatibility-sensitive instruction semantics
+
+DisplayBuffer
+    → apply compatibility-sensitive sprite-overflow semantics
+```
+
+For example, both Classic CHIP-8 and CHIP-48 decode `8xy6` into the same semantic instruction shape containing X and Y operands.
+
+Their profiles then select different execution behavior:
+
+```text
+Classic CHIP-8
+    shiftSource = "vy"
+
+CHIP-48
+    shiftSource = "vx"
+```
+
+This avoids creating variant-specific decoders for instructions whose encoding is unchanged.
+
+### Waiting and draw timing remain instruction semantics
+
+`Fx0A` and profile-controlled sprite drawing demonstrate that the executor can coordinate temporal machine state without owning the scheduler.
+
+`Fx0A` always uses retry-style execution:
 
 ```text
 Fx0A
@@ -473,23 +564,38 @@ Fx0A
       no  → rewind PC
 ```
 
+`Dxyn` depends on the active compatibility:
+
 ```text
+spriteDrawTiming = "vertical-blank"
+
 Dxyn
   → VerticalBlank.consume()
       yes → read sprite and draw
       no  → rewind PC
 ```
 
-For drawing, the executor coordinates several otherwise independent components:
+```text
+spriteDrawTiming = "immediate"
+
+Dxyn
+  → do not consult VerticalBlank
+  → read sprite and draw immediately
+```
+
+Immediate drawing also leaves any already-pending vertical-blank opportunity untouched.
+
+For either draw-timing mode, the executor still coordinates:
 
 ```text
 Registers       → coordinates
 IndexRegister   → sprite start
 Memory          → sprite bytes
-VerticalBlank   → drawing opportunity
 DisplayBuffer   → XOR drawing / collision
 Registers       → VF collision result
 ```
+
+`VerticalBlank` participates only when the selected profile requires it.
 
 No lower-level component owns that complete relationship; the instruction does.
 
@@ -537,6 +643,24 @@ export interface ExecutionContext {
 ```
 
 The context has no machine behavior of its own. It provides stable access to the components that own state and capabilities.
+`ExecutionContext` deliberately does not contain `Chip8Profile` or `Chip8Compatibility`.
+
+Those values configure the machine when components are composed; they are not mutable machine state or execution capabilities.
+
+For example:
+
+```text
+profile.compatibility
+    → InstructionExecutor constructor
+
+profile.compatibility.spriteOverflow
+    → DisplayBuffer constructor
+
+ExecutionContext
+    → references the resulting configured components
+```
+
+This keeps configuration separate from live state.
 
 ### Why an aggregate exists
 
@@ -636,10 +760,11 @@ The execution graph is assembled through ordinary TypeScript composition:
 
 ```text
 Application
-   ├── constructs machine components
+   ├── selects Chip8Profile
+   ├── constructs machine components from profile characteristics
    ├── constructs ExecutionContext
    ├── constructs Decoder
-   └── constructs InstructionExecutor
+   └── constructs InstructionExecutor(profile.compatibility)
              ↓
             Cpu
 ```
@@ -796,20 +921,22 @@ The suite uses real Core components with focused test substitutions where useful
 
 ### Semantic edge cases receive direct coverage
 
-The executor suite covers behavior that can be correct for ordinary operands but fail at aliases or boundaries, including:
+The executor suite covers behavior that can be correct for ordinary operands but fail at aliases, boundaries, or compatibility choices, including:
 
 - arithmetic overflow and borrow behavior;
-- logical operations clearing `VF`;
+- profile-controlled logic-operation handling of `VF`;
 - `VF` aliasing an operand;
-- shift-source and write-order behavior;
-- draw collision and clipping;
+- both Vx- and Vy-source shift semantics;
+- all three `Fx55` / `Fx65` index-register update behaviors;
+- both V0- and Vx-based jump-offset semantics;
+- draw collision and sprite-overflow behavior;
 - zero-height drawing;
-- vertical-blank waiting;
+- vertical-blank-gated and immediate draw timing;
+- preservation of pending vertical blank during immediate drawing;
 - `Fx0A` wait completion;
-- register transfer and index-register updates;
 - unsupported `0mmm` execution.
 
-These cases turn variant-sensitive and ordering-sensitive semantics into executable regression evidence.
+These cases turn compatibility-sensitive and ordering-sensitive semantics into executable regression evidence.
 
 ### CPU tests verify orchestration
 
@@ -839,7 +966,9 @@ Focused tests make failures diagnosable; composed tests catch collaboration erro
 
 ### External conformance provides independent evidence
 
-The current Classic baseline also executes independently authored CHIP-8 programs through the normal machine pipeline, including:
+The implementation also executes independently authored CHIP-8 programs through the normal machine pipeline.
+
+The Classic baseline includes:
 
 - IBM Logo;
 - original corax89 opcode test;
@@ -848,7 +977,37 @@ The current Classic baseline also executes independently authored CHIP-8 program
 - Timendus Quirks in Classic CHIP-8 mode;
 - Timendus Keypad.
 
-Conformance does not replace focused tests. A failing ROM can expose a behavioral mismatch without identifying whether the root cause lies in decoding, instruction semantics, memory, display behavior, timing, or another component.
+Multi-profile compatibility is additionally checked with Gulrak's Variant Detection Test v1.4.
+
+The same ROM is executed independently using:
+
+```text
+CLASSIC_CHIP8_PROFILE
+CHIP48_PROFILE
+```
+
+and its stable framebuffer output is compared against separate golden results for each profile.
+
+This independently exercises compatibility dimensions including:
+
+```text
+logic VF behavior
+memory-transfer I updates
+shift source
+jump-offset source
+display wait behavior
+sprite wrapping / clipping
+```
+
+The Gulrak test is particularly useful because it distinguishes all three currently modeled `Fx55` / `Fx65` index-register outcomes:
+
+```text
+MEM1 → I += X + 1
+MEMX → I += X
+MEM0 → I unchanged
+```
+
+Conformance does not replace focused tests. A failing ROM can expose a behavioral mismatch without identifying whether the root cause lies in decoding, compatibility semantics, memory, display behavior, timing, or another component.
 
 The two evidence types answer different questions:
 
@@ -890,6 +1049,9 @@ encoded uncertainty
 semantic instruction
     → execute through strong types
 
+compatibility-sensitive behavior
+    → configured explicitly at composition
+
 normal PC progression
     → owned by Cpu
 
@@ -906,4 +1068,4 @@ waiting conditions
     → represented as emulated state, not exceptions
 ```
 
-Together, these boundaries keep the Classic implementation explicit today while leaving clear seams for inspection tooling, additional hosts, and future CHIP-8-family variation when concrete requirements justify it.
+Together, these boundaries allow Classic CHIP-8 and CHIP-48 to share one decoding and execution architecture while selecting different historical semantics explicitly. The same seams remain available for future CHIP-8-family variation when concrete requirements justify extending them.

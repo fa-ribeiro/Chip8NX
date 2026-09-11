@@ -55,3 +55,19 @@ The Timendus CHIP-8 test suite is not included in this repository.
   - Expected SHA-256: `558902b0e406bb97dc808c16d55abf493706598246e3c77aea9d9401063169c9`
 
 Chip8NX uses relevant Classic CHIP-8 tests from this suite as external conformance fixtures. These ROMs remain subject to the upstream GPL-3.0 license and are not distributed as part of Chip8NX.
+
+## Gulrak Variant Detection Test
+
+The Gulrak Variant Detection Test is not included in this repository.
+
+- Upstream project: <https://github.com/gulrak/cadmium>
+- Variant Detection Test documentation: <https://github.com/gulrak/cadmium/wiki/Variant-Detection-Test>
+- Upstream project license: MIT
+- Test version: `1.4`
+  - Expected local filename: `packages/core/tests/conformance/roms/variant-detection-1.4.ch8`
+  - Expected size: `2192` bytes
+  - Expected SHA-256: `ed53823dd9e133c1a30ad5557eab54dc9f8252cf4016f5cf94cd948828ff03ca`
+
+Chip8NX uses this ROM as an external compatibility/conformance fixture for distinguishing Classic CHIP-8 and CHIP-48 behavior.
+
+The ROM remains subject to its upstream license and is not distributed as part of Chip8NX.

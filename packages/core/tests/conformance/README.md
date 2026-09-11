@@ -25,6 +25,7 @@ deno test --allow-read packages/core/tests/conformance/timendus-corax-plus.test.
 deno test --allow-read packages/core/tests/conformance/timendus-flags.test.ts
 deno test --allow-read packages/core/tests/conformance/timendus-quirks.test.ts
 deno test --allow-read packages/core/tests/conformance/timendus-keypad.test.ts
+deno test --allow-read packages/core/tests/conformance/variant-detection.test.ts
 ```
 
 The `roms/` directory is intended for local test fixtures and should not contain redistributed third-party ROMs in the public repository.
@@ -199,6 +200,45 @@ The ROM supports automated test selection by writing a value to address `0x1FF`:
 
 The EX9E and EXA1 conformance tests drive `KeyboardState` directly. The FX0A test additionally verifies that execution remains blocked while waiting, CHIP-8 timers continue to advance, and execution resumes only after the selected key is released.
 
+### Gulrak Variant Detection Test
+
+Expected path:
+
+```text
+packages/core/tests/conformance/roms/variant-detection-1.4.ch8
+```
+
+Obtain the ROM from Gulrak's Variant Detection Test:
+
+<https://github.com/gulrak/cadmium/wiki/Variant-Detection-Test>
+
+The expected fixture is:
+
+```text
+Filename: variant-detection-1.4.ch8
+Size:     2192 bytes
+SHA-256:  ed53823dd9e133c1a30ad5557eab54dc9f8252cf4016f5cf94cd948828ff03ca
+```
+
+Chip8NX does not redistribute this ROM.
+
+The Variant Detection Test is published by Steffen Schümann (Gulrak) as part of the Cadmium project, which is MIT-licensed. The external ROM remains subject to its upstream license and is not covered by the Chip8NX MIT license.
+
+The test identifies historical CHIP-8 variants and reports compatibility-sensitive behavior for:
+
+- `VF` reset by `8XY1`, `8XY2`, and `8XY3`;
+- `I` updates after `FX55` and `FX65`;
+- `8XY6` and `8XYE` shift-source behavior;
+- `BNNN` / `BXNN` jump-offset behavior;
+- display synchronization behavior;
+- sprite wrapping and clipping behavior.
+
+Its memory test distinguishes all three index-register behaviors relevant to Chip8NX:
+
+- `MEM1` — `I += X + 1`;
+- `MEMX` — `I += X`;
+- `MEM0` — `I` remains unchanged.
+
 ## Verifying the downloaded ROM
 
 After downloading the file, calculate its SHA-256 checksum locally.
@@ -212,6 +252,7 @@ sha256sum packages/core/tests/conformance/roms/3-corax+.ch8
 sha256sum packages/core/tests/conformance/roms/4-flags.ch8
 sha256sum packages/core/tests/conformance/roms/5-quirks.ch8
 sha256sum packages/core/tests/conformance/roms/6-keypad.ch8
+sha256sum packages/core/tests/conformance/roms/variant-detection-1.4.ch8
 ```
 
 ### macOS
@@ -223,6 +264,7 @@ shasum -a 256 packages/core/tests/conformance/roms/3-corax+.ch8
 shasum -a 256 packages/core/tests/conformance/roms/4-flags.ch8
 shasum -a 256 packages/core/tests/conformance/roms/5-quirks.ch8
 shasum -a 256 packages/core/tests/conformance/roms/6-keypad.ch8
+shasum -a 256 packages/core/tests/conformance/roms/variant-detection-1.4.ch8
 ```
 
 ### PowerShell
@@ -234,6 +276,7 @@ Get-FileHash packages/core/tests/conformance/roms/3-corax+.ch8 -Algorithm SHA256
 Get-FileHash packages/core/tests/conformance/roms/4-flags.ch8 -Algorithm SHA256
 Get-FileHash packages/core/tests/conformance/roms/5-quirks.ch8 -Algorithm SHA256
 Get-FileHash packages/core/tests/conformance/roms/6-keypad.ch8 -Algorithm SHA256
+Get-FileHash packages/core/tests/conformance/roms/variant-detection-1.4.ch8 -Algorithm SHA256
 ```
 
 ## Future Fixtures

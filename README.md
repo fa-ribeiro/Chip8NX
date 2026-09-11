@@ -6,9 +6,37 @@ A modular, profile-driven CHIP-8 emulator in TypeScript.
 
 Chip8NX is a CHIP-8 emulator/interpreter built as a hands-on exercise in TypeScript, object-oriented design, emulator architecture, testing, and software engineering.
 
-The project focuses first on accurate **Classic CHIP-8** behavior while keeping the architecture open to additional CHIP-8-family profiles and multiple host applications.
+The project supports accurate **Classic CHIP-8** behavior and **CHIP-48 2.25** through explicit machine profiles, while keeping reusable emulator semantics separate from host-specific applications and inspection tooling.
 
 ## Status
+
+### In development: `v0.8.0` — CHIP-8 Profiles / Variant Foundation
+
+`v0.8.0` extends Chip8NX from a single Classic machine target to an explicit multi-profile architecture.
+
+The current development branch provides two built-in historical profiles:
+
+```text
+Classic CHIP-8
+CHIP-48 2.25
+```
+
+`Chip8Profile` describes the complete emulated machine, including architectural characteristics such as memory, display, timing, and font placement together with compatibility-sensitive instruction and display semantics.
+
+Current modeled compatibility dimensions include:
+
+- shift-source behavior;
+- `Fx55` / `Fx65` index-register updates;
+- `Bnnn` jump-offset behavior;
+- `VF` handling for logic operations;
+- sprite overflow behavior;
+- sprite draw timing.
+
+The Web host exposes Classic CHIP-8 and CHIP-48 2.25 through a profile selector. Changing the profile while a ROM is loaded creates a fresh machine session using the retained ROM, while Reset keeps the currently selected profile.
+
+Compatibility is independently exercised with Gulrak's Variant Detection Test v1.4. The same ROM is run under both built-in profiles and checked against separate stable framebuffer results.
+
+The profile model remains deliberately declarative: profiles contain machine characteristics and semantic choices, while applications remain responsible for object composition and host/runtime policy.
 
 ### Current release: `v0.7.0` — Web Inspection Workbench
 
@@ -77,7 +105,7 @@ flowchart LR
 
 The arrows represent dependency direction.
 
-`@chip8nx/core` owns the emulated machine: profiles, machine state and capabilities, initialization, CPU execution, runtime orchestration, scheduling, and the minimal CPU-observation contract.
+`@chip8nx/core` owns the emulated machine: machine profiles and compatibility semantics, machine state and capabilities, initialization, CPU execution, runtime orchestration, scheduling, and the minimal CPU-observation contract.
 
 Within Core, one instruction attempt follows the canonical path:
 
@@ -85,7 +113,9 @@ Within Core, one instruction attempt follows the canonical path:
 Memory → Cpu → Decoder → Instruction → InstructionExecutor → ExecutionContext
 ```
 
-`Cpu` owns fetch/decode/execute sequencing. `InstructionExecutor` applies typed instruction semantics through the focused state and capability components grouped by `ExecutionContext`.
+`Cpu` owns fetch/decode/execute sequencing. `InstructionExecutor` applies typed instruction semantics through the focused state and capability components grouped by `ExecutionContext`, using the compatibility selected by the active machine profile.
+
+Compatibility configuration is not stored in `ExecutionContext`: it configures components during composition rather than acting as mutable machine state or an execution capability.
 
 `@chip8nx/inspection` builds only on Core's public API and provides passive tooling:
 
@@ -195,6 +225,7 @@ Open the URL reported by Vite in a browser, load a CHIP-8 ROM file, and the Web 
 
 The Web host provides:
 
+- selectable Classic CHIP-8 and CHIP-48 2.25 machine profiles;
 - Canvas framebuffer presentation;
 - physical and virtual CHIP-8 keyboard input;
 - Start/Pause, Step, and Reset execution controls;
@@ -340,7 +371,9 @@ It composes both reusable packages:
     trace formatting
 ```
 
-The application owns the browser-specific policy around those capabilities: Canvas rendering, audio presentation, keyboard adaptation, ROM loading, execution controls, inspection-window selection, responsive DOM presentation, appearance themes, and UI lifecycle.
+The application owns the browser-specific policy around those capabilities: machine-profile selection, profile-appropriate instruction formatting, Canvas rendering, audio presentation, keyboard adaptation, ROM loading, execution controls, inspection-window selection, responsive DOM presentation, appearance themes, and UI lifecycle.
+
+Reset reinitializes the current session using its retained profile. Selecting a different profile creates a fresh session from the retained ROM image and preserves the host's previous running or paused state.
 
 Passive inspection failures remain application-visible data rather than emulator failures. The Web inspector can therefore expose undecodable nearby bytes and failed CPU attempts without giving the Inspection package execution-control responsibility.
 
@@ -442,11 +475,10 @@ Inspection remains deliberately read-only: breakpoints, watchpoints, pause condi
 Post-`v0.7.0` development can proceed across areas such as:
 
 - active debugger behavior built on the completed read-only Web inspection workbench, when concrete needs such as breakpoints, watchpoints, or richer stepping semantics are demonstrated;
-- CHIP-8 variant and profile selection when the project is ready to expose multiple machine behaviors through host configuration;
+- additional CHIP-8-family profiles when concrete targets demonstrate new architectural or compatibility requirements;
 - richer memory or static-analysis inspection when concrete application workflows justify it;
 - public reusable-package APIs and composition ergonomics when additional architectural evidence creates concrete pressure for change;
 - desktop hosts;
-- additional CHIP-8-family profiles when variant differences are ready to be modeled explicitly.
 
 The current CPU-observation boundary deliberately remains observational. Breakpoints, execution-control policy, observer fan-out, timestamps, replay, whole-machine snapshots, persistent trace formats, and richer history-query APIs should be introduced only when concrete debugger or analysis consumers demonstrate the need.
 
@@ -461,8 +493,9 @@ The project is developed with reference to:
 - Tobias V. Langhoff's CHIP-8 emulator guide;
 - corax89 CHIP-8 test ROM;
 - Timendus CHIP-8 test suite.
+- Gulrak / Cadmium Variant Detection Test.
 
-When references disagree, Classic CHIP-8 behavior is currently resolved primarily against the Classic CHIP-8 variant documentation.
+Historical behavior is resolved against evidence appropriate to the selected machine profile rather than assuming one compatibility interpretation for every CHIP-8-family target.
 
 ## Versioning
 

@@ -54,18 +54,28 @@ const memory = new Ram(profile.memorySize);
 const registers = new Registers();
 const stack = new Stack(profile.stackCapacity);
 const programCounter = new ProgramCounter(profile.programStartAddress);
+
 const displayBuffer = new DisplayBuffer(
   profile.display.width,
   profile.display.height,
+  profile.compatibility.spriteOverflow,
 );
+
+const executor = new InstructionExecutor(profile.compatibility);
 
 const verticalBlank = new VerticalBlank();
 const keyboard = new KeyboardState();
 ```
 
-Construction answers:
+Construction answers two related composition questions:
 
-> Which objects make up this emulator instance?
+> Which machine profile is being emulated?
+
+and:
+
+> Which concrete objects implement that machine in this application?
+
+The selected profile constrains construction without constructing the objects itself.
 
 It does not install the font/program or establish the complete runnable state.
 
@@ -119,6 +129,23 @@ flowchart LR
 
     Build --> Init --> Paused --> Resume --> Tick
 ```
+
+Runtime timing is also derived partly from the selected profile.
+
+For example:
+
+```text
+profile.timerFrequency
+    → timer scheduling
+
+profile.display.refreshFrequency
+    → emulated display / vertical-blank scheduling
+
+host runtime configuration
+    → CPU execution frequency
+```
+
+Timer and display frequencies are characteristics of the emulated machine. CPU frequency remains host/runtime policy.
 
 Starting paused preserves a useful invariant:
 
@@ -235,9 +262,17 @@ The runtime remains paused after the step.
 
 ### Display-synchronized draw during a step
 
-Classic `Dxyn` normally depends on runtime-produced vertical blank.
+Profiles configured with:
 
-Because normal vblank scheduling is suspended while paused, `runtime.step()` may temporarily make one display opportunity available when none is pending.
+```ts
+spriteDrawTiming: "vertical-blank";
+```
+
+make `Dxyn` depend on runtime-produced vertical blank.
+
+Profiles configured for immediate drawing do not require that scheduling aid.
+
+Because normal vblank scheduling is suspended while paused, `runtime.step()` may temporarily make one display opportunity available when the configured instruction semantics require one and none is already pending.
 
 That temporary aid exists only so debugger-style stepping can make useful progress.
 
@@ -299,7 +334,41 @@ MachineInitializer.initialize(
 paused at defined initial state
 ```
 
+Reset must reuse the profile already associated with the current machine session.
+
+Conceptually:
+
+```text
+machine session
+    ├── profile
+    ├── program
+    └── execution state
+```
+
+Reset changes the execution state while retaining:
+
+```text
+same profile
+same program
+same composed object graph
+```
+
+A host must therefore not silently substitute a default profile during reset.
+
 Reset does not require reconstructing every Core component.
+
+This is different from changing the selected profile.
+
+A different profile may configure:
+
+```text
+different font data
+different timing
+different instruction semantics
+different display behavior
+```
+
+so a host may reasonably treat profile replacement as construction of a fresh machine session rather than reset of the existing one.
 
 The existing object graph can remain in place while the initializer:
 
@@ -341,25 +410,102 @@ initialize new program
 
 `MachineInitializer` supports in-place reuse, but Core does not require it.
 
-The current Web host, for example, reuses the graph for Reset while composing a fresh session when loading a different ROM.
+The current Web host, for example:
+
+```text
+Reset
+    → reuses the existing graph and retained profile
+
+new ROM
+    → composes a fresh session
+
+new profile
+    → composes a fresh session from the retained ROM image
+```
 
 That distinction keeps Core lifecycle semantics separate from frontend/session policy.
+
+## Profile Replacement
+
+Changing the active `Chip8Profile` is an application-session decision rather than a Core runtime transition.
+
+A profile describes what machine is being emulated, so replacing it is conceptually broader than Reset.
+
+The current Web host uses:
+
+```text
+existing session
+    ├── retained ROM image
+    └── current running / paused host state
+
+user selects another profile
+    ↓
+compose fresh machine session
+    ↓
+initialize retained ROM using new profile
+    ↓
+select matching inspection formatter
+    ↓
+preserve previous running / paused policy
+```
+
+The fresh session receives the selected profile consistently across:
+
+```text
+memory / stack / PC construction
+font installation
+instruction compatibility
+sprite-overflow behavior
+timer frequency
+display frequency
+inspection formatting
+```
+
+Trace history and other session-local execution state are not preserved because the replacement represents a new emulated machine.
+
+This gives three distinct host operations:
+
+```text
+Reset
+    → same profile
+    → same ROM
+    → same object graph
+    → reinitialize machine state
+
+ROM replacement
+    → host chooses whether to reuse or rebuild
+    → different program
+
+Profile replacement
+    → different machine definition
+    → current Web host rebuilds the session
+    → may reuse retained ROM bytes
+```
+
+Core does not prescribe that exact host policy. It supplies the profile, initialization, execution, and runtime boundaries that make the policy explicit.
 
 ## Lifecycle Ownership
 
 ```mermaid
 flowchart TD
     Host["Application / host"]
+    Profile["Chip8Profile"]
     Init["MachineInitializer"]
     Runtime["Chip8Runtime"]
-    State["Machine state"]
+    State["Machine state / configured components"]
     IO["Host I/O / presentation"]
 
+    Host -->|"select"| Profile
+    Profile -->|"constrain construction"| Host
+
     Host -->|"construct"| State
+
     Host -->|"initialize / reset"| Init
+    Profile --> Init
     Init -->|"establish state"| State
 
     Host -->|"pause / resume / step / tick"| Runtime
+    Profile -->|"timer / display frequencies"| Runtime
     Runtime -->|"scheduled progression"| State
 
     Host --> IO
@@ -369,10 +515,16 @@ The responsibilities are:
 
 ```text
 Application
+    → select machine profile
     → construct object graph
     → obtain ROM data
-    → coordinate startup/reset/session lifecycle
+    → coordinate startup/reset/session replacement
+    → select profile-appropriate inspection presentation
     → call runtime operations
+
+Chip8Profile
+    → describe emulated machine characteristics
+    → describe compatibility-sensitive semantics
 
 MachineInitializer
     → establish or re-establish machine state
@@ -403,18 +555,24 @@ State/capability components
    One step performs one CPU attempt while timers and normal display scheduling remain still.
 
 6. **Instruction waits are not runtime pauses.**\
-   `Fx0A` and retrying draw behavior remain instruction-level control flow.
+   `Fx0A` and profile-controlled retrying draw behavior remain instruction-level control flow.
 
 7. **Reset reuses initialization.**\
    Re-establishing initial state does not require rebuilding the object graph.
 
-8. **Reset does not automatically resume.**\
+8. **Reset retains the machine profile.**\
+   Reset changes machine state, not which historical machine is being emulated.
+
+9. **Reset does not automatically resume.**\
    Post-reset execution policy belongs to the application.
 
-9. **ROM replacement is host/session policy.**\
-   Applications may reuse or rebuild the machine graph.
+10. **ROM replacement is host/session policy.**\
+    Applications may reuse or rebuild the machine graph.
 
-10. **Lifecycle ownership remains explicit.**\
-    Application, initializer, runtime, and state components each own distinct transitions.
+11. **Profile replacement is host/session policy.**\
+    Changing the machine definition may justify a fresh session; Core does not hide that transition behind Reset.
 
-These rules keep lifecycle sequencing understandable without making one class responsible for construction, initialization, timing, reset, and host-session behavior.
+12. **Lifecycle ownership remains explicit.**\
+    Application, profile, initializer, runtime, and state components each own distinct responsibilities.
+
+These rules keep lifecycle sequencing understandable without making one class responsible for profile selection, construction, initialization, timing, reset, session replacement, and host behavior.
