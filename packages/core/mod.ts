@@ -73,6 +73,7 @@ export type {
   SpriteDrawTiming,
 } from "./src/machine/chip8-profile.ts";
 export { CLASSIC_CHIP8_PROFILE } from "./src/machine/classic/classic-chip8-profile.ts";
+export { CHIP48_PROFILE } from "./src/machine/chip48/chip48-profile.ts";
 export { MachineInitializer } from "./src/machine/machine-initializer.ts";
 
 // Memory

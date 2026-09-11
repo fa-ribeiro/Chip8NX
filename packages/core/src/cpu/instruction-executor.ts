@@ -181,8 +181,17 @@ export class InstructionExecutor {
           );
         }
 
-        if (this.compatibility.memoryTransferIndex === "increment") {
-          context.indexRegister.setValue(address(startAddress + instruction.register + 1));
+        switch (this.compatibility.memoryTransferIndex) {
+          case "increment-by-count":
+            context.indexRegister.setValue(address(startAddress + instruction.register + 1));
+            break;
+
+          case "increment-by-x":
+            context.indexRegister.setValue(address(startAddress + instruction.register));
+            break;
+
+          case "unchanged":
+            break;
         }
 
         return;
@@ -198,8 +207,17 @@ export class InstructionExecutor {
           );
         }
 
-        if (this.compatibility.memoryTransferIndex === "increment") {
-          context.indexRegister.setValue(address(startAddress + instruction.register + 1));
+        switch (this.compatibility.memoryTransferIndex) {
+          case "increment-by-count":
+            context.indexRegister.setValue(address(startAddress + instruction.register + 1));
+            break;
+
+          case "increment-by-x":
+            context.indexRegister.setValue(address(startAddress + instruction.register));
+            break;
+
+          case "unchanged":
+            break;
         }
         return;
       }

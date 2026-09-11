@@ -26,7 +26,7 @@ Deno.test("Classic CHIP-8 profile defines the classic machine characteristics", 
 
   assertEquals(CLASSIC_CHIP8_PROFILE.compatibility, {
     shiftSource: "vy",
-    memoryTransferIndex: "increment",
+    memoryTransferIndex: "increment-by-count",
     jumpOffsetSource: "v0",
     logicFlag: "reset",
     spriteOverflow: "clip",

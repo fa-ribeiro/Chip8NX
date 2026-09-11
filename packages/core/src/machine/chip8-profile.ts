@@ -14,11 +14,16 @@ export type ShiftSource = "vx" | "vy";
 
 /**
  * Selects how Fx55 and Fx65 update the index register after transferring
- * registers.
+ * registers V0 through Vx.
+ *
+ * - "increment-by-count" advances I by X + 1, the number of registers
+ *   transferred.
+ * - "increment-by-x" advances I by X.
+ * - "unchanged" leaves I unchanged.
  *
  * AKA the MEMORY QUIRK.
  */
-export type MemoryTransferIndexBehavior = "increment" | "unchanged";
+export type MemoryTransferIndexBehavior = "increment-by-count" | "increment-by-x" | "unchanged";
 
 /**
  * Selects which register provides the offset for BNNN.

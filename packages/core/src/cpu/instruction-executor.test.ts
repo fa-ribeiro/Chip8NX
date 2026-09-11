@@ -1809,6 +1809,70 @@ Deno.test("LD [I], VF stores all sixteen registers and advances I by sixteen", (
   assertEquals(indexRegister.getValue(), address(0x310));
 });
 
+Deno.test("LD [I], Vx leaves I unchanged when configured", () => {
+  const context = createContext();
+
+  context.indexRegister.setValue(address(0x300));
+
+  context.registers.set(registerIndex(0), byte(0x11));
+
+  context.registers.set(registerIndex(1), byte(0x22));
+
+  context.registers.set(registerIndex(2), byte(0x33));
+
+  const executor = createExecutor({
+    ...CLASSIC_CHIP8_PROFILE.compatibility,
+    memoryTransferIndex: "unchanged",
+  });
+
+  executor.execute(
+    {
+      kind: "store-registers",
+      opcode: opcode(0xf255),
+      register: registerIndex(0x2),
+    },
+    context,
+  );
+
+  assertEquals(context.memory.read(address(0x300)), byte(0x11));
+
+  assertEquals(context.memory.read(address(0x301)), byte(0x22));
+
+  assertEquals(context.memory.read(address(0x302)), byte(0x33));
+
+  assertEquals(context.indexRegister.getValue(), address(0x300));
+});
+
+Deno.test("LD [I], Vx advances I by X when configured", () => {
+  const context = createContext();
+
+  context.indexRegister.setValue(address(0x300));
+
+  context.registers.set(registerIndex(0), byte(0x11));
+  context.registers.set(registerIndex(1), byte(0x22));
+  context.registers.set(registerIndex(2), byte(0x33));
+
+  const executor = createExecutor({
+    ...CLASSIC_CHIP8_PROFILE.compatibility,
+    memoryTransferIndex: "increment-by-x",
+  });
+
+  executor.execute(
+    {
+      kind: "store-registers",
+      opcode: opcode(0xf255),
+      register: registerIndex(0x2),
+    },
+    context,
+  );
+
+  assertEquals(context.memory.read(address(0x300)), byte(0x11));
+  assertEquals(context.memory.read(address(0x301)), byte(0x22));
+  assertEquals(context.memory.read(address(0x302)), byte(0x33));
+
+  assertEquals(context.indexRegister.getValue(), address(0x302));
+});
+
 Deno.test("LD Vx, [I] loads V0 through Vx from memory and advances I", () => {
   const registers = new Registers();
   const memory = new Ram(0x1000);
@@ -1908,6 +1972,70 @@ Deno.test("LD VF, [I] loads all sixteen registers and advances I by sixteen", ()
   assertEquals(indexRegister.getValue(), address(0x310));
 });
 
+Deno.test("LD Vx, [I] leaves I unchanged when configured", () => {
+  const context = createContext();
+
+  context.indexRegister.setValue(address(0x300));
+
+  context.memory.write(address(0x300), byte(0x11));
+
+  context.memory.write(address(0x301), byte(0x22));
+
+  context.memory.write(address(0x302), byte(0x33));
+
+  const executor = createExecutor({
+    ...CLASSIC_CHIP8_PROFILE.compatibility,
+    memoryTransferIndex: "unchanged",
+  });
+
+  executor.execute(
+    {
+      kind: "load-registers",
+      opcode: opcode(0xf265),
+      register: registerIndex(0x2),
+    },
+    context,
+  );
+
+  assertEquals(context.registers.get(registerIndex(0)), byte(0x11));
+
+  assertEquals(context.registers.get(registerIndex(1)), byte(0x22));
+
+  assertEquals(context.registers.get(registerIndex(2)), byte(0x33));
+
+  assertEquals(context.indexRegister.getValue(), address(0x300));
+});
+
+Deno.test("LD Vx, [I] advances I by X when configured", () => {
+  const context = createContext();
+
+  context.indexRegister.setValue(address(0x300));
+
+  context.memory.write(address(0x300), byte(0x11));
+  context.memory.write(address(0x301), byte(0x22));
+  context.memory.write(address(0x302), byte(0x33));
+
+  const executor = createExecutor({
+    ...CLASSIC_CHIP8_PROFILE.compatibility,
+    memoryTransferIndex: "increment-by-x",
+  });
+
+  executor.execute(
+    {
+      kind: "load-registers",
+      opcode: opcode(0xf265),
+      register: registerIndex(0x2),
+    },
+    context,
+  );
+
+  assertEquals(context.registers.get(registerIndex(0)), byte(0x11));
+  assertEquals(context.registers.get(registerIndex(1)), byte(0x22));
+  assertEquals(context.registers.get(registerIndex(2)), byte(0x33));
+
+  assertEquals(context.indexRegister.getValue(), address(0x302));
+});
+
 Deno.test("LD Vx, K repeats the instruction while waiting for a key release", () => {
   const registers = new Registers();
   const keyboard = new KeyboardState();
@@ -1970,72 +2098,4 @@ Deno.test("LD Vx, K stores the released key and continues execution", () => {
 
   assertEquals(registers.get(registerIndex(0xa)), byte(0x0b));
   assertEquals(programCounter.getValue(), address(0x302));
-});
-
-Deno.test("LD [I], Vx leaves I unchanged when configured", () => {
-  const context = createContext();
-
-  context.indexRegister.setValue(address(0x300));
-
-  context.registers.set(registerIndex(0), byte(0x11));
-
-  context.registers.set(registerIndex(1), byte(0x22));
-
-  context.registers.set(registerIndex(2), byte(0x33));
-
-  const executor = createExecutor({
-    ...CLASSIC_CHIP8_PROFILE.compatibility,
-    memoryTransferIndex: "unchanged",
-  });
-
-  executor.execute(
-    {
-      kind: "store-registers",
-      opcode: opcode(0xf255),
-      register: registerIndex(0x2),
-    },
-    context,
-  );
-
-  assertEquals(context.memory.read(address(0x300)), byte(0x11));
-
-  assertEquals(context.memory.read(address(0x301)), byte(0x22));
-
-  assertEquals(context.memory.read(address(0x302)), byte(0x33));
-
-  assertEquals(context.indexRegister.getValue(), address(0x300));
-});
-
-Deno.test("LD Vx, [I] leaves I unchanged when configured", () => {
-  const context = createContext();
-
-  context.indexRegister.setValue(address(0x300));
-
-  context.memory.write(address(0x300), byte(0x11));
-
-  context.memory.write(address(0x301), byte(0x22));
-
-  context.memory.write(address(0x302), byte(0x33));
-
-  const executor = createExecutor({
-    ...CLASSIC_CHIP8_PROFILE.compatibility,
-    memoryTransferIndex: "unchanged",
-  });
-
-  executor.execute(
-    {
-      kind: "load-registers",
-      opcode: opcode(0xf265),
-      register: registerIndex(0x2),
-    },
-    context,
-  );
-
-  assertEquals(context.registers.get(registerIndex(0)), byte(0x11));
-
-  assertEquals(context.registers.get(registerIndex(1)), byte(0x22));
-
-  assertEquals(context.registers.get(registerIndex(2)), byte(0x33));
-
-  assertEquals(context.indexRegister.getValue(), address(0x300));
 });

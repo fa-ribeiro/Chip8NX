@@ -32,7 +32,7 @@ export const CLASSIC_CHIP8_PROFILE: Chip8Profile = {
 
   compatibility: {
     shiftSource: "vy",
-    memoryTransferIndex: "increment",
+    memoryTransferIndex: "increment-by-count",
     jumpOffsetSource: "v0",
     logicFlag: "reset",
     spriteOverflow: "clip",
