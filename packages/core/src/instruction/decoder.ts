@@ -74,6 +74,7 @@ export class Decoder {
         return {
           kind: "jump-with-offset",
           opcode,
+          register: getX(opcode),
           address: getNNN(opcode),
         };
 

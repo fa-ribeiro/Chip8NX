@@ -9,7 +9,7 @@ Deno.test("StandardTerminalPresentation provides the standard display compositio
     output,
   });
 
-  const buffer = new DisplayBuffer(2, 2);
+  const buffer = new DisplayBuffer(2, 2, "clip");
 
   buffer.setPixel(0, 0, true);
   buffer.setPixel(1, 1, true);
@@ -40,7 +40,7 @@ Deno.test(
       },
     });
 
-    const buffer = new DisplayBuffer(2, 2);
+    const buffer = new DisplayBuffer(2, 2, "clip");
 
     presentation.start();
     presentation.render(buffer);

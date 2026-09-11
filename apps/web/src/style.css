@@ -41,7 +41,7 @@
   --color-border: #344034;
   --color-border-strong: #536553;
 
-  --color-text: #ddffdd;
+  --color-text: #efffef;
   --color-text-muted: #94a394;
 
   --color-accent: #63e86f;
@@ -72,7 +72,7 @@
   --color-border: #463a29;
   --color-border-strong: #6d593b;
 
-  --color-text: #ffeac5;
+  --color-text: #fff6ea;
   --color-text-muted: #aa9b82;
 
   --color-accent: #ffb347;
@@ -390,6 +390,7 @@ select {
 
 .machine-state[data-state="running"] {
   color: var(--color-accent-strong);
+  text-shadow: 0 0 0.45em var(--color-command-glow);
 }
 
 .machine-state[data-state="running"] .machine-state-indicator {

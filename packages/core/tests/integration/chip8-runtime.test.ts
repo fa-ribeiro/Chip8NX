@@ -50,7 +50,7 @@ function createRuntime(cpuFrequency: Frequency = Frequency.fromInteger(500n)): R
     indexRegister: new IndexRegister(),
     soundTimer,
     delayTimer,
-    displayBuffer: new DisplayBuffer(profile.display.width, profile.display.height),
+    displayBuffer: new DisplayBuffer(profile.display.width, profile.display.height, "clip"),
     verticalBlank: verticalBlank,
     keyboard: new KeyboardState(),
     font: new ClassicFont(profile.fontBaseAddress),
@@ -70,7 +70,7 @@ function createRuntime(cpuFrequency: Frequency = Frequency.fromInteger(500n)): R
     memory.write(address(profile.programStartAddress + offset + 1), byte(0x01));
   }
 
-  const cpu = new Cpu(context, new Decoder(), new InstructionExecutor());
+  const cpu = new Cpu(context, new Decoder(), new InstructionExecutor(profile.compatibility));
 
   const clock = new TestClock();
   const scheduler = new Scheduler(clock);

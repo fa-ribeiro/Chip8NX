@@ -26,9 +26,7 @@ export class CanvasDisplay implements Display {
     const context = canvas.getContext("2d");
 
     if (context === null) {
-      throw new Error(
-        "Canvas 2D rendering context is unavailable.",
-      );
+      throw new Error("Canvas 2D rendering context is unavailable.");
     }
 
     this.context = context;
@@ -41,9 +39,7 @@ export class CanvasDisplay implements Display {
    * This affects only browser presentation. It does not alter the
    * underlying CHIP-8 DisplayBuffer.
    */
-  public setPalette(
-    palette: CanvasDisplayPalette,
-  ): void {
+  public setPalette(palette: CanvasDisplayPalette): void {
     this.palette = palette;
   }
 
@@ -55,12 +51,7 @@ export class CanvasDisplay implements Display {
 
     this.context.fillStyle = this.palette.background;
 
-    this.context.fillRect(
-      0,
-      0,
-      buffer.width,
-      buffer.height,
-    );
+    this.context.fillRect(0, 0, buffer.width, buffer.height);
 
     this.context.fillStyle = this.palette.foreground;
 
@@ -70,23 +61,13 @@ export class CanvasDisplay implements Display {
           continue;
         }
 
-        this.context.fillRect(
-          x,
-          y,
-          1,
-          1,
-        );
+        this.context.fillRect(x, y, 1, 1);
       }
     }
   }
 
-  private resizeBackingStore(
-    buffer: DisplayBuffer,
-  ): void {
-    if (
-      this.canvas.width === buffer.width &&
-      this.canvas.height === buffer.height
-    ) {
+  private resizeBackingStore(buffer: DisplayBuffer): void {
+    if (this.canvas.width === buffer.width && this.canvas.height === buffer.height) {
       return;
     }
 

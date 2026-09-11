@@ -239,7 +239,7 @@ async function createKeypadHarness(selection: Byte): Promise<KeypadHarness> {
     indexRegister: new IndexRegister(),
     delayTimer,
     soundTimer,
-    displayBuffer: new DisplayBuffer(profile.display.width, profile.display.height),
+    displayBuffer: new DisplayBuffer(profile.display.width, profile.display.height, "clip"),
     verticalBlank,
     keyboard,
     font: new ClassicFont(profile.fontBaseAddress),
@@ -253,7 +253,7 @@ async function createKeypadHarness(selection: Byte): Promise<KeypadHarness> {
   // The initializer must run first because machine initialization clears RAM.
   context.memory.write(TIMENDUS_KEYPAD_SELECTION_ADDRESS, selection);
 
-  const cpu = new Cpu(context, new Decoder(), new InstructionExecutor());
+  const cpu = new Cpu(context, new Decoder(), new InstructionExecutor(profile.compatibility));
 
   const clock = new TestClock();
   const scheduler = new Scheduler(clock);

@@ -29,4 +29,13 @@ export const CLASSIC_CHIP8_PROFILE: Chip8Profile = {
   fontImage: CLASSIC_FONT_IMAGE,
 
   fontBaseAddress: address(0x50),
+
+  compatibility: {
+    shiftSource: "vy",
+    memoryTransferIndex: "increment",
+    jumpOffsetSource: "v0",
+    logicFlag: "reset",
+    spriteOverflow: "clip",
+    spriteDrawTiming: "vertical-blank",
+  },
 };

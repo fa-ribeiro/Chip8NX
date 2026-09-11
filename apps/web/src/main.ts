@@ -78,50 +78,31 @@ interface WebMachineSession {
 }
 
 const romInput = requireElement<HTMLInputElement>("#rom-input");
-const romLoadButton = requireElement<HTMLButtonElement>(
-  "#rom-load-button",
-);
-const romFileName = requireElement<HTMLElement>(
-  "#rom-file-name",
-);
+const romLoadButton = requireElement<HTMLButtonElement>("#rom-load-button");
+const romFileName = requireElement<HTMLElement>("#rom-file-name");
 
 const canvas = requireElement<HTMLCanvasElement>("#chip8-display");
 const status = requireElement<HTMLElement>("#status");
 
-const runToggleButton = requireElement<HTMLButtonElement>(
-  "#run-toggle-button",
-);
-const runToggleLabel = requireElement<HTMLElement>(
-  "#run-toggle-label",
-);
+const runToggleButton = requireElement<HTMLButtonElement>("#run-toggle-button");
+const runToggleLabel = requireElement<HTMLElement>("#run-toggle-label");
 
 const stepButton = requireElement<HTMLButtonElement>("#step-button");
 const resetButton = requireElement<HTMLButtonElement>("#reset-button");
 
-const machineState = requireElement<HTMLElement>(
-  "#machine-state",
-);
-const machineStateLabel = requireElement<HTMLElement>(
-  "#machine-state-label",
-);
+const machineState = requireElement<HTMLElement>("#machine-state");
+const machineStateLabel = requireElement<HTMLElement>("#machine-state-label");
 
-const themeSelect = requireElement<HTMLSelectElement>(
-  "#theme-select",
-);
+const themeSelect = requireElement<HTMLSelectElement>("#theme-select");
 
 const virtualKeypadElement = requireElement<HTMLElement>("#virtual-keypad");
 
-const initialTheme = loadWebTheme(
-  globalThis.localStorage,
-);
+const initialTheme = loadWebTheme(globalThis.localStorage);
 
 document.documentElement.dataset.theme = initialTheme;
 themeSelect.value = initialTheme;
 
-const display = new CanvasDisplay(
-  canvas,
-  readCanvasDisplayPalette(),
-);
+const display = new CanvasDisplay(canvas, readCanvasDisplayPalette());
 
 const inspectionElement = requireElement<HTMLElement>(".inspection");
 const inspection = new WebInspectionRenderer(inspectionElement);
@@ -170,23 +151,17 @@ resetButton.addEventListener("click", () => {
 });
 
 themeSelect.addEventListener("change", () => {
-  const theme = parseWebTheme(
-    themeSelect.value,
-  );
+  const theme = parseWebTheme(themeSelect.value);
 
   if (theme === undefined) {
-    themeSelect.value = document.documentElement.dataset.theme ??
-      initialTheme;
+    themeSelect.value = document.documentElement.dataset.theme ?? initialTheme;
 
     return;
   }
 
   applyWebTheme(theme);
 
-  storeWebTheme(
-    globalThis.localStorage,
-    theme,
-  );
+  storeWebTheme(globalThis.localStorage, theme);
 });
 
 document.addEventListener("visibilitychange", () => {
@@ -213,9 +188,7 @@ async function loadAndRun(rom: File): Promise<void> {
   setStatus(`Loading ${rom.name}...`);
 
   try {
-    const program = new MemoryImage(
-      new Uint8Array(await rom.arrayBuffer()),
-    );
+    const program = new MemoryImage(new Uint8Array(await rom.arrayBuffer()));
 
     machine = createMachine(rom.name, program);
 
@@ -237,10 +210,7 @@ async function loadAndRun(rom: File): Promise<void> {
 
     updateControls();
 
-    setStatus(
-      `Unable to run ROM: ${describeError(error)}`,
-      true,
-    );
+    setStatus(`Unable to run ROM: ${describeError(error)}`, true);
 
     console.error(error);
   }
@@ -252,10 +222,7 @@ async function loadAndRun(rom: File): Promise<void> {
  * This remains intentionally explicit while the web application acts as a
  * second case study for Chip8NX composition ergonomics.
  */
-function createMachine(
-  romName: string,
-  program: MemoryImage,
-): WebMachineSession {
+function createMachine(romName: string, program: MemoryImage): WebMachineSession {
   const profile = CLASSIC_CHIP8_PROFILE;
 
   const delayTimer = new Timer();
@@ -265,20 +232,16 @@ function createMachine(
   const displayBuffer = new DisplayBuffer(
     profile.display.width,
     profile.display.height,
+    "clip",
   );
 
   const keyboard = new KeyboardState();
 
   const keyboardInput = new KeyboardInputHub(keyboard);
 
-  const browserKeyboard = new BrowserKeyboard(
-    keyboardInput.createSource(),
-  );
+  const browserKeyboard = new BrowserKeyboard(keyboardInput.createSource());
 
-  const virtualKeypad = new VirtualKeypad(
-    virtualKeypadElement,
-    keyboardInput.createSource(),
-  );
+  const virtualKeypad = new VirtualKeypad(virtualKeypadElement, keyboardInput.createSource());
 
   const context: ExecutionContext = {
     registers: new Registers(),
@@ -286,9 +249,7 @@ function createMachine(
     memory: new Ram(profile.memorySize),
     stack: new Stack(profile.stackCapacity),
 
-    programCounter: new ProgramCounter(
-      profile.programStartAddress,
-    ),
+    programCounter: new ProgramCounter(profile.programStartAddress),
 
     indexRegister: new IndexRegister(),
 
@@ -305,41 +266,26 @@ function createMachine(
     randomNumberGenerator: new DefaultRandomNumberGenerator(),
   };
 
-  const initializer = new MachineInitializer(
-    new MemoryImageLoader(),
-  );
+  const initializer = new MachineInitializer(new MemoryImageLoader());
 
-  initializer.initialize(
-    context,
-    profile,
-    program,
-  );
+  initializer.initialize(context, profile, program);
 
-  const traceHistory = new InstructionTraceBuffer(
-    TRACE_HISTORY_CAPACITY,
-  );
+  const traceHistory = new InstructionTraceBuffer(TRACE_HISTORY_CAPACITY);
 
   const instructionFormatter = new ClassicInstructionFormatter();
 
-  const disassembler = new Disassembler(
-    new Decoder(),
-    instructionFormatter,
-  );
+  const disassembler = new Disassembler(new Decoder(), instructionFormatter);
 
-  const traceFormatter = new ClassicInstructionTraceFormatter(
-    instructionFormatter,
-  );
+  const traceFormatter = new ClassicInstructionTraceFormatter(instructionFormatter);
 
   const cpu = new Cpu(
     context,
     new Decoder(),
-    new InstructionExecutor(),
+    new InstructionExecutor(profile.compatibility),
     traceHistory,
   );
 
-  const scheduler = new Scheduler(
-    new PerformanceClock(),
-  );
+  const scheduler = new Scheduler(new PerformanceClock());
 
   const runtime = new Chip8Runtime(
     cpu,
@@ -407,10 +353,7 @@ function toggleMachineRunning(): void {
 }
 
 function startMachine(): void {
-  if (
-    machine === undefined ||
-    !machine.runtime.isPaused
-  ) {
+  if (machine === undefined || !machine.runtime.isPaused) {
     return;
   }
 
@@ -423,10 +366,7 @@ function startMachine(): void {
 }
 
 function pauseMachine(): void {
-  if (
-    machine === undefined ||
-    machine.runtime.isPaused
-  ) {
+  if (machine === undefined || machine.runtime.isPaused) {
     return;
   }
 
@@ -444,10 +384,7 @@ function pauseMachine(): void {
 }
 
 function stepMachine(): void {
-  if (
-    machine === undefined ||
-    !machine.runtime.isPaused
-  ) {
+  if (machine === undefined || !machine.runtime.isPaused) {
     return;
   }
 
@@ -456,16 +393,11 @@ function stepMachine(): void {
 
     renderMachine(machine);
 
-    setStatus(
-      `Paused ${machine.romName} — stepped one instruction.`,
-    );
+    setStatus(`Paused ${machine.romName} — stepped one instruction.`);
   } catch (error) {
     renderMachine(machine);
 
-    setStatus(
-      `Unable to step: ${describeError(error)}`,
-      true,
-    );
+    setStatus(`Unable to step: ${describeError(error)}`, true);
 
     console.error(error);
   }
@@ -483,34 +415,23 @@ function resetMachine(): void {
   beeper.setActive(false);
 
   try {
-    machine.initializer.initialize(
-      machine.context,
-      CLASSIC_CHIP8_PROFILE,
-      machine.program,
-    );
+    machine.initializer.initialize(machine.context, CLASSIC_CHIP8_PROFILE, machine.program);
 
     machine.traceHistory.clear();
 
     renderMachine(machine);
 
-    setStatus(
-      `Reset ${machine.romName} — paused at program start.`,
-    );
+    setStatus(`Reset ${machine.romName} — paused at program start.`);
 
     updateControls();
   } catch (error) {
-    setStatus(
-      `Unable to reset ROM: ${describeError(error)}`,
-      true,
-    );
+    setStatus(`Unable to reset ROM: ${describeError(error)}`, true);
 
     console.error(error);
   }
 }
 
-function runHostLoop(
-  session: WebMachineSession,
-): void {
+function runHostLoop(session: WebMachineSession): void {
   if (animationFrameId !== undefined) {
     return;
   }
@@ -519,10 +440,7 @@ function runHostLoop(
     /*
      * Ignore a stale frame belonging to a ROM that has since been replaced.
      */
-    if (
-      machine !== session ||
-      session.runtime.isPaused
-    ) {
+    if (machine !== session || session.runtime.isPaused) {
       animationFrameId = undefined;
 
       return;
@@ -538,9 +456,7 @@ function runHostLoop(
        */
       session.runtime.tick();
 
-      beeper.setActive(
-        session.soundTimer.getValue() > 0,
-      );
+      beeper.setActive(session.soundTimer.getValue() > 0);
 
       renderMachine(session);
 
@@ -556,10 +472,7 @@ function runHostLoop(
 
       renderMachine(session);
 
-      setStatus(
-        `Emulation stopped: ${describeError(error)}`,
-        true,
-      );
+      setStatus(`Emulation stopped: ${describeError(error)}`, true);
 
       updateControls();
 
@@ -608,21 +521,15 @@ function updateControls(): void {
   machineStateLabel.textContent = paused ? "Paused" : "Running";
 }
 
-function renderMachine(
-  session: WebMachineSession,
-): void {
+function renderMachine(session: WebMachineSession): void {
   display.render(session.displayBuffer);
   inspection.render(session.snapshotInspection());
 }
 
-function applyWebTheme(
-  theme: WebTheme,
-): void {
+function applyWebTheme(theme: WebTheme): void {
   document.documentElement.dataset.theme = theme;
 
-  display.setPalette(
-    readCanvasDisplayPalette(),
-  );
+  display.setPalette(readCanvasDisplayPalette());
 
   /*
    * CSS updates the application chrome immediately.
@@ -631,51 +538,31 @@ function applyWebTheme(
    * framebuffer when a machine exists.
    */
   if (machine !== undefined) {
-    display.render(
-      machine.displayBuffer,
-    );
+    display.render(machine.displayBuffer);
   }
 }
 
 function readCanvasDisplayPalette(): CanvasDisplayPalette {
-  const styles = getComputedStyle(
-    document.documentElement,
-  );
+  const styles = getComputedStyle(document.documentElement);
 
   return {
-    background: requireCssCustomProperty(
-      styles,
-      "--color-display-background",
-    ),
+    background: requireCssCustomProperty(styles, "--color-display-background"),
 
-    foreground: requireCssCustomProperty(
-      styles,
-      "--color-display-foreground",
-    ),
+    foreground: requireCssCustomProperty(styles, "--color-display-foreground"),
   };
 }
 
-function requireCssCustomProperty(
-  styles: CSSStyleDeclaration,
-  propertyName: string,
-): string {
-  const value = styles
-    .getPropertyValue(propertyName)
-    .trim();
+function requireCssCustomProperty(styles: CSSStyleDeclaration, propertyName: string): string {
+  const value = styles.getPropertyValue(propertyName).trim();
 
   if (value.length === 0) {
-    throw new Error(
-      `Required CSS custom property not found: ${propertyName}`,
-    );
+    throw new Error(`Required CSS custom property not found: ${propertyName}`);
   }
 
   return value;
 }
 
-function setStatus(
-  message: string,
-  error = false,
-): void {
+function setStatus(message: string, error = false): void {
   status.textContent = message;
 
   if (error) {
@@ -689,15 +576,11 @@ function describeError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-function requireElement<T extends Element>(
-  selector: string,
-): T {
+function requireElement<T extends Element>(selector: string): T {
   const element = document.querySelector<T>(selector);
 
   if (element === null) {
-    throw new Error(
-      `Required element not found: ${selector}`,
-    );
+    throw new Error(`Required element not found: ${selector}`);
   }
 
   return element;
@@ -708,10 +591,7 @@ function unlockAudio(): void {
     /*
      * Audio failure should not prevent the emulator itself from running.
      */
-    console.warn(
-      "Web Audio is unavailable:",
-      error,
-    );
+    console.warn("Web Audio is unavailable:", error);
   });
 }
 
@@ -727,17 +607,13 @@ function inspectNearbyInstructions(
     relativeInstruction <= DISASSEMBLY_INSTRUCTIONS_AFTER;
     relativeInstruction++
   ) {
-    const sourceValue = programCounter +
-      relativeInstruction * INSTRUCTION_SIZE;
+    const sourceValue = programCounter + relativeInstruction * INSTRUCTION_SIZE;
 
     /*
      * Only include addresses from which a complete CHIP-8 instruction
      * can be read.
      */
-    if (
-      sourceValue < 0 ||
-      sourceValue + INSTRUCTION_SIZE > memory.size
-    ) {
+    if (sourceValue < 0 || sourceValue + INSTRUCTION_SIZE > memory.size) {
       continue;
     }
 
@@ -749,10 +625,7 @@ function inspectNearbyInstructions(
         current: sourceAddress === programCounter,
         result: {
           outcome: "success",
-          instruction: disassembler.disassembleAt(
-            memory,
-            sourceAddress,
-          ),
+          instruction: disassembler.disassembleAt(memory, sourceAddress),
         },
       });
     } catch (error) {

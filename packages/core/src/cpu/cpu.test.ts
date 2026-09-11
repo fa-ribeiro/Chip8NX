@@ -36,7 +36,7 @@ function createContext(overrides: Partial<ExecutionContext> = {}): ExecutionCont
     indexRegister: new IndexRegister(),
     soundTimer: new Timer(),
     delayTimer: new Timer(),
-    displayBuffer: new DisplayBuffer(profile.display.width, profile.display.height),
+    displayBuffer: new DisplayBuffer(profile.display.width, profile.display.height, "clip"),
     verticalBlank: new VerticalBlank(),
     keyboard: new KeyboardState(),
     font: new ClassicFont(profile.fontBaseAddress),
@@ -46,7 +46,12 @@ function createContext(overrides: Partial<ExecutionContext> = {}): ExecutionCont
 }
 
 function createCpu(context: ExecutionContext, traceObserver?: InstructionTraceObserver): Cpu {
-  return new Cpu(context, new Decoder(), new InstructionExecutor(), traceObserver);
+  return new Cpu(
+    context,
+    new Decoder(),
+    new InstructionExecutor(CLASSIC_CHIP8_PROFILE.compatibility),
+    traceObserver,
+  );
 }
 
 Deno.test("CPU fetches a big-endian opcode, decodes it, and executes it", () => {

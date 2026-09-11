@@ -7,7 +7,7 @@ const CLEAR_SCREEN = "\x1b[2J";
 const CURSOR_HOME = "\x1b[H";
 
 Deno.test("TerminalDisplay renders all vertical pixel combinations", () => {
-  const buffer = new DisplayBuffer(4, 2);
+  const buffer = new DisplayBuffer(4, 2, "clip");
 
   // Column 0: off / off -> space
   // Column 1: on  / off -> upper half block
@@ -27,7 +27,7 @@ Deno.test("TerminalDisplay renders all vertical pixel combinations", () => {
 });
 
 Deno.test("TerminalDisplay preserves column and row ordering", () => {
-  const buffer = new DisplayBuffer(2, 4);
+  const buffer = new DisplayBuffer(2, 4, "clip");
 
   buffer.setPixel(0, 0, true);
   buffer.setPixel(1, 1, true);
@@ -44,7 +44,7 @@ Deno.test("TerminalDisplay preserves column and row ordering", () => {
 });
 
 Deno.test("TerminalDisplay treats a missing lower pixel as off for odd heights", () => {
-  const buffer = new DisplayBuffer(2, 3);
+  const buffer = new DisplayBuffer(2, 3, "clip");
 
   buffer.setPixel(0, 2, true);
 
@@ -57,7 +57,7 @@ Deno.test("TerminalDisplay treats a missing lower pixel as off for odd heights",
 });
 
 Deno.test("TerminalDisplay clears only the first frame and homes later frames", () => {
-  const buffer = new DisplayBuffer(1, 2);
+  const buffer = new DisplayBuffer(1, 2, "clip");
 
   const output = new RecordingTerminalOutput();
   const display = new TerminalDisplay(output);

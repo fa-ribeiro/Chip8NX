@@ -1,10 +1,18 @@
 import { assertEquals, assertThrows } from "@std/assert";
 
-import { DisplayBuffer } from "./display-buffer.ts";
+import { DisplayBuffer, type SpriteOverflowBehavior } from "./display-buffer.ts";
 import { byte } from "../core/types/byte.ts";
 
+function createDisplayBuffer(
+  width: number,
+  height: number,
+  spriteOverflow: SpriteOverflowBehavior = "clip",
+): DisplayBuffer {
+  return new DisplayBuffer(width, height, spriteOverflow);
+}
+
 Deno.test("DisplayBuffer initializes all pixels as off", () => {
-  const display = new DisplayBuffer(64, 32);
+  const display = createDisplayBuffer(64, 32);
 
   assertEquals(display.getPixel(0, 0), false);
   assertEquals(display.getPixel(32, 16), false);
@@ -12,14 +20,14 @@ Deno.test("DisplayBuffer initializes all pixels as off", () => {
 });
 
 Deno.test("DisplayBuffer exposes its dimensions", () => {
-  const display = new DisplayBuffer(64, 32);
+  const display = createDisplayBuffer(64, 32);
 
   assertEquals(display.width, 64);
   assertEquals(display.height, 32);
 });
 
 Deno.test("DisplayBuffer can turn a pixel on", () => {
-  const display = new DisplayBuffer(64, 32);
+  const display = createDisplayBuffer(64, 32);
 
   display.setPixel(10, 20, true);
 
@@ -27,7 +35,7 @@ Deno.test("DisplayBuffer can turn a pixel on", () => {
 });
 
 Deno.test("DisplayBuffer can turn a pixel off", () => {
-  const display = new DisplayBuffer(64, 32);
+  const display = createDisplayBuffer(64, 32);
 
   display.setPixel(10, 20, true);
   display.setPixel(10, 20, false);
@@ -36,7 +44,7 @@ Deno.test("DisplayBuffer can turn a pixel off", () => {
 });
 
 Deno.test("pixels are independent", () => {
-  const display = new DisplayBuffer(64, 32);
+  const display = createDisplayBuffer(64, 32);
 
   display.setPixel(10, 20, true);
 
@@ -46,7 +54,7 @@ Deno.test("pixels are independent", () => {
 });
 
 Deno.test("clear() turns all pixels off", () => {
-  const display = new DisplayBuffer(64, 32);
+  const display = createDisplayBuffer(64, 32);
 
   display.setPixel(0, 0, true);
   display.setPixel(32, 16, true);
@@ -60,7 +68,7 @@ Deno.test("clear() turns all pixels off", () => {
 });
 
 Deno.test("DisplayBuffer accepts the first coordinate", () => {
-  const display = new DisplayBuffer(64, 32);
+  const display = createDisplayBuffer(64, 32);
 
   display.setPixel(0, 0, true);
 
@@ -68,7 +76,7 @@ Deno.test("DisplayBuffer accepts the first coordinate", () => {
 });
 
 Deno.test("DisplayBuffer accepts the last coordinate", () => {
-  const display = new DisplayBuffer(64, 32);
+  const display = createDisplayBuffer(64, 32);
 
   display.setPixel(63, 31, true);
 
@@ -76,67 +84,67 @@ Deno.test("DisplayBuffer accepts the last coordinate", () => {
 });
 
 Deno.test("getPixel() rejects an X coordinate equal to width", () => {
-  const display = new DisplayBuffer(64, 32);
+  const display = createDisplayBuffer(64, 32);
 
   assertThrows(() => display.getPixel(64, 0), RangeError);
 });
 
 Deno.test("setPixel() rejects an X coordinate equal to width", () => {
-  const display = new DisplayBuffer(64, 32);
+  const display = createDisplayBuffer(64, 32);
 
   assertThrows(() => display.setPixel(64, 0, true), RangeError);
 });
 
 Deno.test("getPixel() rejects a Y coordinate equal to height", () => {
-  const display = new DisplayBuffer(64, 32);
+  const display = createDisplayBuffer(64, 32);
 
   assertThrows(() => display.getPixel(0, 32), RangeError);
 });
 
 Deno.test("setPixel() rejects a Y coordinate equal to height", () => {
-  const display = new DisplayBuffer(64, 32);
+  const display = createDisplayBuffer(64, 32);
 
   assertThrows(() => display.setPixel(0, 32, true), RangeError);
 });
 
 Deno.test("DisplayBuffer rejects negative X coordinates", () => {
-  const display = new DisplayBuffer(64, 32);
+  const display = createDisplayBuffer(64, 32);
 
   assertThrows(() => display.getPixel(-1, 0), RangeError);
 });
 
 Deno.test("DisplayBuffer rejects negative Y coordinates", () => {
-  const display = new DisplayBuffer(64, 32);
+  const display = createDisplayBuffer(64, 32);
 
   assertThrows(() => display.getPixel(0, -1), RangeError);
 });
 
 Deno.test("DisplayBuffer rejects fractional X coordinates", () => {
-  const display = new DisplayBuffer(64, 32);
+  const display = createDisplayBuffer(64, 32);
 
   assertThrows(() => display.getPixel(1.5, 0), RangeError);
 });
 
 Deno.test("DisplayBuffer rejects fractional Y coordinates", () => {
-  const display = new DisplayBuffer(64, 32);
+  const display = createDisplayBuffer(64, 32);
 
   assertThrows(() => display.getPixel(0, 1.5), RangeError);
 });
 
 Deno.test("DisplayBuffer rejects zero width", () => {
-  assertThrows(() => new DisplayBuffer(0, 32), RangeError);
+  assertThrows(() => createDisplayBuffer(0, 32), RangeError);
 });
 
 Deno.test("DisplayBuffer rejects zero height", () => {
-  assertThrows(() => new DisplayBuffer(64, 0), RangeError);
+  assertThrows(() => createDisplayBuffer(64, 0), RangeError);
 });
 
 Deno.test("DisplayBuffer rejects fractional dimensions", () => {
-  assertThrows(() => new DisplayBuffer(64.5, 32), RangeError);
+  assertThrows(() => createDisplayBuffer(64.5, 32), RangeError);
 });
 
 Deno.test("drawSprite draws set sprite pixels", () => {
-  const displayBuffer = new DisplayBuffer(8, 4);
+  const displayBuffer = createDisplayBuffer(8, 4);
 
   const collision = displayBuffer.drawSprite(0, 0, [byte(0b1010_0000)]);
 
@@ -148,7 +156,7 @@ Deno.test("drawSprite draws set sprite pixels", () => {
 });
 
 Deno.test("drawSprite XORs sprite pixels with the display", () => {
-  const displayBuffer = new DisplayBuffer(8, 4);
+  const displayBuffer = createDisplayBuffer(8, 4);
 
   displayBuffer.setPixel(0, 0, true);
   displayBuffer.setPixel(1, 0, true);
@@ -164,7 +172,7 @@ Deno.test("drawSprite XORs sprite pixels with the display", () => {
 });
 
 Deno.test("drawSprite does not report collision when drawing on blank pixels", () => {
-  const displayBuffer = new DisplayBuffer(8, 4);
+  const displayBuffer = createDisplayBuffer(8, 4);
 
   const collision = displayBuffer.drawSprite(0, 0, [byte(0b1111_0000)]);
 
@@ -172,7 +180,7 @@ Deno.test("drawSprite does not report collision when drawing on blank pixels", (
 });
 
 Deno.test("drawSprite wraps the initial X coordinate", () => {
-  const displayBuffer = new DisplayBuffer(8, 4);
+  const displayBuffer = createDisplayBuffer(8, 4);
 
   const collision = displayBuffer.drawSprite(9, 0, [byte(0b1000_0000)]);
 
@@ -181,7 +189,7 @@ Deno.test("drawSprite wraps the initial X coordinate", () => {
 });
 
 Deno.test("drawSprite wraps the initial Y coordinate", () => {
-  const displayBuffer = new DisplayBuffer(8, 4);
+  const displayBuffer = createDisplayBuffer(8, 4);
 
   const collision = displayBuffer.drawSprite(0, 5, [byte(0b1000_0000)]);
 
@@ -190,7 +198,7 @@ Deno.test("drawSprite wraps the initial Y coordinate", () => {
 });
 
 Deno.test("drawSprite clips pixels beyond the right edge", () => {
-  const displayBuffer = new DisplayBuffer(8, 4);
+  const displayBuffer = createDisplayBuffer(8, 4);
 
   displayBuffer.drawSprite(6, 0, [byte(0b1111_1111)]);
 
@@ -199,7 +207,7 @@ Deno.test("drawSprite clips pixels beyond the right edge", () => {
 });
 
 Deno.test("drawSprite clips rows beyond the bottom edge", () => {
-  const displayBuffer = new DisplayBuffer(8, 4);
+  const displayBuffer = createDisplayBuffer(8, 4);
 
   displayBuffer.drawSprite(0, 3, [byte(0b1000_0000), byte(0b0100_0000)]);
 
@@ -207,4 +215,28 @@ Deno.test("drawSprite clips rows beyond the bottom edge", () => {
 
   // Row 4 is outside the display and must not wrap to row 0.
   assertEquals(displayBuffer.getPixel(1, 0), false);
+});
+
+Deno.test("drawSprite wraps pixels beyond the right edge when configured", () => {
+  const displayBuffer = createDisplayBuffer(8, 4, "wrap");
+
+  displayBuffer.drawSprite(6, 0, [byte(0b1111_0000)]);
+
+  assertEquals(displayBuffer.getPixel(6, 0), true);
+
+  assertEquals(displayBuffer.getPixel(7, 0), true);
+
+  assertEquals(displayBuffer.getPixel(0, 0), true);
+
+  assertEquals(displayBuffer.getPixel(1, 0), true);
+});
+
+Deno.test("drawSprite wraps rows beyond the bottom edge when configured", () => {
+  const displayBuffer = createDisplayBuffer(8, 4, "wrap");
+
+  displayBuffer.drawSprite(0, 3, [byte(0b1000_0000), byte(0b0100_0000)]);
+
+  assertEquals(displayBuffer.getPixel(0, 3), true);
+
+  assertEquals(displayBuffer.getPixel(1, 0), true);
 });

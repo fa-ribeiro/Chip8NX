@@ -1,5 +1,6 @@
 import { address } from "../core/types/address.ts";
 import { type Byte, byte } from "../core/types/byte.ts";
+import type { Chip8Compatibility } from "../machine/chip8-profile.ts";
 import { key } from "../core/types/key.ts";
 import type { Instruction } from "../instruction/instruction.ts";
 import { add8, shiftLeft8, shiftRight8, subtract8 } from "./arithmetic/arithmetic.ts";
@@ -20,6 +21,7 @@ export const FLAG_REGISTER = registerIndex(0xf);
  * responsible only for applying instruction semantics to the machine state.
  */
 export class InstructionExecutor {
+  public constructor(private readonly compatibility: Chip8Compatibility) {}
   /**
    * Executes one decoded instruction.
    *
@@ -51,7 +53,12 @@ export class InstructionExecutor {
         return;
 
       case "jump-with-offset": {
-        const offset = context.registers.get(registerIndex(0));
+        const offsetRegister =
+          this.compatibility.jumpOffsetSource === "v0"
+            ? registerIndex(0)
+            : instruction.register;
+
+        const offset = context.registers.get(offsetRegister);
         context.programCounter.setValue(address(instruction.address + offset));
         return;
       }
@@ -175,7 +182,10 @@ export class InstructionExecutor {
           );
         }
 
-        context.indexRegister.setValue(address(startAddress + instruction.register + 1));
+        if (this.compatibility.memoryTransferIndex === "increment") {
+          context.indexRegister.setValue(address(startAddress + instruction.register + 1));
+        }
+
         return;
       }
 
@@ -189,7 +199,9 @@ export class InstructionExecutor {
           );
         }
 
-        context.indexRegister.setValue(address(startAddress + instruction.register + 1));
+        if (this.compatibility.memoryTransferIndex === "increment") {
+          context.indexRegister.setValue(address(startAddress + instruction.register + 1));
+        }
         return;
       }
 
@@ -209,7 +221,10 @@ export class InstructionExecutor {
         return;
 
       case "draw-sprite": {
-        if (!context.verticalBlank.consume()) {
+        if (
+          this.compatibility.spriteDrawTiming === "vertical-blank" &&
+          !context.verticalBlank.consume()
+        ) {
           context.programCounter.setValue(
             address(context.programCounter.getValue() - INSTRUCTION_SIZE),
           );
@@ -252,17 +267,27 @@ export class InstructionExecutor {
 
       case "or":
         context.registers.set(instruction.x, byte(x | y));
-        context.registers.set(FLAG_REGISTER, byte(0));
+
+        if (this.compatibility.logicFlag === "reset") {
+          context.registers.set(FLAG_REGISTER, byte(0));
+        }
+
         return;
 
       case "and":
         context.registers.set(instruction.x, byte(x & y));
-        context.registers.set(FLAG_REGISTER, byte(0));
+
+        if (this.compatibility.logicFlag === "reset") {
+          context.registers.set(FLAG_REGISTER, byte(0));
+        }
         return;
 
       case "xor":
         context.registers.set(instruction.x, byte(x ^ y));
-        context.registers.set(FLAG_REGISTER, byte(0));
+
+        if (this.compatibility.logicFlag === "reset") {
+          context.registers.set(FLAG_REGISTER, byte(0));
+        }
         return;
 
       case "add": {
@@ -282,7 +307,8 @@ export class InstructionExecutor {
       }
 
       case "shift-right": {
-        const result = shiftRight8(y);
+        const source = this.compatibility.shiftSource === "vx" ? x : y;
+        const result = shiftRight8(source);
 
         context.registers.set(instruction.x, result.value);
         context.registers.set(FLAG_REGISTER, byte(result.flag ? 1 : 0));
@@ -298,7 +324,8 @@ export class InstructionExecutor {
       }
 
       case "shift-left": {
-        const result = shiftLeft8(y);
+        const source = this.compatibility.shiftSource === "vx" ? x : y;
+        const result = shiftLeft8(source);
 
         context.registers.set(instruction.x, result.value);
         context.registers.set(FLAG_REGISTER, byte(result.flag ? 1 : 0));

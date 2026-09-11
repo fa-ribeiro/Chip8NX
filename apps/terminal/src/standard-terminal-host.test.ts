@@ -54,7 +54,7 @@ Deno.test("StandardTerminalHost coordinates subsystem lifecycle", async () => {
 
   host.tick();
 
-  const buffer = new DisplayBuffer(2, 2);
+  const buffer = new DisplayBuffer(2, 2, "clip");
 
   host.render(buffer);
 

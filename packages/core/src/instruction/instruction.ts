@@ -110,6 +110,14 @@ export interface SetIndexInstruction {
 export interface JumpWithOffsetInstruction {
   readonly kind: "jump-with-offset";
   readonly opcode: Opcode;
+
+  /**
+   * X register encoded by the instruction.
+   *
+   * Classic BNNN semantics ignore this register and use V0 as the offset.
+   * Compatible variants may use Vx instead.
+   */
+  readonly register: RegisterIndex;
   readonly address: Address;
 }
 

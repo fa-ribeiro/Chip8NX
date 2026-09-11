@@ -202,6 +202,7 @@ Deno.test("decodes BNNN", () => {
   assertEquals(decoder.decode(opcode(0xbabc)), {
     kind: "jump-with-offset",
     opcode: opcode(0xbabc),
+    register: registerIndex(0xa),
     address: address(0xabc),
   });
 });

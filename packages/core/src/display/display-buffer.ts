@@ -1,5 +1,7 @@
 import { Byte } from "../core/types/byte.ts";
 
+export type SpriteOverflowBehavior = "clip" | "wrap";
+
 /**
  * Represents the graphical state of a CHIP-8 display.
  *
@@ -55,11 +57,16 @@ export class DisplayBuffer {
    *
    * @param width - Number of horizontal pixels.
    * @param height - Number of vertical pixels.
+   * @param spriteOverflow - Behavior when a sprite exceeds the display boundaries.
    *
    * @throws {@link RangeError}
    * Thrown when either dimension is not a positive integer.
    */
-  constructor(width: number, height: number) {
+  constructor(
+    width: number,
+    height: number,
+    private readonly spriteOverflow: SpriteOverflowBehavior,
+  ) {
     if (!Number.isInteger(width) || width <= 0) {
       throw new RangeError(
         `Invalid display width: ${width}. ` + `Expected a positive integer.`,
@@ -116,11 +123,18 @@ export class DisplayBuffer {
   }
 
   /**
-   * Converts a two-dimensional coordinate into the corresponding storage
-   * index.
+   * @remarks
+   * Coordinates are zero-based. The valid horizontal range is
+   * `0 <= x < width`, and the valid vertical range is
+   * `0 <= y < height`.
    *
-   * Keeping this calculation in one place prevents `getPixel()` and
-   * `setPixel()` from accidentally using different coordinate semantics.
+   * Coordinates supplied to {@link getPixel} and {@link setPixel} must be
+   * within the buffer bounds.
+   *
+   * Sprite drawing through {@link drawSprite} wraps the initial sprite
+   * coordinates to the display dimensions. Sprite pixels extending beyond
+   * the right or bottom edges are either clipped or wrapped according to
+   * the configured sprite-overflow behavior.
    *
    * @param x - Horizontal coordinate.
    * @param y - Vertical coordinate.
@@ -154,18 +168,22 @@ export class DisplayBuffer {
     let collision = false;
 
     for (const [row, spriteByte] of sprite.entries()) {
-      const targetY = originY + row;
+      const unwrappedY = originY + row;
 
-      if (targetY >= this.height) {
+      if (this.spriteOverflow === "clip" && unwrappedY >= this.height) {
         break;
       }
 
-      for (let bit = 0; bit < 8; bit++) {
-        const targetX = originX + bit;
+      const targetY = unwrappedY % this.height;
 
-        if (targetX >= this.width) {
+      for (let bit = 0; bit < 8; bit++) {
+        const unwrappedX = originX + bit;
+
+        if (this.spriteOverflow === "clip" && unwrappedX >= this.width) {
           break;
         }
+
+        const targetX = unwrappedX % this.width;
 
         const spritePixel = ((spriteByte as Byte) & (0x80 >> bit)) !== 0;
 

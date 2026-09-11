@@ -40,7 +40,7 @@ function createMachine(profile: Chip8Profile = CLASSIC_CHIP8_PROFILE): TestMachi
     indexRegister: new IndexRegister(),
     soundTimer: new Timer(),
     delayTimer: new Timer(),
-    displayBuffer: new DisplayBuffer(profile.display.width, profile.display.height),
+    displayBuffer: new DisplayBuffer(profile.display.width, profile.display.height, "clip"),
     verticalBlank: new VerticalBlank(),
     keyboard,
     font: new ClassicFont(profile.fontBaseAddress),

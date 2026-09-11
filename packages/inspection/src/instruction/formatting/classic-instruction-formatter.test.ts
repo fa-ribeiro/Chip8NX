@@ -232,6 +232,7 @@ const cases: readonly FormatCase[] = [
     instruction: {
       kind: "jump-with-offset",
       opcode: opcode(0xbfff),
+      register: registerIndex(0xf),
       address: address(0xfff),
     },
     expected: "JP V0, 0xFFF",

@@ -75,38 +75,20 @@
           <span class="rom-loader-label">ROM</span>
 
           <button id="rom-load-button" type="button">
-            <svg
-              class="icon"
-              width="16"
-              height="16"
-              aria-hidden="true"
-              focusable="false"
-            >
+            <svg class="icon" width="16" height="16" aria-hidden="true" focusable="false">
               <use href="#icon-folder-open"></use>
             </svg>
 
             <span>Load ROM</span>
           </button>
 
-          <span id="rom-file-name" class="rom-file-name">
-            No ROM loaded
-          </span>
+          <span id="rom-file-name" class="rom-file-name"> No ROM loaded </span>
 
-          <input
-            id="rom-input"
-            type="file"
-            accept=".ch8,application/octet-stream"
-            hidden
-          />
+          <input id="rom-input" type="file" accept=".ch8,application/octet-stream" hidden />
         </section>
 
         <section class="controls" aria-label="Emulation controls">
-          <button
-            id="run-toggle-button"
-            type="button"
-            data-action="start"
-            disabled
-          >
+          <button id="run-toggle-button" type="button" data-action="start" disabled>
             <svg
               class="icon run-toggle-icon run-toggle-icon-start"
               width="16"
@@ -131,13 +113,7 @@
           </button>
 
           <button id="step-button" type="button" disabled>
-            <svg
-              class="icon"
-              width="16"
-              height="16"
-              aria-hidden="true"
-              focusable="false"
-            >
+            <svg class="icon" width="16" height="16" aria-hidden="true" focusable="false">
               <use href="#icon-step"></use>
             </svg>
 
@@ -145,13 +121,7 @@
           </button>
 
           <button id="reset-button" type="button" disabled>
-            <svg
-              class="icon"
-              width="16"
-              height="16"
-              aria-hidden="true"
-              focusable="false"
-            >
+            <svg class="icon" width="16" height="16" aria-hidden="true" focusable="false">
               <use href="#icon-reset"></use>
             </svg>
 
@@ -177,17 +147,11 @@
           <label for="theme-select">Theme</label>
 
           <select id="theme-select">
-            <option value="retro-green">
-              Retro Green
-            </option>
+            <option value="retro-green">Retro Green</option>
 
-            <option value="retro-amber">
-              Retro Amber
-            </option>
+            <option value="retro-amber">Retro Amber</option>
 
-            <option value="dark-theme">
-              Dark
-            </option>
+            <option value="dark-theme">Dark</option>
           </select>
         </section>
       </section>
@@ -205,13 +169,7 @@
 
           <section class="keypad" aria-label="Virtual CHIP-8 keypad">
             <h2 class="panel-heading">
-              <svg
-                class="icon"
-                width="16"
-                height="16"
-                aria-hidden="true"
-                focusable="false"
-              >
+              <svg class="icon" width="16" height="16" aria-hidden="true" focusable="false">
                 <use href="#icon-keypad"></use>
               </svg>
 
@@ -220,9 +178,7 @@
 
             <p class="keypad-hint">
               Click or press keys:
-              <span>
-                1, 2, 3, 4, Q, W, E, R, A, S, D, F, Z, X, C, V
-              </span>
+              <span> 1, 2, 3, 4, Q, W, E, R, A, S, D, F, Z, X, C, V </span>
             </p>
 
             <div class="keypad-content">
@@ -280,18 +236,9 @@
         </section>
 
         <aside class="inspection" aria-label="Machine inspection">
-          <section
-            class="cpu-state"
-            aria-labelledby="cpu-state-heading"
-          >
+          <section class="cpu-state" aria-labelledby="cpu-state-heading">
             <h2 id="cpu-state-heading" class="panel-heading">
-              <svg
-                class="icon"
-                width="16"
-                height="16"
-                aria-hidden="true"
-                focusable="false"
-              >
+              <svg class="icon" width="16" height="16" aria-hidden="true" focusable="false">
                 <use href="#icon-cpu"></use>
               </svg>
 
@@ -401,58 +348,30 @@
           </section>
 
           <div class="instruction-column">
-            <section
-              class="nearby-instructions"
-              aria-labelledby="nearby-instructions-heading"
-            >
-              <h2
-                id="nearby-instructions-heading"
-                class="panel-heading"
-              >
-                <svg
-                  class="icon"
-                  width="16"
-                  height="16"
-                  aria-hidden="true"
-                  focusable="false"
-                >
+            <section class="nearby-instructions" aria-labelledby="nearby-instructions-heading">
+              <h2 id="nearby-instructions-heading" class="panel-heading">
+                <svg class="icon" width="16" height="16" aria-hidden="true" focusable="false">
                   <use href="#icon-nearby"></use>
                 </svg>
 
                 <span>Nearby instructions</span>
               </h2>
 
-              <p id="nearby-instructions-empty">
-                No machine loaded.
-              </p>
+              <p id="nearby-instructions-empty">No machine loaded.</p>
 
               <ol id="nearby-instructions-list"></ol>
             </section>
 
-            <section
-              class="instruction-history"
-              aria-labelledby="instruction-history-heading"
-            >
-              <h2
-                id="instruction-history-heading"
-                class="panel-heading"
-              >
-                <svg
-                  class="icon"
-                  width="16"
-                  height="16"
-                  aria-hidden="true"
-                  focusable="false"
-                >
+            <section class="instruction-history" aria-labelledby="instruction-history-heading">
+              <h2 id="instruction-history-heading" class="panel-heading">
+                <svg class="icon" width="16" height="16" aria-hidden="true" focusable="false">
                   <use href="#icon-history"></use>
                 </svg>
 
                 <span>Recent instructions</span>
               </h2>
 
-              <p id="instruction-history-empty">
-                No instruction attempts yet.
-              </p>
+              <p id="instruction-history-empty">No instruction attempts yet.</p>
 
               <ol id="instruction-history-list"></ol>
             </section>
@@ -462,7 +381,7 @@
 
       <footer class="app-status">
         <p id="status" role="status">
-          Choose a CHIP-8 ROM to begin.
+          TIP: Choose a CHIP-8 ROM and press start. Use your keyboard or the virtual keypad.
         </p>
       </footer>
     </main>

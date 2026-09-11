@@ -23,8 +23,9 @@ import { registerIndex } from "./registers/register-index.ts";
 import { Registers } from "./registers/registers.ts";
 import { Stack } from "./stack/stack.ts";
 
+const profile = CLASSIC_CHIP8_PROFILE;
+
 function createContext(overrides: Partial<ExecutionContext> = {}): ExecutionContext {
-  const profile = CLASSIC_CHIP8_PROFILE;
   return {
     registers: new Registers(),
     memory: new Ram(profile.memorySize),
@@ -33,7 +34,7 @@ function createContext(overrides: Partial<ExecutionContext> = {}): ExecutionCont
     indexRegister: new IndexRegister(),
     soundTimer: new Timer(),
     delayTimer: new Timer(),
-    displayBuffer: new DisplayBuffer(profile.display.width, profile.display.height),
+    displayBuffer: new DisplayBuffer(profile.display.width, profile.display.height, "clip"),
     verticalBlank: new VerticalBlank(),
     keyboard: new KeyboardState(),
     font: new ClassicFont(profile.fontBaseAddress),
@@ -43,7 +44,12 @@ function createContext(overrides: Partial<ExecutionContext> = {}): ExecutionCont
 }
 
 function createCpu(context: ExecutionContext, observer?: InstructionTraceObserver): Cpu {
-  return new Cpu(context, new Decoder(), new InstructionExecutor(), observer);
+  return new Cpu(
+    context,
+    new Decoder(),
+    new InstructionExecutor(profile.compatibility),
+    observer,
+  );
 }
 
 Deno.test("CPU emits a successful instruction trace", () => {

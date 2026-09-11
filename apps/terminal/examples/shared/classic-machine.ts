@@ -49,7 +49,11 @@ export async function createExampleMachine(romPath: string): Promise<ExampleMach
   const verticalBlank = new VerticalBlank();
   const keyboard = new KeyboardState();
 
-  const displayBuffer = new DisplayBuffer(profile.display.width, profile.display.height);
+  const displayBuffer = new DisplayBuffer(
+    profile.display.width,
+    profile.display.height,
+    profile.compatibility.spriteOverflow,
+  );
 
   const context: ExecutionContext = {
     registers: new Registers(),
@@ -70,7 +74,7 @@ export async function createExampleMachine(romPath: string): Promise<ExampleMach
 
   initializer.initialize(context, profile, program);
 
-  const cpu = new Cpu(context, new Decoder(), new InstructionExecutor());
+  const cpu = new Cpu(context, new Decoder(), new InstructionExecutor(profile.compatibility));
 
   const scheduler = new Scheduler(new PerformanceClock());
 

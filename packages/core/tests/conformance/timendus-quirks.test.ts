@@ -83,7 +83,7 @@ Deno.test("Classic CHIP-8 passes the Timendus Quirks test ROM", async () => {
     indexRegister: new IndexRegister(),
     delayTimer,
     soundTimer,
-    displayBuffer: new DisplayBuffer(profile.display.width, profile.display.height),
+    displayBuffer: new DisplayBuffer(profile.display.width, profile.display.height, "clip"),
     verticalBlank,
     keyboard: new KeyboardState(),
     font: new ClassicFont(profile.fontBaseAddress),
@@ -98,7 +98,7 @@ Deno.test("Classic CHIP-8 passes the Timendus Quirks test ROM", async () => {
   // target platform. The initializer must run first because it clears memory.
   context.memory.write(TIMENDUS_PLATFORM_SELECTION_ADDRESS, TIMENDUS_PLATFORM_CHIP8);
 
-  const cpu = new Cpu(context, new Decoder(), new InstructionExecutor());
+  const cpu = new Cpu(context, new Decoder(), new InstructionExecutor(profile.compatibility));
 
   const clock = new TestClock();
   const scheduler = new Scheduler(clock);

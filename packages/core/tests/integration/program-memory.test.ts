@@ -48,14 +48,14 @@ Deno.test("CPU executes a program loaded into memory from a MemoryImage", () => 
     indexRegister: new IndexRegister(),
     soundTimer: new Timer(),
     delayTimer: new Timer(),
-    displayBuffer: new DisplayBuffer(profile.display.width, profile.display.height),
+    displayBuffer: new DisplayBuffer(profile.display.width, profile.display.height, "clip"),
     verticalBlank: new VerticalBlank(),
     keyboard: new KeyboardState(),
     font: new ClassicFont(profile.fontBaseAddress),
     randomNumberGenerator: new TestRandomNumberGenerator([byte(0)]),
   };
 
-  const cpu = new Cpu(context, new Decoder(), new InstructionExecutor());
+  const cpu = new Cpu(context, new Decoder(), new InstructionExecutor(profile.compatibility));
 
   cpu.step();
 

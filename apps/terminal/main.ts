@@ -61,7 +61,11 @@ const delayTimer = new Timer();
 const soundTimer = new Timer();
 
 const verticalBlank = new VerticalBlank();
-const displayBuffer = new DisplayBuffer(profile.display.width, profile.display.height);
+const displayBuffer = new DisplayBuffer(
+  profile.display.width,
+  profile.display.height,
+  profile.compatibility.spriteOverflow,
+);
 
 const keyboardState = new KeyboardState();
 
@@ -84,7 +88,12 @@ const initializer = new MachineInitializer(new MemoryImageLoader());
 initializer.initialize(context, profile, program);
 
 const traceObserver = traceEnabled ? createConsoleTraceObserver() : undefined;
-const cpu = new Cpu(context, new Decoder(), new InstructionExecutor(), traceObserver);
+const cpu = new Cpu(
+  context,
+  new Decoder(),
+  new InstructionExecutor(profile.compatibility),
+  traceObserver,
+);
 const scheduler = new Scheduler(new PerformanceClock());
 const runtime = new Chip8Runtime(
   cpu,

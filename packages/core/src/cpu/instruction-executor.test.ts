@@ -3,6 +3,7 @@ import { assertEquals, assertThrows } from "@std/assert";
 import { address } from "../core/types/address.ts";
 import { type Byte, byte } from "../core/types/byte.ts";
 import { opcode } from "../core/types/opcode.ts";
+import type { Chip8Compatibility } from "../machine/chip8-profile.ts";
 import { key } from "../core/types/key.ts";
 import { DisplayBuffer } from "../display/display-buffer.ts";
 import { VerticalBlank } from "../display/vertical-blank.ts";
@@ -38,13 +39,19 @@ function createContext(overrides: Partial<ExecutionContext> = {}): ExecutionCont
     indexRegister: new IndexRegister(),
     soundTimer: new Timer(),
     delayTimer: new Timer(),
-    displayBuffer: new DisplayBuffer(profile.display.width, profile.display.height),
+    displayBuffer: new DisplayBuffer(profile.display.width, profile.display.height, "clip"),
     verticalBlank: new VerticalBlank(),
     keyboard: new KeyboardState(),
     font: new ClassicFont(profile.fontBaseAddress),
     randomNumberGenerator: new TestRandomNumberGenerator([byte(0)]),
     ...overrides,
   };
+}
+
+function createExecutor(
+  compatibility: Chip8Compatibility = CLASSIC_CHIP8_PROFILE.compatibility,
+): InstructionExecutor {
+  return new InstructionExecutor(compatibility);
 }
 
 function registerOperation(
@@ -63,11 +70,11 @@ function registerOperation(
 }
 
 Deno.test("CLS clears the display buffer", () => {
-  const displayBuffer = new DisplayBuffer(64, 32);
+  const displayBuffer = new DisplayBuffer(64, 32, "clip");
   displayBuffer.setPixel(10, 20, true);
 
   const context = createContext({ displayBuffer });
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -83,7 +90,7 @@ Deno.test("CLS clears the display buffer", () => {
 Deno.test("JP sets the program counter to its target address", () => {
   const programCounter = new ProgramCounter(address(0x202));
   const context = createContext({ programCounter });
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -101,7 +108,7 @@ Deno.test("CALL pushes the current program counter and jumps", () => {
   const programCounter = new ProgramCounter(address(0x202));
   const stack = new Stack(CLASSIC_CHIP8_PROFILE.stackCapacity);
   const context = createContext({ programCounter, stack });
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -122,7 +129,7 @@ Deno.test("RET pops the return address into the program counter", () => {
   stack.push(address(0x202));
 
   const context = createContext({ programCounter, stack });
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -142,7 +149,7 @@ Deno.test("SE Vx, NN skips when the values are equal", () => {
   registers.set(registerIndex(0xa), byte(0x42));
 
   const context = createContext({ registers, programCounter });
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -163,7 +170,7 @@ Deno.test("SE Vx, NN does not skip when the values differ", () => {
   registers.set(registerIndex(0xa), byte(0x41));
 
   const context = createContext({ registers, programCounter });
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -184,7 +191,7 @@ Deno.test("SNE Vx, NN skips when the values differ", () => {
   registers.set(registerIndex(0xa), byte(0x41));
 
   const context = createContext({ registers, programCounter });
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -206,7 +213,7 @@ Deno.test("SE Vx, Vy skips when the registers are equal", () => {
   registers.set(registerIndex(0xb), byte(0x42));
 
   const context = createContext({ registers, programCounter });
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -228,7 +235,7 @@ Deno.test("SNE Vx, Vy skips when the registers differ", () => {
   registers.set(registerIndex(0xb), byte(0x43));
 
   const context = createContext({ registers, programCounter });
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -246,7 +253,7 @@ Deno.test("SNE Vx, Vy skips when the registers differ", () => {
 Deno.test("LD Vx, NN stores the immediate value", () => {
   const registers = new Registers();
   const context = createContext({ registers });
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -267,7 +274,7 @@ Deno.test("ADD Vx, NN wraps at 0xFF without changing VF", () => {
   registers.set(FLAG_REGISTER, byte(0x7f));
 
   const context = createContext({ registers });
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -289,7 +296,7 @@ Deno.test("LD Vx, Vy copies the source register", () => {
   registers.set(registerIndex(0xb), byte(0xab));
 
   const context = createContext({ registers });
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(registerOperation("assign", 0xa, 0xb, 0x8ab0), context);
 
@@ -304,12 +311,37 @@ Deno.test("OR Vx, Vy performs a bitwise OR and clears VF", () => {
   registers.set(FLAG_REGISTER, byte(0xff));
 
   const context = createContext({ registers });
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(registerOperation("or", 0xa, 0xb, 0x8ab1), context);
 
   assertEquals(registers.get(registerIndex(0xa)), byte(0b1010_1111));
   assertEquals(registers.get(FLAG_REGISTER), byte(0));
+});
+
+Deno.test("OR Vx, Vy leaves VF unchanged when configured", () => {
+  const registers = new Registers();
+
+  registers.set(registerIndex(0xa), byte(0b1010_0000));
+
+  registers.set(registerIndex(0xb), byte(0b0000_1111));
+
+  registers.set(FLAG_REGISTER, byte(0x7f));
+
+  const context = createContext({
+    registers,
+  });
+
+  const executor = createExecutor({
+    ...CLASSIC_CHIP8_PROFILE.compatibility,
+    logicFlag: "unchanged",
+  });
+
+  executor.execute(registerOperation("or", 0xa, 0xb, 0x8ab1), context);
+
+  assertEquals(registers.get(registerIndex(0xa)), byte(0b1010_1111));
+
+  assertEquals(registers.get(FLAG_REGISTER), byte(0x7f));
 });
 
 Deno.test("AND Vx, Vy performs a bitwise AND and clears VF", () => {
@@ -320,12 +352,37 @@ Deno.test("AND Vx, Vy performs a bitwise AND and clears VF", () => {
   registers.set(FLAG_REGISTER, byte(0xff));
 
   const context = createContext({ registers });
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(registerOperation("and", 0xa, 0xb, 0x8ab2), context);
 
   assertEquals(registers.get(registerIndex(0xa)), byte(0b1010_0000));
   assertEquals(registers.get(FLAG_REGISTER), byte(0));
+});
+
+Deno.test("AND Vx, Vy leaves VF unchanged when configured", () => {
+  const registers = new Registers();
+
+  registers.set(registerIndex(0xa), byte(0b1010_1010));
+
+  registers.set(registerIndex(0xb), byte(0b1111_0000));
+
+  registers.set(FLAG_REGISTER, byte(0x7f));
+
+  const context = createContext({
+    registers,
+  });
+
+  const executor = createExecutor({
+    ...CLASSIC_CHIP8_PROFILE.compatibility,
+    logicFlag: "unchanged",
+  });
+
+  executor.execute(registerOperation("and", 0xa, 0xb, 0x8ab2), context);
+
+  assertEquals(registers.get(registerIndex(0xa)), byte(0b1010_0000));
+
+  assertEquals(registers.get(FLAG_REGISTER), byte(0x7f));
 });
 
 Deno.test("XOR Vx, Vy performs a bitwise XOR and clears VF", () => {
@@ -336,7 +393,7 @@ Deno.test("XOR Vx, Vy performs a bitwise XOR and clears VF", () => {
   registers.set(FLAG_REGISTER, byte(0xff));
 
   const context = createContext({ registers });
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(registerOperation("xor", 0xa, 0xb, 0x8ab3), context);
 
@@ -344,13 +401,37 @@ Deno.test("XOR Vx, Vy performs a bitwise XOR and clears VF", () => {
   assertEquals(registers.get(FLAG_REGISTER), byte(0));
 });
 
+Deno.test("XOR Vx, Vy leaves VF unchanged when configured", () => {
+  const registers = new Registers();
+
+  registers.set(registerIndex(0xa), byte(0b1010_1010));
+
+  registers.set(registerIndex(0xb), byte(0b1111_0000));
+
+  registers.set(FLAG_REGISTER, byte(0x7f));
+
+  const context = createContext({
+    registers,
+  });
+
+  const executor = createExecutor({
+    ...CLASSIC_CHIP8_PROFILE.compatibility,
+    logicFlag: "unchanged",
+  });
+
+  executor.execute(registerOperation("xor", 0xa, 0xb, 0x8ab3), context);
+
+  assertEquals(registers.get(registerIndex(0xa)), byte(0b0101_1010));
+
+  assertEquals(registers.get(FLAG_REGISTER), byte(0x7f));
+});
 Deno.test("ADD Vx, Vy stores the wrapped result and carry in VF", () => {
   const registers = new Registers();
   registers.set(registerIndex(0xa), byte(0xff));
   registers.set(registerIndex(0xb), byte(0x01));
 
   const context = createContext({ registers });
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(registerOperation("add", 0xa, 0xb, 0x8ab4), context);
 
@@ -365,7 +446,7 @@ Deno.test("ADD Vx, Vy clears VF when there is no carry", () => {
   registers.set(FLAG_REGISTER, byte(0xff));
 
   const context = createContext({ registers });
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(registerOperation("add", 0xa, 0xb, 0x8ab4), context);
 
@@ -379,7 +460,7 @@ Deno.test("SUB Vx, Vy stores the result and sets VF when no borrow occurs", () =
   registers.set(registerIndex(0xb), byte(0x03));
 
   const context = createContext({ registers });
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(registerOperation("subtract", 0xa, 0xb, 0x8ab5), context);
 
@@ -393,7 +474,7 @@ Deno.test("SUB Vx, Vy wraps and clears VF when a borrow occurs", () => {
   registers.set(registerIndex(0xb), byte(0x05));
 
   const context = createContext({ registers });
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(registerOperation("subtract", 0xa, 0xb, 0x8ab5), context);
 
@@ -408,12 +489,37 @@ Deno.test("SHR Vx, Vy shifts Vy right into Vx and stores its old LSB in VF", () 
   registers.set(registerIndex(0xb), byte(0b0000_0011));
 
   const context = createContext({ registers });
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(registerOperation("shift-right", 0xa, 0xb, 0x8ab6), context);
 
   assertEquals(registers.get(registerIndex(0xa)), byte(0b0000_0001));
   assertEquals(registers.get(registerIndex(0xb)), byte(0b0000_0011));
+  assertEquals(registers.get(FLAG_REGISTER), byte(1));
+});
+
+Deno.test("SHR uses Vx as the source when configured for vx shifts", () => {
+  const registers = new Registers();
+
+  registers.set(registerIndex(0xa), byte(0b1111_0011));
+
+  registers.set(registerIndex(0xb), byte(0b0000_0100));
+
+  const context = createContext({
+    registers,
+  });
+
+  const executor = createExecutor({
+    ...CLASSIC_CHIP8_PROFILE.compatibility,
+    shiftSource: "vx",
+  });
+
+  executor.execute(registerOperation("shift-right", 0xa, 0xb, 0x8ab6), context);
+
+  assertEquals(registers.get(registerIndex(0xa)), byte(0b0111_1001));
+
+  assertEquals(registers.get(registerIndex(0xb)), byte(0b0000_0100));
+
   assertEquals(registers.get(FLAG_REGISTER), byte(1));
 });
 
@@ -424,7 +530,7 @@ Deno.test("SHR reads VF before updating it when VF is Vy", () => {
   registers.set(FLAG_REGISTER, byte(0b0000_0011));
 
   const context = createContext({ registers });
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(registerOperation("shift-right", 0xa, 0xf, 0x8af6), context);
 
@@ -438,7 +544,7 @@ Deno.test("SUBN Vx, Vy computes Vy minus Vx", () => {
   registers.set(registerIndex(0xb), byte(0x05));
 
   const context = createContext({ registers });
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(registerOperation("reverse-subtract", 0xa, 0xb, 0x8ab7), context);
 
@@ -452,7 +558,7 @@ Deno.test("SUBN Vx, Vy computes Vy minus Vx and wraps when a borrow occurs", () 
   registers.set(registerIndex(0xb), byte(0x03));
 
   const context = createContext({ registers });
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
   executor.execute(registerOperation("reverse-subtract", 0xa, 0xb, 0x8ab7), context);
 
   assertEquals(registers.get(registerIndex(0xa)), byte(0xfe));
@@ -466,12 +572,37 @@ Deno.test("SHL Vx, Vy shifts Vy left into Vx and stores its old MSB in VF", () =
   registers.set(registerIndex(0xb), byte(0b1000_0001));
 
   const context = createContext({ registers });
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(registerOperation("shift-left", 0xa, 0xb, 0x8abe), context);
 
   assertEquals(registers.get(registerIndex(0xa)), byte(0b0000_0010));
   assertEquals(registers.get(registerIndex(0xb)), byte(0b1000_0001));
+  assertEquals(registers.get(FLAG_REGISTER), byte(1));
+});
+
+Deno.test("SHL uses Vx as the source when configured for vx shifts", () => {
+  const registers = new Registers();
+
+  registers.set(registerIndex(0xa), byte(0b1000_0011));
+
+  registers.set(registerIndex(0xb), byte(0b0000_0100));
+
+  const context = createContext({
+    registers,
+  });
+
+  const executor = createExecutor({
+    ...CLASSIC_CHIP8_PROFILE.compatibility,
+    shiftSource: "vx",
+  });
+
+  executor.execute(registerOperation("shift-left", 0xa, 0xb, 0x8abe), context);
+
+  assertEquals(registers.get(registerIndex(0xa)), byte(0b0000_0110));
+
+  assertEquals(registers.get(registerIndex(0xb)), byte(0b0000_0100));
+
   assertEquals(registers.get(FLAG_REGISTER), byte(1));
 });
 
@@ -482,7 +613,7 @@ Deno.test("SHL writes VF last when VF is Vx", () => {
   registers.set(registerIndex(0xa), byte(0b1000_0001));
 
   const context = createContext({ registers });
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(registerOperation("shift-left", 0xf, 0xa, 0x8fae), context);
 
@@ -496,7 +627,7 @@ Deno.test("logical register operations read VF before clearing it when VF is Vy"
   registers.set(FLAG_REGISTER, byte(0b1111_0000));
 
   const context = createContext({ registers });
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(registerOperation("or", 0xa, 0xf, 0x8af1), context);
 
@@ -511,7 +642,7 @@ Deno.test("logical register operations clear VF last when VF is Vx", () => {
   registers.set(registerIndex(0xa), byte(0b0000_1111));
 
   const context = createContext({ registers });
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(registerOperation("or", 0xf, 0xa, 0x8fa1), context);
 
@@ -520,7 +651,7 @@ Deno.test("logical register operations clear VF last when VF is Vx", () => {
 
 Deno.test("0NNN native system calls throw UnsupportedInstructionError", () => {
   const context = createContext();
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   const instruction: Instruction = {
     kind: "system-call",
@@ -545,7 +676,7 @@ Deno.test("DRW draws the sprite stored at I", () => {
   memory.write(address(0x300), byte(0b1010_0000));
 
   const indexRegister = new IndexRegister(address(0x300));
-  const displayBuffer = new DisplayBuffer(8, 8);
+  const displayBuffer = new DisplayBuffer(8, 8, "clip");
 
   const verticalBlank = new VerticalBlank();
 
@@ -559,7 +690,7 @@ Deno.test("DRW draws the sprite stored at I", () => {
     verticalBlank,
   });
 
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -587,7 +718,7 @@ Deno.test("DRW sets VF when a sprite pixel collides", () => {
   memory.write(address(0x300), byte(0b1000_0000));
 
   const indexRegister = new IndexRegister(address(0x300));
-  const displayBuffer = new DisplayBuffer(8, 8);
+  const displayBuffer = new DisplayBuffer(8, 8, "clip");
 
   const verticalBlank = new VerticalBlank();
 
@@ -603,7 +734,7 @@ Deno.test("DRW sets VF when a sprite pixel collides", () => {
     verticalBlank,
   });
 
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -630,7 +761,7 @@ Deno.test("DRW clears VF when no collision occurs", () => {
   memory.write(address(0x300), byte(0b1000_0000));
 
   const indexRegister = new IndexRegister(address(0x300));
-  const displayBuffer = new DisplayBuffer(8, 8);
+  const displayBuffer = new DisplayBuffer(8, 8, "clip");
 
   const verticalBlank = new VerticalBlank();
 
@@ -644,7 +775,7 @@ Deno.test("DRW clears VF when no collision occurs", () => {
     verticalBlank,
   });
 
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -672,7 +803,7 @@ Deno.test("DRW waits for vertical blank before drawing", () => {
   memory.write(address(0x300), byte(0b1000_0000));
 
   const indexRegister = new IndexRegister(address(0x300));
-  const displayBuffer = new DisplayBuffer(8, 8);
+  const displayBuffer = new DisplayBuffer(8, 8, "clip");
   const programCounter = new ProgramCounter(address(0x202));
   const verticalBlank = new VerticalBlank();
 
@@ -685,7 +816,7 @@ Deno.test("DRW waits for vertical blank before drawing", () => {
     verticalBlank,
   });
 
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -705,6 +836,109 @@ Deno.test("DRW waits for vertical blank before drawing", () => {
   assertEquals(registers.get(FLAG_REGISTER), byte(1));
 });
 
+Deno.test("DRW draws without vertical blank when configured for immediate drawing", () => {
+  const registers = new Registers();
+
+  registers.set(registerIndex(0xa), byte(0x02));
+
+  registers.set(registerIndex(0xb), byte(0x03));
+
+  registers.set(FLAG_REGISTER, byte(1));
+
+  const memory = new Ram(0x1000);
+
+  memory.write(address(0x300), byte(0b1000_0000));
+
+  const indexRegister = new IndexRegister(address(0x300));
+
+  const displayBuffer = new DisplayBuffer(8, 8, "clip");
+
+  const programCounter = new ProgramCounter(address(0x202));
+
+  const verticalBlank = new VerticalBlank();
+
+  const context = createContext({
+    registers,
+    memory,
+    indexRegister,
+    displayBuffer,
+    programCounter,
+    verticalBlank,
+  });
+
+  const executor = createExecutor({
+    ...CLASSIC_CHIP8_PROFILE.compatibility,
+    spriteDrawTiming: "immediate",
+  });
+
+  executor.execute(
+    {
+      kind: "draw-sprite",
+      opcode: opcode(0xdab1),
+      x: registerIndex(0xa),
+      y: registerIndex(0xb),
+      height: 1,
+    },
+    context,
+  );
+
+  assertEquals(programCounter.getValue(), address(0x202));
+
+  assertEquals(displayBuffer.getPixel(2, 3), true);
+
+  assertEquals(registers.get(FLAG_REGISTER), byte(0));
+
+  assertEquals(verticalBlank.consume(), false);
+});
+
+Deno.test("DRW does not consume vertical blank when configured for immediate drawing", () => {
+  const registers = new Registers();
+
+  registers.set(registerIndex(0xa), byte(0));
+
+  registers.set(registerIndex(0xb), byte(0));
+
+  const memory = new Ram(0x1000);
+
+  memory.write(address(0x300), byte(0b1000_0000));
+
+  const indexRegister = new IndexRegister(address(0x300));
+
+  const displayBuffer = new DisplayBuffer(8, 8, "clip");
+
+  const verticalBlank = new VerticalBlank();
+
+  verticalBlank.signal();
+
+  const context = createContext({
+    registers,
+    memory,
+    indexRegister,
+    displayBuffer,
+    verticalBlank,
+  });
+
+  const executor = createExecutor({
+    ...CLASSIC_CHIP8_PROFILE.compatibility,
+    spriteDrawTiming: "immediate",
+  });
+
+  executor.execute(
+    {
+      kind: "draw-sprite",
+      opcode: opcode(0xdab1),
+      x: registerIndex(0xa),
+      y: registerIndex(0xb),
+      height: 1,
+    },
+    context,
+  );
+
+  assertEquals(displayBuffer.getPixel(0, 0), true);
+
+  assertEquals(verticalBlank.consume(), true);
+});
+
 Deno.test("DRW completes after vertical blank becomes available", () => {
   const registers = new Registers();
 
@@ -716,7 +950,7 @@ Deno.test("DRW completes after vertical blank becomes available", () => {
   memory.write(address(0x300), byte(0b1000_0000));
 
   const indexRegister = new IndexRegister(address(0x300));
-  const displayBuffer = new DisplayBuffer(8, 8);
+  const displayBuffer = new DisplayBuffer(8, 8, "clip");
   const programCounter = new ProgramCounter(address(0x202));
   const verticalBlank = new VerticalBlank();
 
@@ -737,7 +971,7 @@ Deno.test("DRW completes after vertical blank becomes available", () => {
     height: 1,
   };
 
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(instruction, context);
 
@@ -763,7 +997,7 @@ Deno.test("DRW with zero height still waits for vertical blank", () => {
   const registers = new Registers();
   registers.set(FLAG_REGISTER, byte(1));
 
-  const displayBuffer = new DisplayBuffer(8, 8);
+  const displayBuffer = new DisplayBuffer(8, 8, "clip");
   displayBuffer.setPixel(2, 3, true);
 
   const programCounter = new ProgramCounter(address(0x202));
@@ -776,7 +1010,7 @@ Deno.test("DRW with zero height still waits for vertical blank", () => {
     verticalBlank,
   });
 
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -798,7 +1032,7 @@ Deno.test("DRW with zero height consumes vertical blank without drawing", () => 
   const registers = new Registers();
   registers.set(FLAG_REGISTER, byte(1));
 
-  const displayBuffer = new DisplayBuffer(8, 8);
+  const displayBuffer = new DisplayBuffer(8, 8, "clip");
   displayBuffer.setPixel(2, 3, true);
 
   const programCounter = new ProgramCounter(address(0x202));
@@ -813,7 +1047,7 @@ Deno.test("DRW with zero height consumes vertical blank without drawing", () => 
     verticalBlank,
   });
 
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -835,7 +1069,7 @@ Deno.test("DRW with zero height consumes vertical blank without drawing", () => 
 Deno.test("LD I, addr stores the address in the index register", () => {
   const indexRegister = new IndexRegister();
   const context = createContext({ indexRegister });
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -852,7 +1086,7 @@ Deno.test("LD I, addr stores the address in the index register", () => {
 Deno.test("LD I, addr replaces the previous index register value", () => {
   const indexRegister = new IndexRegister(address(0x200));
   const context = createContext({ indexRegister });
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -877,12 +1111,13 @@ Deno.test("JP V0, addr jumps to address plus V0", () => {
     programCounter,
   });
 
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
       kind: "jump-with-offset",
       opcode: opcode(0xb300),
+      register: registerIndex(0x3),
       address: address(0x300),
     },
     context,
@@ -903,18 +1138,48 @@ Deno.test("JP V0, addr uses V0 regardless of other register values", () => {
     programCounter,
   });
 
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
       kind: "jump-with-offset",
       opcode: opcode(0xba00),
+      register: registerIndex(0xa),
       address: address(0xa00),
     },
     context,
   );
 
   assertEquals(programCounter.getValue(), address(0xa07));
+});
+
+Deno.test("JP uses Vx as the offset when configured", () => {
+  const registers = new Registers();
+
+  registers.set(registerIndex(0), byte(0x10));
+
+  registers.set(registerIndex(3), byte(0x24));
+
+  const context = createContext({
+    registers,
+  });
+
+  const executor = createExecutor({
+    ...CLASSIC_CHIP8_PROFILE.compatibility,
+    jumpOffsetSource: "vx",
+  });
+
+  executor.execute(
+    {
+      kind: "jump-with-offset",
+      opcode: opcode(0xb300),
+      register: registerIndex(3),
+      address: address(0x300),
+    },
+    context,
+  );
+
+  assertEquals(context.programCounter.getValue(), address(0x324));
 });
 
 Deno.test("RND Vx, byte stores random byte AND mask", () => {
@@ -927,7 +1192,7 @@ Deno.test("RND Vx, byte stores random byte AND mask", () => {
     randomNumberGenerator,
   });
 
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -952,7 +1217,7 @@ Deno.test("RND Vx, byte performs a bitwise AND", () => {
     randomNumberGenerator,
   });
 
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -977,7 +1242,7 @@ Deno.test("RND Vx, byte requests a new random byte for each execution", () => {
     randomNumberGenerator,
   });
 
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -1018,7 +1283,7 @@ Deno.test("SKP Vx skips when the corresponding key is pressed", () => {
     keyboard,
   });
 
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -1045,7 +1310,7 @@ Deno.test("SKP Vx does not skip when the corresponding key is not pressed", () =
     keyboard,
   });
 
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -1073,7 +1338,7 @@ Deno.test("SKP Vx uses only the low nibble of Vx as the key", () => {
     keyboard,
   });
 
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -1100,7 +1365,7 @@ Deno.test("SKNP Vx skips when the corresponding key is not pressed", () => {
     keyboard,
   });
 
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -1128,7 +1393,7 @@ Deno.test("SKNP Vx does not skip when the corresponding key is pressed", () => {
     keyboard,
   });
 
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -1156,7 +1421,7 @@ Deno.test("SKNP Vx uses only the low nibble of Vx as the key", () => {
     keyboard,
   });
 
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -1179,7 +1444,7 @@ Deno.test("LD Vx, DT copies the delay timer value into Vx", () => {
     delayTimer,
   });
 
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -1204,7 +1469,7 @@ Deno.test("LD DT, Vx copies Vx into the delay timer", () => {
     delayTimer,
   });
 
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -1229,7 +1494,7 @@ Deno.test("LD ST, Vx copies Vx into the sound timer", () => {
     soundTimer,
   });
 
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -1254,7 +1519,7 @@ Deno.test("ADD I, Vx adds Vx to the index register", () => {
     indexRegister,
   });
 
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -1279,7 +1544,7 @@ Deno.test("ADD I, Vx preserves results above the CHIP-8 memory address range", (
     indexRegister,
   });
 
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -1304,7 +1569,7 @@ Deno.test("ADD I, VF uses VF as the operand without modifying it", () => {
     indexRegister,
   });
 
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -1342,7 +1607,7 @@ Deno.test(
       font,
     });
 
-    const executor = new InstructionExecutor();
+    const executor = createExecutor();
 
     executor.execute(
       {
@@ -1371,7 +1636,7 @@ Deno.test("LD B, Vx stores the BCD representation of Vx in memory", () => {
     indexRegister,
   });
 
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -1400,7 +1665,7 @@ Deno.test("LD B, Vx stores 000 when Vx is zero", () => {
     indexRegister,
   });
 
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -1429,7 +1694,7 @@ Deno.test("LD B, Vx stores 255 when Vx contains the maximum byte value", () => {
     indexRegister,
   });
 
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -1463,7 +1728,7 @@ Deno.test("LD [I], Vx stores V0 through Vx in memory and advances I", () => {
     indexRegister,
   });
 
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -1496,7 +1761,7 @@ Deno.test("LD [I], V0 stores only V0 and advances I by one", () => {
     indexRegister,
   });
 
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -1526,7 +1791,7 @@ Deno.test("LD [I], VF stores all sixteen registers and advances I by sixteen", (
     indexRegister,
   });
 
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -1562,7 +1827,7 @@ Deno.test("LD Vx, [I] loads V0 through Vx from memory and advances I", () => {
     indexRegister,
   });
 
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -1595,7 +1860,7 @@ Deno.test("LD V0, [I] loads only V0 and advances I by one", () => {
     indexRegister,
   });
 
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -1625,7 +1890,7 @@ Deno.test("LD VF, [I] loads all sixteen registers and advances I by sixteen", ()
     indexRegister,
   });
 
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -1656,7 +1921,7 @@ Deno.test("LD Vx, K repeats the instruction while waiting for a key release", ()
     programCounter,
   });
 
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   executor.execute(
     {
@@ -1682,7 +1947,7 @@ Deno.test("LD Vx, K stores the released key and continues execution", () => {
     programCounter,
   });
 
-  const executor = new InstructionExecutor();
+  const executor = createExecutor();
 
   const instruction: Instruction = {
     kind: "wait-for-key",
@@ -1705,4 +1970,72 @@ Deno.test("LD Vx, K stores the released key and continues execution", () => {
 
   assertEquals(registers.get(registerIndex(0xa)), byte(0x0b));
   assertEquals(programCounter.getValue(), address(0x302));
+});
+
+Deno.test("LD [I], Vx leaves I unchanged when configured", () => {
+  const context = createContext();
+
+  context.indexRegister.setValue(address(0x300));
+
+  context.registers.set(registerIndex(0), byte(0x11));
+
+  context.registers.set(registerIndex(1), byte(0x22));
+
+  context.registers.set(registerIndex(2), byte(0x33));
+
+  const executor = createExecutor({
+    ...CLASSIC_CHIP8_PROFILE.compatibility,
+    memoryTransferIndex: "unchanged",
+  });
+
+  executor.execute(
+    {
+      kind: "store-registers",
+      opcode: opcode(0xf255),
+      register: registerIndex(0x2),
+    },
+    context,
+  );
+
+  assertEquals(context.memory.read(address(0x300)), byte(0x11));
+
+  assertEquals(context.memory.read(address(0x301)), byte(0x22));
+
+  assertEquals(context.memory.read(address(0x302)), byte(0x33));
+
+  assertEquals(context.indexRegister.getValue(), address(0x300));
+});
+
+Deno.test("LD Vx, [I] leaves I unchanged when configured", () => {
+  const context = createContext();
+
+  context.indexRegister.setValue(address(0x300));
+
+  context.memory.write(address(0x300), byte(0x11));
+
+  context.memory.write(address(0x301), byte(0x22));
+
+  context.memory.write(address(0x302), byte(0x33));
+
+  const executor = createExecutor({
+    ...CLASSIC_CHIP8_PROFILE.compatibility,
+    memoryTransferIndex: "unchanged",
+  });
+
+  executor.execute(
+    {
+      kind: "load-registers",
+      opcode: opcode(0xf265),
+      register: registerIndex(0x2),
+    },
+    context,
+  );
+
+  assertEquals(context.registers.get(registerIndex(0)), byte(0x11));
+
+  assertEquals(context.registers.get(registerIndex(1)), byte(0x22));
+
+  assertEquals(context.registers.get(registerIndex(2)), byte(0x33));
+
+  assertEquals(context.indexRegister.getValue(), address(0x300));
 });

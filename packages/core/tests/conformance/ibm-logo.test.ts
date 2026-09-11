@@ -94,7 +94,7 @@ Deno.test(
       indexRegister: new IndexRegister(),
       delayTimer,
       soundTimer,
-      displayBuffer: new DisplayBuffer(profile.display.width, profile.display.height),
+      displayBuffer: new DisplayBuffer(profile.display.width, profile.display.height, "clip"),
       verticalBlank,
       keyboard: new KeyboardState(),
       font: new ClassicFont(profile.fontBaseAddress),
@@ -105,7 +105,7 @@ Deno.test(
 
     initializer.initialize(context, profile, program);
 
-    const cpu = new Cpu(context, new Decoder(), new InstructionExecutor());
+    const cpu = new Cpu(context, new Decoder(), new InstructionExecutor(profile.compatibility));
 
     const clock = new TestClock();
     const scheduler = new Scheduler(clock);

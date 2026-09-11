@@ -32,7 +32,7 @@ export { Stack } from "./src/cpu/stack/stack.ts";
 export type { CpuState } from "./src/cpu/state/cpu-state.ts";
 
 // Display
-export { DisplayBuffer } from "./src/display/display-buffer.ts";
+export { DisplayBuffer, type SpriteOverflowBehavior } from "./src/display/display-buffer.ts";
 export { VerticalBlank } from "./src/display/vertical-blank.ts";
 export type { Display } from "./src/display/display.ts";
 export { NullDisplay } from "./src/display/null-display.ts";
@@ -63,7 +63,15 @@ export type { Keyboard } from "./src/keyboard/keyboard.ts";
 export { KeyboardState } from "./src/keyboard/keyboard-state.ts";
 
 // Machine
-export type { Chip8Profile } from "./src/machine/chip8-profile.ts";
+export type {
+  Chip8Compatibility,
+  Chip8Profile,
+  JumpOffsetSource,
+  LogicFlagBehavior,
+  MemoryTransferIndexBehavior,
+  ShiftSource,
+  SpriteDrawTiming,
+} from "./src/machine/chip8-profile.ts";
 export { CLASSIC_CHIP8_PROFILE } from "./src/machine/classic/classic-chip8-profile.ts";
 export { MachineInitializer } from "./src/machine/machine-initializer.ts";
 
