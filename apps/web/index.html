@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Chip8NX Classic CHIP-8 web emulator" />
+    <meta name="description" content="Chip8NX CHIP-8 web emulator" />
 
     <title>Chip8NX Web</title>
   </head>
@@ -19,7 +19,7 @@
       focusable="false"
     >
       <symbol id="icon-folder-open" viewBox="0 0 24 24">
-        <path d="M3 7V5h7l2 2h9v3" />
+        <path d="M3 17V5h7l2 2h9v3" />
         <path d="M4 19h15l2-9H6z" />
       </symbol>
 
@@ -67,7 +67,7 @@
     <main class="app">
       <header class="app-header">
         <h1>Chip8NX</h1>
-        <p>Classic CHIP-8 web host</p>
+        <p>CHIP-8 web host</p>
       </header>
 
       <section class="toolbar" aria-label="Emulator toolbar">
@@ -140,6 +140,17 @@
           <span class="machine-state-indicator" aria-hidden="true"></span>
           <span id="machine-state-label">No ROM</span>
         </div>
+
+        <span class="toolbar-divider" aria-hidden="true"></span>
+
+        <section class="profile-picker" aria-label="Machine profile">
+          <label for="profile-select">Profile</label>
+
+          <select id="profile-select">
+            <option value="classic">Classic CHIP-8</option>
+            <option value="chip48">CHIP-48 2.25</option>
+          </select>
+        </section>
 
         <span class="toolbar-divider" aria-hidden="true"></span>
 

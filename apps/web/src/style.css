@@ -225,6 +225,7 @@ select {
 }
 
 .rom-loader-label,
+.profile-picker label,
 .theme-picker label {
   font-weight: 600;
 }
@@ -247,6 +248,7 @@ select {
   color: var(--color-text-muted);
 }
 
+.profile-picker,
 .theme-picker {
   display: flex;
   flex: 0 0 auto;
@@ -254,6 +256,7 @@ select {
   gap: 0.5rem;
 }
 
+#profile-select,
 #theme-select {
   padding: 0.55rem 0.7rem;
 
@@ -265,6 +268,7 @@ select {
   cursor: pointer;
 }
 
+#profile-select:hover,
 #theme-select:hover {
   background: var(--color-surface-hover);
 }
@@ -792,6 +796,7 @@ select {
 /* Keyboard accessibility */
 
 button:focus-visible,
+#profile-select:focus-visible,
 #theme-select:focus-visible {
   outline: 2px solid var(--color-accent-strong);
   outline-offset: 2px;
@@ -882,11 +887,13 @@ button:focus-visible,
     display: none;
   }
 
+  .profile-picker,
   .theme-picker {
     width: 100%;
     justify-content: space-between;
   }
 
+  #profile-select,
   #theme-select {
     flex: 1 1 auto;
     max-width: 14rem;

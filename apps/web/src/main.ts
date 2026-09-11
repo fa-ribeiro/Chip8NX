@@ -1,6 +1,8 @@
 import {
   type Address,
   address,
+  CHIP48_PROFILE,
+  Chip8Profile,
   Chip8Runtime,
   CLASSIC_CHIP8_PROFILE,
   ClassicFont,
@@ -33,6 +35,8 @@ import {
   Disassembler,
   InstructionTraceBuffer,
 } from "@chip8nx/inspection";
+import type { InstructionFormatter } from "@chip8nx/inspection";
+import { Chip48InstructionFormatter } from "@chip8nx/inspection";
 import { WebAudioBeeper } from "./audio/web-audio-beeper.ts";
 import { CanvasDisplay, type CanvasDisplayPalette } from "./display/canvas-display.ts";
 import {
@@ -61,6 +65,7 @@ const DISASSEMBLY_INSTRUCTIONS_AFTER = 4;
 interface WebMachineSession {
   readonly romName: string;
   readonly program: MemoryImage;
+  readonly profile: Chip8Profile;
 
   readonly context: ExecutionContext;
   readonly initializer: MachineInitializer;
@@ -93,6 +98,7 @@ const resetButton = requireElement<HTMLButtonElement>("#reset-button");
 const machineState = requireElement<HTMLElement>("#machine-state");
 const machineStateLabel = requireElement<HTMLElement>("#machine-state-label");
 
+const profileSelect = requireElement<HTMLSelectElement>("#profile-select");
 const themeSelect = requireElement<HTMLSelectElement>("#theme-select");
 
 const virtualKeypadElement = requireElement<HTMLElement>("#virtual-keypad");
@@ -150,6 +156,10 @@ resetButton.addEventListener("click", () => {
   resetMachine();
 });
 
+profileSelect.addEventListener("change", () => {
+  recomposeMachineForSelectedProfile();
+});
+
 themeSelect.addEventListener("change", () => {
   const theme = parseWebTheme(themeSelect.value);
 
@@ -190,7 +200,7 @@ async function loadAndRun(rom: File): Promise<void> {
   try {
     const program = new MemoryImage(new Uint8Array(await rom.arrayBuffer()));
 
-    machine = createMachine(rom.name, program);
+    machine = createMachine(rom.name, program, readSelectedProfile());
 
     machine.browserKeyboard.start();
     machine.virtualKeypad.start();
@@ -217,14 +227,17 @@ async function loadAndRun(rom: File): Promise<void> {
 }
 
 /**
- * Manually composes one Classic CHIP-8 machine for the web host.
+ * Manually composes one CHIP-8 machine for the web host using the supplied
+ * machine profile.
  *
  * This remains intentionally explicit while the web application acts as a
  * second case study for Chip8NX composition ergonomics.
  */
-function createMachine(romName: string, program: MemoryImage): WebMachineSession {
-  const profile = CLASSIC_CHIP8_PROFILE;
-
+function createMachine(
+  romName: string,
+  program: MemoryImage,
+  profile: Chip8Profile,
+): WebMachineSession {
   const delayTimer = new Timer();
   const soundTimer = new Timer();
 
@@ -272,7 +285,7 @@ function createMachine(romName: string, program: MemoryImage): WebMachineSession
 
   const traceHistory = new InstructionTraceBuffer(TRACE_HISTORY_CAPACITY);
 
-  const instructionFormatter = new ClassicInstructionFormatter();
+  const instructionFormatter = createInstructionFormatter(profile);
 
   const disassembler = new Disassembler(new Decoder(), instructionFormatter);
 
@@ -320,6 +333,7 @@ function createMachine(romName: string, program: MemoryImage): WebMachineSession
   return {
     romName,
     program,
+    profile,
 
     context,
     initializer,
@@ -415,7 +429,7 @@ function resetMachine(): void {
   beeper.setActive(false);
 
   try {
-    machine.initializer.initialize(machine.context, CLASSIC_CHIP8_PROFILE, machine.program);
+    machine.initializer.initialize(machine.context, machine.profile, machine.program);
 
     machine.traceHistory.clear();
 
@@ -641,4 +655,86 @@ function inspectNearbyInstructions(
   }
 
   return inspections;
+}
+
+function readSelectedProfile(): Chip8Profile {
+  switch (profileSelect.value) {
+    case "classic":
+      return CLASSIC_CHIP8_PROFILE;
+
+    case "chip48":
+      return CHIP48_PROFILE;
+
+    default:
+      throw new Error(`Unsupported CHIP-8 profile: ${profileSelect.value}`);
+  }
+}
+
+function createInstructionFormatter(profile: Chip8Profile): InstructionFormatter {
+  if (profile === CLASSIC_CHIP8_PROFILE) {
+    return new ClassicInstructionFormatter();
+  }
+
+  if (profile === CHIP48_PROFILE) {
+    return new Chip48InstructionFormatter();
+  }
+
+  throw new Error("No instruction formatter is available for this CHIP-8 profile.");
+}
+
+function recomposeMachineForSelectedProfile(): void {
+  if (machine === undefined) {
+    return;
+  }
+
+  const previousMachine = machine;
+  const wasPaused = previousMachine.runtime.isPaused;
+
+  try {
+    /*
+     * Compose the replacement before disturbing the currently working
+     * machine. If composition fails, the existing session remains intact.
+     */
+    const replacement = createMachine(
+      previousMachine.romName,
+      previousMachine.program,
+      readSelectedProfile(),
+    );
+
+    stopHostLoop();
+
+    previousMachine.runtime.pause();
+    previousMachine.browserKeyboard.stop();
+    previousMachine.virtualKeypad.stop();
+
+    beeper.setActive(false);
+
+    machine = replacement;
+
+    replacement.browserKeyboard.start();
+    replacement.virtualKeypad.start();
+
+    if (!wasPaused) {
+      replacement.runtime.resume();
+    }
+
+    renderMachine(replacement);
+    updateControls();
+
+    setStatus(`${wasPaused ? "Paused" : "Running"} ${replacement.romName} — profile changed.`);
+
+    if (!wasPaused) {
+      runHostLoop(replacement);
+    }
+  } catch (error) {
+    /*
+     * Restore the selector so it continues to describe the machine that
+     * is actually active.
+     */
+    profileSelect.value = previousMachine.profile === CHIP48_PROFILE ? "chip48" : "classic";
+
+    setStatus(`Unable to change profile: ${describeError(error)}`, true);
+
+    console.error(error);
+  }
 }

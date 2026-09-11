@@ -17,5 +17,6 @@ export type { InstructionTraceFormatter } from "./src/tracing/instruction-trace-
 export { InstructionTraceBuffer } from "./src/tracing/instruction-trace-buffer.ts";
 
 // Instruction formatting
+export { Chip48InstructionFormatter } from "./src/instruction/formatting/chip48-instruction-formatter.ts";
 export { ClassicInstructionFormatter } from "./src/instruction/formatting/classic-instruction-formatter.ts";
 export type { InstructionFormatter } from "./src/instruction/formatting/instruction-formatter.ts";
