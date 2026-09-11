@@ -23,7 +23,8 @@ export type SpriteOverflowBehavior = "clip" | "wrap";
  *
  * Sprite drawing through {@link drawSprite} has its own semantics: the
  * initial sprite coordinates are wrapped to the display dimensions, while
- * sprite pixels extending beyond the right or bottom edges are clipped.
+ * sprite pixels extending beyond the right or bottom edges can be clipped
+ * or wrapped according to configuration.
  */
 export class DisplayBuffer {
   /**

@@ -53,10 +53,9 @@ export class InstructionExecutor {
         return;
 
       case "jump-with-offset": {
-        const offsetRegister =
-          this.compatibility.jumpOffsetSource === "v0"
-            ? registerIndex(0)
-            : instruction.register;
+        const offsetRegister = this.compatibility.jumpOffsetSource === "v0"
+          ? registerIndex(0)
+          : instruction.register;
 
         const offset = context.registers.get(offsetRegister);
         context.programCounter.setValue(address(instruction.address + offset));

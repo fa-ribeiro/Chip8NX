@@ -232,7 +232,7 @@ function createMachine(romName: string, program: MemoryImage): WebMachineSession
   const displayBuffer = new DisplayBuffer(
     profile.display.width,
     profile.display.height,
-    "clip",
+    profile.compatibility.spriteOverflow,
   );
 
   const keyboard = new KeyboardState();
