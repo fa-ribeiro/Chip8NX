@@ -12,6 +12,8 @@ During the `0.x` development phase:
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-09-12 - CHIP-8 Profiles / Variant Foundation
+
 ### Added
 
 - Added explicit profile-controlled compatibility semantics for CHIP-8-family behavior:

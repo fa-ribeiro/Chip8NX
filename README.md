@@ -10,11 +10,11 @@ The project supports accurate **Classic CHIP-8** behavior and **CHIP-48 2.25** t
 
 ## Status
 
-### In development: `v0.8.0` — CHIP-8 Profiles / Variant Foundation
+### Current release: `v0.8.0` — CHIP-8 Profiles / Variant Foundation
 
 `v0.8.0` extends Chip8NX from a single Classic machine target to an explicit multi-profile architecture.
 
-The current development branch provides two built-in historical profiles:
+`v0.8.0` provides two built-in historical profiles:
 
 ```text
 Classic CHIP-8
@@ -38,7 +38,7 @@ Compatibility is independently exercised with Gulrak's Variant Detection Test v1
 
 The profile model remains deliberately declarative: profiles contain machine characteristics and semantic choices, while applications remain responsible for object composition and host/runtime policy.
 
-### Current release: `v0.7.0` — Web Inspection Workbench
+### Previous release: `v0.7.0` — Web Inspection Workbench
 
 `v0.7.0` turns the browser host into Chip8NX's first interactive inspection workbench while preserving the separation between machine semantics, passive inspection tooling, and host-specific presentation.
 
@@ -470,9 +470,21 @@ The release also evolves the browser host into a responsive play-and-inspection 
 
 Inspection remains deliberately read-only: breakpoints, watchpoints, pause conditions, step-over/step-out behavior, memory editing, and other debugger execution-control semantics remain deferred until concrete reusable requirements emerge.
 
+### `v0.8.0` — CHIP-8 Profiles / Variant Foundation ✓
+
+Chip8NX evolves from a single Classic CHIP-8 target into a demonstrated multi-profile emulator architecture with built-in `CLASSIC_CHIP8_PROFILE` and `CHIP48_PROFILE` machine definitions.
+
+`Chip8Profile` now describes the complete emulated machine, combining architectural characteristics with explicit compatibility-sensitive semantics for shift source, `Fx55` / `Fx65` index-register updates, `Bnnn` jump offsets, logic-operation `VF` behavior, sprite overflow, and sprite draw timing. CHIP-48 2.25 additionally demonstrates profile-specific font data and machine timing.
+
+The Web host provides interactive Classic CHIP-8 / CHIP-48 2.25 profile selection, profile-appropriate instruction formatting, profile-preserving Reset behavior, and fresh machine-session composition when the selected historical target changes.
+
+Compatibility is independently validated with Gulrak's Variant Detection Test v1.4, executing the same external ROM under both profiles and comparing each against its own stable framebuffer result.
+
+The milestone establishes the variant foundation without introducing a generic quirk engine, strategy hierarchy, profile registry, or universal machine-session abstraction: new variation continues to be modeled only when concrete historical targets demonstrate the need.
+
 ## Future work
 
-Post-`v0.7.0` development can proceed across areas such as:
+Post-`v0.8.0` development can proceed across areas such as:
 
 - active debugger behavior built on the completed read-only Web inspection workbench, when concrete needs such as breakpoints, watchpoints, or richer stepping semantics are demonstrated;
 - additional CHIP-8-family profiles when concrete targets demonstrate new architectural or compatibility requirements;
