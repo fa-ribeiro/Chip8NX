@@ -8,6 +8,7 @@ import { key } from "../core/types/key.ts";
 import { DisplayBuffer } from "../display/display-buffer.ts";
 import { VerticalBlank } from "../display/vertical-blank.ts";
 import { ClassicFont } from "../font/classic-font.ts";
+import { SuperChipFont } from "../font/superchip-font.ts";
 import type { Font } from "../font/font.ts";
 import type { Instruction } from "../instruction/instruction.ts";
 import { Ram } from "../memory/ram.ts";
@@ -25,8 +26,12 @@ import { Registers } from "./registers/registers.ts";
 import { Stack } from "./stack/stack.ts";
 import { TestRandomNumberGenerator } from "../random/test-random-number-generator.ts";
 import { KeyboardState } from "../keyboard/keyboard-state.ts";
+import { RplFlags } from "../machine/rpl-flags.ts";
+import { ExitState } from "../machine/exit-state.ts";
 
 import { CLASSIC_CHIP8_PROFILE } from "../machine/classic/classic-chip8-profile.ts";
+import { CHIP48_PROFILE } from "../machine/chip48/chip48-profile.ts";
+import { SUPERCHIP_PROFILE } from "../machine/superchip/superchip-profile.ts";
 
 function createContext(overrides: Partial<ExecutionContext> = {}): ExecutionContext {
   const profile = CLASSIC_CHIP8_PROFILE;
@@ -39,12 +44,15 @@ function createContext(overrides: Partial<ExecutionContext> = {}): ExecutionCont
     indexRegister: new IndexRegister(),
     soundTimer: new Timer(),
     delayTimer: new Timer(),
-    displayBuffer: new DisplayBuffer(profile.display.width, profile.display.height, "clip"),
+    displayBuffer: new DisplayBuffer(profile.display.specification, "clip"),
     verticalBlank: new VerticalBlank(),
     keyboard: new KeyboardState(),
     font: new ClassicFont(profile.fontBaseAddress),
     randomNumberGenerator: new TestRandomNumberGenerator([byte(0)]),
     ...overrides,
+
+    exitState: overrides.exitState ?? new ExitState(),
+    rplFlags: overrides.rplFlags ?? new RplFlags(),
   };
 }
 
@@ -52,6 +60,17 @@ function createExecutor(
   compatibility: Chip8Compatibility = CLASSIC_CHIP8_PROFILE.compatibility,
 ): InstructionExecutor {
   return new InstructionExecutor(compatibility);
+}
+
+function createFixedDisplayBuffer(width: number, height: number): DisplayBuffer {
+  return new DisplayBuffer(
+    {
+      kind: "fixed",
+      width,
+      height,
+    },
+    "clip",
+  );
 }
 
 function registerOperation(
@@ -70,7 +89,7 @@ function registerOperation(
 }
 
 Deno.test("CLS clears the display buffer", () => {
-  const displayBuffer = new DisplayBuffer(64, 32, "clip");
+  const displayBuffer = createFixedDisplayBuffer(64, 32);
   displayBuffer.setPixel(10, 20, true);
 
   const context = createContext({ displayBuffer });
@@ -676,7 +695,7 @@ Deno.test("DRW draws the sprite stored at I", () => {
   memory.write(address(0x300), byte(0b1010_0000));
 
   const indexRegister = new IndexRegister(address(0x300));
-  const displayBuffer = new DisplayBuffer(8, 8, "clip");
+  const displayBuffer = createFixedDisplayBuffer(8, 8);
 
   const verticalBlank = new VerticalBlank();
 
@@ -718,7 +737,7 @@ Deno.test("DRW sets VF when a sprite pixel collides", () => {
   memory.write(address(0x300), byte(0b1000_0000));
 
   const indexRegister = new IndexRegister(address(0x300));
-  const displayBuffer = new DisplayBuffer(8, 8, "clip");
+  const displayBuffer = createFixedDisplayBuffer(8, 8);
 
   const verticalBlank = new VerticalBlank();
 
@@ -761,7 +780,7 @@ Deno.test("DRW clears VF when no collision occurs", () => {
   memory.write(address(0x300), byte(0b1000_0000));
 
   const indexRegister = new IndexRegister(address(0x300));
-  const displayBuffer = new DisplayBuffer(8, 8, "clip");
+  const displayBuffer = createFixedDisplayBuffer(8, 8);
 
   const verticalBlank = new VerticalBlank();
 
@@ -803,7 +822,7 @@ Deno.test("DRW waits for vertical blank before drawing", () => {
   memory.write(address(0x300), byte(0b1000_0000));
 
   const indexRegister = new IndexRegister(address(0x300));
-  const displayBuffer = new DisplayBuffer(8, 8, "clip");
+  const displayBuffer = createFixedDisplayBuffer(8, 8);
   const programCounter = new ProgramCounter(address(0x202));
   const verticalBlank = new VerticalBlank();
 
@@ -851,7 +870,7 @@ Deno.test("DRW draws without vertical blank when configured for immediate drawin
 
   const indexRegister = new IndexRegister(address(0x300));
 
-  const displayBuffer = new DisplayBuffer(8, 8, "clip");
+  const displayBuffer = createFixedDisplayBuffer(8, 8);
 
   const programCounter = new ProgramCounter(address(0x202));
 
@@ -868,7 +887,10 @@ Deno.test("DRW draws without vertical blank when configured for immediate drawin
 
   const executor = createExecutor({
     ...CLASSIC_CHIP8_PROFILE.compatibility,
-    spriteDrawTiming: "immediate",
+    spriteDrawTiming: {
+      kind: "uniform",
+      timing: "immediate",
+    },
   });
 
   executor.execute(
@@ -904,7 +926,7 @@ Deno.test("DRW does not consume vertical blank when configured for immediate dra
 
   const indexRegister = new IndexRegister(address(0x300));
 
-  const displayBuffer = new DisplayBuffer(8, 8, "clip");
+  const displayBuffer = createFixedDisplayBuffer(8, 8);
 
   const verticalBlank = new VerticalBlank();
 
@@ -920,7 +942,10 @@ Deno.test("DRW does not consume vertical blank when configured for immediate dra
 
   const executor = createExecutor({
     ...CLASSIC_CHIP8_PROFILE.compatibility,
-    spriteDrawTiming: "immediate",
+    spriteDrawTiming: {
+      kind: "uniform",
+      timing: "immediate",
+    },
   });
 
   executor.execute(
@@ -950,7 +975,7 @@ Deno.test("DRW completes after vertical blank becomes available", () => {
   memory.write(address(0x300), byte(0b1000_0000));
 
   const indexRegister = new IndexRegister(address(0x300));
-  const displayBuffer = new DisplayBuffer(8, 8, "clip");
+  const displayBuffer = createFixedDisplayBuffer(8, 8);
   const programCounter = new ProgramCounter(address(0x202));
   const verticalBlank = new VerticalBlank();
 
@@ -997,7 +1022,7 @@ Deno.test("DRW with zero height still waits for vertical blank", () => {
   const registers = new Registers();
   registers.set(FLAG_REGISTER, byte(1));
 
-  const displayBuffer = new DisplayBuffer(8, 8, "clip");
+  const displayBuffer = createFixedDisplayBuffer(8, 8);
   displayBuffer.setPixel(2, 3, true);
 
   const programCounter = new ProgramCounter(address(0x202));
@@ -1032,7 +1057,7 @@ Deno.test("DRW with zero height consumes vertical blank without drawing", () => 
   const registers = new Registers();
   registers.set(FLAG_REGISTER, byte(1));
 
-  const displayBuffer = new DisplayBuffer(8, 8, "clip");
+  const displayBuffer = createFixedDisplayBuffer(8, 8);
   displayBuffer.setPixel(2, 3, true);
 
   const programCounter = new ProgramCounter(address(0x202));
@@ -2098,4 +2123,773 @@ Deno.test("LD Vx, K stores the released key and continues execution", () => {
 
   assertEquals(registers.get(registerIndex(0xa)), byte(0x0b));
   assertEquals(programCounter.getValue(), address(0x302));
+});
+
+Deno.test("00E0 clears a SUPER-CHIP display without changing its mode", () => {
+  const displayBuffer = new DisplayBuffer(
+    {
+      kind: "superchip",
+      backingWidth: 128,
+      backingHeight: 64,
+      initialMode: "low",
+    },
+    "clip",
+  );
+
+  const context = createContext({ displayBuffer });
+
+  const executor = createExecutor();
+
+  displayBuffer.setMode("high");
+  displayBuffer.setPixel(100, 50, true);
+
+  assertEquals(displayBuffer.width, 128);
+  assertEquals(displayBuffer.height, 64);
+  assertEquals(displayBuffer.getPixel(100, 50), true);
+
+  executor.execute(
+    {
+      kind: "clear-screen",
+      opcode: opcode(0x00e0),
+    },
+    context,
+  );
+
+  assertEquals(displayBuffer.width, 128);
+  assertEquals(displayBuffer.height, 64);
+  assertEquals(displayBuffer.getPixel(100, 50), false);
+});
+
+Deno.test("HIGH selects high-resolution mode without clearing the display", () => {
+  const displayBuffer = new DisplayBuffer(
+    {
+      kind: "superchip",
+      backingWidth: 128,
+      backingHeight: 64,
+      initialMode: "low",
+    },
+    "clip",
+  );
+
+  displayBuffer.setPixel(100, 50, true);
+
+  const context = createContext({ displayBuffer });
+  const executor = createExecutor();
+
+  executor.execute(
+    {
+      kind: "set-display-mode",
+      opcode: opcode(0x00ff),
+      mode: "high",
+    },
+    context,
+  );
+
+  assertEquals(displayBuffer.width, 128);
+  assertEquals(displayBuffer.height, 64);
+  assertEquals(displayBuffer.getPixel(100, 50), true);
+});
+
+Deno.test("LOW selects low-resolution mode without clearing the display", () => {
+  const displayBuffer = new DisplayBuffer(
+    {
+      kind: "superchip",
+      backingWidth: 128,
+      backingHeight: 64,
+      initialMode: "low",
+    },
+    "clip",
+  );
+
+  displayBuffer.setMode("high");
+  displayBuffer.setPixel(100, 50, true);
+
+  const context = createContext({ displayBuffer });
+  const executor = createExecutor();
+
+  executor.execute(
+    {
+      kind: "set-display-mode",
+      opcode: opcode(0x00fe),
+      mode: "low",
+    },
+    context,
+  );
+
+  assertEquals(displayBuffer.width, 64);
+  assertEquals(displayBuffer.height, 32);
+  assertEquals(displayBuffer.getPixel(100, 50), true);
+});
+
+Deno.test("SCD scrolls the SUPER-CHIP backing framebuffer down", () => {
+  const displayBuffer = new DisplayBuffer(
+    {
+      kind: "superchip",
+      backingWidth: 128,
+      backingHeight: 64,
+      initialMode: "low",
+    },
+    "clip",
+  );
+
+  displayBuffer.setPixel(10, 10, true);
+
+  const context = createContext({ displayBuffer });
+  const executor = createExecutor();
+
+  executor.execute(
+    {
+      kind: "scroll-display-down",
+      opcode: opcode(0x00c3),
+      rows: 3,
+    },
+    context,
+  );
+
+  assertEquals(displayBuffer.getPixel(10, 10), false);
+  assertEquals(displayBuffer.getPixel(10, 13), true);
+
+  // Scrolling does not alter the current display mode.
+  assertEquals(displayBuffer.width, 64);
+  assertEquals(displayBuffer.height, 32);
+});
+
+Deno.test("SCR scrolls the SUPER-CHIP backing framebuffer right", () => {
+  const displayBuffer = new DisplayBuffer(
+    {
+      kind: "superchip",
+      backingWidth: 128,
+      backingHeight: 64,
+      initialMode: "low",
+    },
+    "clip",
+  );
+
+  displayBuffer.setPixel(10, 10, true);
+
+  const context = createContext({ displayBuffer });
+  const executor = createExecutor();
+
+  executor.execute(
+    {
+      kind: "scroll-display-horizontal",
+      opcode: opcode(0x00fb),
+      direction: "right",
+      columns: 4,
+    },
+    context,
+  );
+
+  assertEquals(displayBuffer.getPixel(10, 10), false);
+  assertEquals(displayBuffer.getPixel(14, 10), true);
+});
+
+Deno.test("SCL scrolls the SUPER-CHIP backing framebuffer left", () => {
+  const displayBuffer = new DisplayBuffer(
+    {
+      kind: "superchip",
+      backingWidth: 128,
+      backingHeight: 64,
+      initialMode: "low",
+    },
+    "clip",
+  );
+
+  displayBuffer.setPixel(10, 10, true);
+
+  const context = createContext({ displayBuffer });
+  const executor = createExecutor();
+
+  executor.execute(
+    {
+      kind: "scroll-display-horizontal",
+      opcode: opcode(0x00fc),
+      direction: "left",
+      columns: 4,
+    },
+    context,
+  );
+
+  assertEquals(displayBuffer.getPixel(10, 10), false);
+  assertEquals(displayBuffer.getPixel(6, 10), true);
+});
+
+Deno.test(
+  "DRW in SUPER-CHIP high-resolution mode sets VF to the number of colliding rows",
+  () => {
+    const registers = new Registers();
+    registers.set(registerIndex(0xa), byte(0x00));
+    registers.set(registerIndex(0xb), byte(0x00));
+
+    const memory = new Ram(0x1000);
+
+    // Two sprite rows, each with the leftmost pixel set.
+    memory.write(address(0x300), byte(0b1000_0000));
+    memory.write(address(0x301), byte(0b1000_0000));
+
+    const indexRegister = new IndexRegister(address(0x300));
+
+    const displayBuffer = new DisplayBuffer(
+      {
+        kind: "superchip",
+        backingWidth: 128,
+        backingHeight: 64,
+        initialMode: "low",
+      },
+      "clip",
+    );
+
+    displayBuffer.setMode("high");
+
+    // Arrange one collision in each sprite row.
+    displayBuffer.setPixel(0, 0, true);
+    displayBuffer.setPixel(0, 1, true);
+
+    const verticalBlank = new VerticalBlank();
+    verticalBlank.signal();
+
+    const context = createContext({
+      registers,
+      memory,
+      indexRegister,
+      displayBuffer,
+      verticalBlank,
+    });
+
+    const executor = createExecutor();
+
+    executor.execute(
+      {
+        kind: "draw-sprite",
+        opcode: opcode(0xdab2),
+        x: registerIndex(0xa),
+        y: registerIndex(0xb),
+        height: 2,
+      },
+      context,
+    );
+
+    assertEquals(displayBuffer.getPixel(0, 0), false);
+    assertEquals(displayBuffer.getPixel(0, 1), false);
+
+    assertEquals(registers.get(FLAG_REGISTER), byte(2));
+  },
+);
+
+Deno.test(
+  "DRW in SUPER-CHIP high-resolution mode counts rows clipped below the bottom in VF",
+  () => {
+    const registers = new Registers();
+
+    registers.set(registerIndex(0xa), byte(0x00));
+    registers.set(registerIndex(0xb), byte(0x3f));
+
+    const memory = new Ram(0x1000);
+
+    // Three sprite rows. Starting at Y=63 means only the first row is visible.
+    memory.write(address(0x300), byte(0b1000_0000));
+    memory.write(address(0x301), byte(0b1000_0000));
+    memory.write(address(0x302), byte(0b1000_0000));
+
+    const indexRegister = new IndexRegister(address(0x300));
+
+    const displayBuffer = new DisplayBuffer(
+      {
+        kind: "superchip",
+        backingWidth: 128,
+        backingHeight: 64,
+        initialMode: "low",
+      },
+      "clip",
+    );
+
+    displayBuffer.setMode("high");
+
+    const verticalBlank = new VerticalBlank();
+    verticalBlank.signal();
+
+    const context = createContext({
+      registers,
+      memory,
+      indexRegister,
+      displayBuffer,
+      verticalBlank,
+    });
+
+    const executor = createExecutor();
+
+    executor.execute(
+      {
+        kind: "draw-sprite",
+        opcode: opcode(0xdab3),
+        x: registerIndex(0xa),
+        y: registerIndex(0xb),
+        height: 3,
+      },
+      context,
+    );
+
+    // The first row is visible and drawn normally.
+    assertEquals(displayBuffer.getPixel(0, 63), true);
+
+    // No pixels collided, but two sprite rows fell below the display.
+    assertEquals(registers.get(FLAG_REGISTER), byte(2));
+  },
+);
+
+Deno.test("Dxy0 draws an 8x16 sprite in SUPER-CHIP low-resolution mode", () => {
+  const registers = new Registers();
+  registers.set(registerIndex(0xa), byte(0x00));
+  registers.set(registerIndex(0xb), byte(0x00));
+
+  const memory = new Ram(0x1000);
+
+  // First pixel of the first row.
+  memory.write(address(0x300), byte(0b1000_0000));
+
+  // Last pixel of the sixteenth row.
+  memory.write(address(0x30f), byte(0b0000_0001));
+
+  const indexRegister = new IndexRegister(address(0x300));
+
+  const displayBuffer = new DisplayBuffer(
+    {
+      kind: "superchip",
+      backingWidth: 128,
+      backingHeight: 64,
+      initialMode: "low",
+    },
+    "clip",
+  );
+
+  const verticalBlank = new VerticalBlank();
+  verticalBlank.signal();
+
+  const context = createContext({
+    registers,
+    memory,
+    indexRegister,
+    displayBuffer,
+    verticalBlank,
+  });
+
+  const executor = createExecutor();
+
+  executor.execute(
+    {
+      kind: "draw-sprite",
+      opcode: opcode(0xdab0),
+      x: registerIndex(0xa),
+      y: registerIndex(0xb),
+      height: 0,
+    },
+    context,
+  );
+
+  // Logical (0, 0) maps to a 2×2 backing block.
+  assertEquals(displayBuffer.getPixel(0, 0), true);
+  assertEquals(displayBuffer.getPixel(1, 0), true);
+  assertEquals(displayBuffer.getPixel(0, 1), true);
+  assertEquals(displayBuffer.getPixel(1, 1), true);
+
+  // Logical (7, 15) maps to backing coordinates (14..15, 30..31).
+  assertEquals(displayBuffer.getPixel(14, 30), true);
+  assertEquals(displayBuffer.getPixel(15, 30), true);
+  assertEquals(displayBuffer.getPixel(14, 31), true);
+  assertEquals(displayBuffer.getPixel(15, 31), true);
+
+  assertEquals(registers.get(FLAG_REGISTER), byte(0));
+});
+
+Deno.test("Dxy0 draws a 16x16 sprite in SUPER-CHIP high-resolution mode", () => {
+  const registers = new Registers();
+  registers.set(registerIndex(0xa), byte(0x00));
+  registers.set(registerIndex(0xb), byte(0x00));
+
+  const memory = new Ram(0x1000);
+
+  // Row 0:
+  // 10000000 00000001
+  memory.write(address(0x300), byte(0b1000_0000));
+  memory.write(address(0x301), byte(0b0000_0001));
+
+  // Row 15:
+  // 10000000 00000001
+  memory.write(address(0x31e), byte(0b1000_0000));
+  memory.write(address(0x31f), byte(0b0000_0001));
+
+  const indexRegister = new IndexRegister(address(0x300));
+
+  const displayBuffer = new DisplayBuffer(
+    {
+      kind: "superchip",
+      backingWidth: 128,
+      backingHeight: 64,
+      initialMode: "low",
+    },
+    "clip",
+  );
+
+  displayBuffer.setMode("high");
+
+  const verticalBlank = new VerticalBlank();
+  verticalBlank.signal();
+
+  const context = createContext({
+    registers,
+    memory,
+    indexRegister,
+    displayBuffer,
+    verticalBlank,
+  });
+
+  const executor = createExecutor();
+
+  executor.execute(
+    {
+      kind: "draw-sprite",
+      opcode: opcode(0xdab0),
+      x: registerIndex(0xa),
+      y: registerIndex(0xb),
+      height: 0,
+    },
+    context,
+  );
+
+  assertEquals(displayBuffer.getPixel(0, 0), true);
+  assertEquals(displayBuffer.getPixel(15, 0), true);
+
+  assertEquals(displayBuffer.getPixel(0, 15), true);
+  assertEquals(displayBuffer.getPixel(15, 15), true);
+
+  assertEquals(registers.get(FLAG_REGISTER), byte(0));
+});
+
+Deno.test("display-mode sprite timing uses vertical blank in low-resolution mode", () => {
+  const registers = new Registers();
+  registers.set(registerIndex(0xa), byte(0x00));
+  registers.set(registerIndex(0xb), byte(0x00));
+
+  const memory = new Ram(0x1000);
+  memory.write(address(0x300), byte(0b1000_0000));
+
+  const indexRegister = new IndexRegister(address(0x300));
+
+  const displayBuffer = new DisplayBuffer(
+    {
+      kind: "superchip",
+      backingWidth: 128,
+      backingHeight: 64,
+      initialMode: "low",
+    },
+    "clip",
+  );
+
+  const verticalBlank = new VerticalBlank();
+  verticalBlank.signal();
+
+  const context = createContext({
+    registers,
+    memory,
+    indexRegister,
+    displayBuffer,
+    verticalBlank,
+  });
+
+  const executor = createExecutor({
+    ...CLASSIC_CHIP8_PROFILE.compatibility,
+    spriteDrawTiming: {
+      kind: "display-mode",
+      low: "vertical-blank",
+      high: "immediate",
+    },
+  });
+
+  executor.execute(
+    {
+      kind: "draw-sprite",
+      opcode: opcode(0xdab1),
+      x: registerIndex(0xa),
+      y: registerIndex(0xb),
+      height: 1,
+    },
+    context,
+  );
+
+  // The sprite was drawn.
+  assertEquals(displayBuffer.getPixel(0, 0), true);
+
+  // Low-resolution timing consumed the pending vblank opportunity.
+  assertEquals(verticalBlank.consume(), false);
+});
+
+Deno.test("display-mode sprite timing uses immediate drawing in high-resolution mode", () => {
+  const registers = new Registers();
+  registers.set(registerIndex(0xa), byte(0x00));
+  registers.set(registerIndex(0xb), byte(0x00));
+
+  const memory = new Ram(0x1000);
+  memory.write(address(0x300), byte(0b1000_0000));
+
+  const indexRegister = new IndexRegister(address(0x300));
+
+  const displayBuffer = new DisplayBuffer(
+    {
+      kind: "superchip",
+      backingWidth: 128,
+      backingHeight: 64,
+      initialMode: "low",
+    },
+    "clip",
+  );
+
+  displayBuffer.setMode("high");
+
+  const verticalBlank = new VerticalBlank();
+  verticalBlank.signal();
+
+  const context = createContext({
+    registers,
+    memory,
+    indexRegister,
+    displayBuffer,
+    verticalBlank,
+  });
+
+  const executor = createExecutor({
+    ...CLASSIC_CHIP8_PROFILE.compatibility,
+    spriteDrawTiming: {
+      kind: "display-mode",
+      low: "vertical-blank",
+      high: "immediate",
+    },
+  });
+
+  executor.execute(
+    {
+      kind: "draw-sprite",
+      opcode: opcode(0xdab1),
+      x: registerIndex(0xa),
+      y: registerIndex(0xb),
+      height: 1,
+    },
+    context,
+  );
+
+  // High-resolution drawing happens immediately.
+  assertEquals(displayBuffer.getPixel(0, 0), true);
+
+  // Immediate drawing did not consume the pending vblank opportunity.
+  assertEquals(verticalBlank.consume(), true);
+});
+
+Deno.test("EXIT marks the interpreter as exited when supported", () => {
+  const exitState = new ExitState();
+
+  const context = createContext({
+    exitState,
+  });
+
+  const executor = createExecutor(SUPERCHIP_PROFILE.compatibility);
+
+  assertEquals(exitState.isExited, false);
+
+  executor.execute(
+    {
+      kind: "exit-interpreter",
+      opcode: opcode(0x00fd),
+    },
+    context,
+  );
+
+  assertEquals(exitState.isExited, true);
+});
+
+Deno.test("EXIT is unsupported by Classic CHIP-8", () => {
+  const context = createContext();
+  const executor = createExecutor(CLASSIC_CHIP8_PROFILE.compatibility);
+
+  const instruction: Instruction = {
+    kind: "exit-interpreter",
+    opcode: opcode(0x00fd),
+  };
+
+  assertThrows(() => executor.execute(instruction, context), UnsupportedInstructionError);
+  assertEquals(context.exitState.isExited, false);
+});
+
+Deno.test("SUPER-CHIP 00C0 exits instead of performing a zero-row scroll", () => {
+  const displayBuffer = new DisplayBuffer(
+    SUPERCHIP_PROFILE.display.specification,
+    SUPERCHIP_PROFILE.compatibility.spriteOverflow,
+  );
+  displayBuffer.setPixel(10, 10, true);
+
+  const context = createContext({ displayBuffer });
+  const executor = createExecutor(SUPERCHIP_PROFILE.compatibility);
+
+  executor.execute(
+    {
+      kind: "scroll-display-down",
+      opcode: opcode(0x00c0),
+      rows: 0,
+    },
+    context,
+  );
+
+  assertEquals(context.exitState.isExited, true);
+  assertEquals(displayBuffer.getPixel(10, 10), true);
+});
+
+Deno.test("SUPER-CHIP ADD I, Vx exits when I leaves memory", () => {
+  const registers = new Registers();
+  const indexRegister = new IndexRegister(address(0xfe0));
+  const exitState = new ExitState();
+
+  registers.set(registerIndex(0x2), byte(0x40));
+
+  const context = createContext({
+    registers,
+    indexRegister,
+    exitState,
+  });
+  const executor = createExecutor(SUPERCHIP_PROFILE.compatibility);
+
+  executor.execute(
+    {
+      kind: "add-to-index",
+      opcode: opcode(0xf21e),
+      register: registerIndex(0x2),
+    },
+    context,
+  );
+
+  assertEquals(indexRegister.getValue(), address(0x1020));
+  assertEquals(exitState.isExited, true);
+});
+
+Deno.test("Classic ADD I, Vx does not exit when I leaves memory", () => {
+  const registers = new Registers();
+  const indexRegister = new IndexRegister(address(0xfe0));
+  const exitState = new ExitState();
+
+  registers.set(registerIndex(0x2), byte(0x40));
+
+  const context = createContext({
+    registers,
+    indexRegister,
+    exitState,
+  });
+  const executor = createExecutor(CLASSIC_CHIP8_PROFILE.compatibility);
+
+  executor.execute(
+    {
+      kind: "add-to-index",
+      opcode: opcode(0xf21e),
+      register: registerIndex(0x2),
+    },
+    context,
+  );
+
+  assertEquals(indexRegister.getValue(), address(0x1020));
+  assertEquals(exitState.isExited, false);
+});
+
+Deno.test("RPL stores are unsupported by Classic CHIP-8", () => {
+  const context = createContext();
+  const executor = createExecutor(CLASSIC_CHIP8_PROFILE.compatibility);
+
+  const instruction: Instruction = {
+    kind: "store-rpl-flags",
+    opcode: opcode(0xf275),
+    register: registerIndex(2),
+  };
+
+  assertThrows(() => executor.execute(instruction, context), UnsupportedInstructionError);
+});
+
+Deno.test("RPL loads are unsupported by CHIP-48", () => {
+  const context = createContext();
+  const executor = createExecutor(CHIP48_PROFILE.compatibility);
+
+  const instruction: Instruction = {
+    kind: "load-rpl-flags",
+    opcode: opcode(0xf285),
+    register: registerIndex(2),
+  };
+
+  assertThrows(() => executor.execute(instruction, context), UnsupportedInstructionError);
+});
+
+Deno.test("sets I to the large-font sprite address for Vx", () => {
+  const context = createContext({
+    font: new SuperChipFont(address(0x050), address(0x0a0)),
+  });
+
+  context.registers.set(registerIndex(0x3), byte(0x04));
+
+  const executor = createExecutor();
+
+  executor.execute(
+    {
+      kind: "set-index-to-large-sprite",
+      opcode: opcode(0xf330),
+      register: registerIndex(0x3),
+    },
+    context,
+  );
+
+  assertEquals(context.indexRegister.getValue(), address(0x0c8));
+});
+
+Deno.test("stores V0 through Vx in RPL flags", () => {
+  const context = createContext();
+
+  context.registers.set(registerIndex(0), byte(0x11));
+  context.registers.set(registerIndex(1), byte(0x22));
+  context.registers.set(registerIndex(2), byte(0x33));
+
+  context.rplFlags.set(registerIndex(3), byte(0xee));
+
+  const executor = createExecutor(SUPERCHIP_PROFILE.compatibility);
+
+  executor.execute(
+    {
+      kind: "store-rpl-flags",
+      opcode: opcode(0xf275),
+      register: registerIndex(2),
+    },
+    context,
+  );
+
+  assertEquals(context.rplFlags.get(registerIndex(0)), byte(0x11));
+  assertEquals(context.rplFlags.get(registerIndex(1)), byte(0x22));
+  assertEquals(context.rplFlags.get(registerIndex(2)), byte(0x33));
+  assertEquals(context.rplFlags.get(registerIndex(3)), byte(0xee));
+});
+
+Deno.test("loads V0 through Vx from RPL flags", () => {
+  const context = createContext();
+
+  context.rplFlags.set(registerIndex(0), byte(0x44));
+  context.rplFlags.set(registerIndex(1), byte(0x55));
+  context.rplFlags.set(registerIndex(2), byte(0x66));
+
+  context.registers.set(registerIndex(3), byte(0xee));
+
+  const executor = createExecutor(SUPERCHIP_PROFILE.compatibility);
+
+  executor.execute(
+    {
+      kind: "load-rpl-flags",
+      opcode: opcode(0xf285),
+      register: registerIndex(2),
+    },
+    context,
+  );
+
+  assertEquals(context.registers.get(registerIndex(0)), byte(0x44));
+  assertEquals(context.registers.get(registerIndex(1)), byte(0x55));
+  assertEquals(context.registers.get(registerIndex(2)), byte(0x66));
+  assertEquals(context.registers.get(registerIndex(3)), byte(0xee));
 });

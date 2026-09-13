@@ -55,6 +55,8 @@ DelayTimer
 SoundTimer
 DisplayBuffer
 VerticalBlank
+ExitState
+RplFlags
 ```
 
 Instruction execution reads and mutates these components.
@@ -75,6 +77,12 @@ LD [I], Vx
 DRW Vx, Vy, n
     → DisplayBuffer changes
     → VerticalBlank may be consumed
+
+EXIT
+    → ExitState changes
+
+LD R, Vx / LD Vx, R
+    → RplFlags or Registers change
 ```
 
 Later instructions observe the results of those mutations.
@@ -102,7 +110,7 @@ RandomNumberGenerator
     → provide the next random Byte
 
 Font
-    → resolve a CHIP-8 glyph to its sprite address
+    → resolve a small or large glyph to its sprite address
 ```
 
 These roles can vary independently of instruction semantics, which makes them useful substitution seams.
@@ -128,11 +136,11 @@ machine characteristics
     memory size
     program start address
     stack capacity
-    display geometry
+    display specification
     display refresh frequency
     timer frequency
-    font image
-    font base address
+    small-font image and base address
+    optional large-font image and base address
 
 compatibility-sensitive semantics
     shift source
@@ -140,7 +148,7 @@ compatibility-sensitive semantics
     jump-offset source
     logic-operation flag behavior
     sprite overflow behavior
-    sprite draw timing
+    sprite draw timing behavior
 ```
 
 Compatibility is therefore configuration, not mutable execution state and not an execution capability.
@@ -261,7 +269,9 @@ ExecutionContext
 ├── VerticalBlank
 ├── Keyboard
 ├── Font
-└── RandomNumberGenerator
+├── RandomNumberGenerator
+├── RplFlags
+└── ExitState
 ```
 
 It does not erase their distinct responsibilities.
@@ -331,10 +341,18 @@ Timer
 
 DisplayBuffer
     → pixel state
-    → sprite-drawing state transitions
+    → display mode where supported
+    → logical/backing geometry relationship
+    → sprite and scrolling state transitions
 
 VerticalBlank
     → one pending synchronization opportunity
+
+ExitState
+    → whether interpreter execution has terminated
+
+RplFlags
+    → persistent SUPER-CHIP user-flag bytes
 ```
 
 This is encapsulation in its useful sense:
@@ -537,7 +555,7 @@ The two timers share mechanics but retain separate machine meaning.
 
 ```text
 DisplayBuffer
-    → machine pixels
+    → machine pixels and display mode
 
 Terminal / Canvas / future renderer
     → presentation
@@ -545,22 +563,57 @@ Terminal / Canvas / future renderer
 
 The buffer owns:
 
-- pixel storage;
-- pixel bounds;
-- clear behavior;
+- framebuffer storage;
+- logical display dimensions;
+- physical backing-store dimensions;
+- the active display mode where the machine supports multiple modes;
+- clear/reset behavior;
 - XOR sprite drawing;
-- starting-coordinate wrapping;
-- clipping beyond right/bottom edges;
-- collision detection.
+- sprite overflow semantics;
+- collision reporting;
+- physical framebuffer scrolling.
 
-The executor still owns the larger `Dxyn` collaboration:
+Classic CHIP-8 and CHIP-48 use fixed 64×32 displays, so their logical and backing dimensions are the same.
+
+SUPER-CHIP 1.1 demonstrates why those concepts must remain distinct:
+
+```text
+SUPER-CHIP backing store
+    128 × 64
+
+low mode
+    logical 64 × 32
+    one logical pixel = 2 × 2 backing pixels
+
+high mode
+    logical 128 × 64
+    one logical pixel = 1 backing pixel
+```
+
+The shared backing store survives mode changes. `00FE` and `00FF` therefore change display interpretation rather than implicitly clearing pixels.
+
+Likewise, SUPER-CHIP scroll operations work in physical backing pixels, independent of the active logical mode.
+
+The distinction between `clear()` and `reset()` is intentional:
+
+```text
+clear()
+    → clear pixels
+    → preserve current display mode
+
+reset()
+    → clear pixels
+    → restore the display specification's initial mode
+```
+
+The executor still owns the larger drawing collaboration:
 
 ```text
 read Vx / Vy
 read sprite bytes from Memory
-check VerticalBlank
-call DisplayBuffer.drawSprite()
-write collision result to VF
+resolve draw timing from compatibility + display mode
+call DisplayBuffer drawing operation
+write the required VF result
 ```
 
 This split keeps graphical state-transition rules with the graphical state while leaving instruction-level coordination with the executor.
@@ -590,22 +643,72 @@ one pending opportunity
 
 This is a small but meaningful state machine, not merely an arbitrary boolean flag.
 
-See [Runtime and timing architecture](./runtime-and-timing.md) for how those opportunities are scheduled and how manual stepping interacts with them.
+Draw timing remains an instruction/profile concern. Classic CHIP-8, CHIP-48, and SUPER-CHIP low-resolution drawing consume a pending vertical blank; SUPER-CHIP high-resolution drawing is immediate.
+
+See [Runtime and timing architecture](./runtime-and-timing.md) for how opportunities are scheduled and how manual stepping interacts with them.
+
+### Interpreter exit state
+
+`ExitState` owns whether a SUPER-CHIP interpreter-exit condition has occurred. The state can be set by explicit `00FD` as well as the historical invalid-`00C0` and `Fx1E` index-overflow conditions.
+
+It is ordinary resettable machine state:
+
+```text
+running
+    ↓ 00FD / invalid 00C0 / Fx1E overflow
+exited
+    ↓ machine initialization/reset
+running
+```
+
+`Cpu.step()` checks this state before fetching memory. Once exited, additional CPU steps become no-ops until initialization resets the state.
+
+Keeping exit as explicit state avoids coupling an emulated instruction to host callbacks, exceptions, or runtime pause policy.
+
+### RPL flags
+
+`RplFlags` owns the eight SUPER-CHIP user-flag bytes addressed by `Fx75` and `Fx85`:
+
+```text
+R0 R1 R2 R3 R4 R5 R6 R7
+```
+
+The storage is machine state, but its lifecycle differs from ordinary resettable state.
+
+Historical SUPER-CHIP uses these flags as persistent/shared storage, so `MachineInitializer` deliberately does **not** clear them.
+
+```text
+ordinary resettable state
+    Registers
+    Timers
+    DisplayBuffer
+    ExitState
+        ↓ initialize/reset
+    restored
+
+RplFlags
+        ↓ initialize/reset
+    preserved
+```
+
+This is not a reason to create a generic persistent-state registry. `RplFlags` is a focused component because the historical machine demonstrates one concrete state resource with distinct lifetime semantics.
 
 ## Focused Invariant Ownership
 
 The state components follow one consistent principle:
 
-| Component        | Owns                                             | Does not own                            |
-| ---------------- | ------------------------------------------------ | --------------------------------------- |
-| `Registers`      | sixteen `Byte` values and register access        | instruction semantics                   |
-| `ProgramCounter` | next instruction address and fixed-width advance | memory fetch/decode                     |
-| `IndexRegister`  | current `I` value                                | meaning of instructions that modify `I` |
-| `Stack`          | return addresses, depth, capacity                | call/return semantics                   |
-| `Memory` / `Ram` | byte storage and concrete address bounds         | ROM/font loading policy                 |
-| `Timer`          | countdown state                                  | scheduling                              |
-| `DisplayBuffer`  | pixels and sprite state transitions              | host rendering / vblank timing          |
-| `VerticalBlank`  | one pending opportunity                          | when opportunities occur                |
+| Component        | Owns                                                      | Does not own                                  |
+| ---------------- | --------------------------------------------------------- | --------------------------------------------- |
+| `Registers`      | sixteen `Byte` values and register access                 | instruction semantics                         |
+| `ProgramCounter` | next instruction address and fixed-width advance          | memory fetch/decode                           |
+| `IndexRegister`  | current `I` value                                         | meaning of instructions that modify `I`       |
+| `Stack`          | return addresses, depth, capacity                         | call/return semantics                         |
+| `Memory` / `Ram` | byte storage and concrete address bounds                  | ROM/font loading policy                       |
+| `Timer`          | countdown state                                           | scheduling                                    |
+| `DisplayBuffer`  | pixels, mode, geometry interpretation, drawing, scrolling | host rendering / draw-timing selection        |
+| `VerticalBlank`  | one pending opportunity                                   | when opportunities occur                      |
+| `ExitState`      | running/exited interpreter state                          | host pause/termination policy                 |
+| `RplFlags`       | eight persistent SUPER-CHIP user-flag bytes               | host persistence beyond the composed lifetime |
 
 The rule is:
 
@@ -646,7 +749,10 @@ interface MachineState {
   delayTimer: number;
   soundTimer: number;
   pixels: Uint8Array;
+  displayMode: "low" | "high";
   verticalBlankPending: boolean;
+  exited: boolean;
+  rplFlags: number[];
 }
 ```
 
@@ -842,10 +948,10 @@ Math.random()
 Likewise, `Font` exposes:
 
 ```ts
-getSpriteAddress(value: Byte): Address;
+getSpriteAddress(value: Byte, size: FontSize): Address;
 ```
 
-because `Fx29` needs an address, not font rendering or loading operations.
+because `Fx29` and `Fx30` need sprite addresses for explicitly selected font sizes, not font rendering or loading operations.
 
 The interface describes the role from the consumer's perspective.
 
@@ -1061,53 +1167,75 @@ Those abstractions exist because controlled substitution has concrete value.
 `Font` answers one semantic question:
 
 ```text
-For this CHIP-8 glyph value, where does its sprite begin?
+For this CHIP-8 glyph value and requested font size,
+where does its sprite begin?
 ```
 
-`Fx29` therefore collaborates as:
+The instruction collaboration is therefore:
 
 ```text
-InstructionExecutor
-      ↓
-Font.getSpriteAddress(Vx)
-      ↓
-Address
-      ↓
+Fx29
+    ↓
+Font.getSpriteAddress(Vx, "small")
+    ↓
+IndexRegister
+
+Fx30
+    ↓
+Font.getSpriteAddress(Vx, "large")
+    ↓
 IndexRegister
 ```
 
-The executor does not calculate the Classic layout directly.
+The executor does not calculate font memory layout directly.
 
-### `ClassicFont` owns Classic layout rules
+### `ClassicFont` owns Classic small-font layout
 
-The current Classic implementation knows:
+The Classic implementation knows:
 
 ```text
-16 glyphs
+16 small glyphs
 5 bytes per glyph
 low nibble selects glyph
-configured base address
+configured small-font base address
 ```
 
 It owns the mapping:
 
 ```text
 glyph address =
-base address + digit × glyph size
+small-font base address + digit × glyph size
 ```
 
-That keeps the executor independent of hard-coded Classic font location/layout.
+A large-font request is rejected because Classic CHIP-8 does not provide that capability.
+
+### `SuperChipFont` composes small and large layout rules
+
+SUPER-CHIP 1.1 retains the Classic-style small font and adds a ten-byte large decimal font.
+
+`SuperChipFont` therefore composes the existing small-font behavior with a second base address for large glyphs:
+
+```text
+small
+    → ClassicFont mapping
+
+large
+    → SUPER-CHIP 10-byte glyph mapping
+    → historical digits 0–9
+```
+
+The capability remains small because the demonstrated variation is still address lookup, not font rendering or memory ownership.
 
 ### Font layout and font bytes are separate
 
-Three concepts remain distinct:
+The design keeps these concepts distinct:
 
 ```text
 font image
     → sprite bytes
 
 font layout
-    → glyph → address mapping
+    → glyph + size → address mapping
 
 memory
     → installed bytes
@@ -1117,16 +1245,19 @@ In the current design:
 
 ```text
 Chip8Profile.fontImage
-    → static definition
+    → small-font static definition
+
+Chip8Profile.largeFont
+    → optional large-font static definition
 
 MachineInitializer
-    → installs bytes in Memory
+    → installs configured font images in Memory
 
-ClassicFont
-    → resolves glyph addresses
+ClassicFont / SuperChipFont
+    → resolve glyph addresses
 ```
 
-`Font` does not own memory and `Fx29` does not need to know how the bytes were loaded.
+`Font` does not own memory, and `Fx29` / `Fx30` do not need to know how the bytes were loaded.
 
 ## Why These Roles Are Interfaces
 
@@ -1198,14 +1329,14 @@ memorySize
 programStartAddress
 stackCapacity
 
-display.width
-display.height
+display.specification
 display.refreshFrequency
 
 timerFrequency
 
 fontImage
 fontBaseAddress
+largeFont | null
 
 compatibility.shiftSource
 compatibility.memoryTransferIndex
@@ -1213,7 +1344,24 @@ compatibility.jumpOffsetSource
 compatibility.logicFlag
 compatibility.spriteOverflow
 compatibility.spriteDrawTiming
+compatibility.interpreterExit
+compatibility.rplFlags
+compatibility.indexOverflow
+compatibility.zeroScrollDown
 ```
+
+The display specification captures structural geometry rather than mutable display state:
+
+```text
+fixed
+    → one width / height
+
+superchip
+    → backing width / height
+    → initial display mode
+```
+
+Likewise, `largeFont` describes an optional image/base-address pair; the current display mode and current font bytes in RAM remain state.
 
 These values influence different parts of composition.
 
@@ -1230,9 +1378,8 @@ profile.programStartAddress
     → initial PC
     → program loading address
 
-profile.display.width
-profile.display.height
-    → DisplayBuffer geometry
+profile.display.specification
+    → DisplayBuffer structure / initial mode
 
 profile.display.refreshFrequency
     → emulated display timing
@@ -1242,7 +1389,8 @@ profile.timerFrequency
 
 profile.fontImage
 profile.fontBaseAddress
-    → initialization
+profile.largeFont
+    → initialization and Font composition
 
 profile.compatibility
     → compatibility-sensitive instruction semantics
@@ -1253,20 +1401,21 @@ profile.compatibility.spriteOverflow
 
 The profile centralizes facts about the emulated machine that would otherwise become scattered literals and conditionals.
 
-Chip8NX currently provides two built-in historical profiles:
+Chip8NX currently provides three built-in historical profiles:
 
 ```text
 CLASSIC_CHIP8_PROFILE
 CHIP48_PROFILE
+SUPERCHIP_PROFILE
 ```
 
-They are independent values implementing the same `Chip8Profile` contract. Neither profile is defined as an object-oriented subtype of the other.
+They are independent values implementing the same `Chip8Profile` contract. No profile requires an object-oriented subtype hierarchy.
 
 ### Profiles are data, not factories
 
 A historical profile contains machine facts and semantic choices.
 
-For example, the Classic and CHIP-48 profiles differ in characteristics such as font placement and timing, and in compatibility behavior such as shift source, `Fx55` / `Fx65` index updates, logic-flag handling, and `Bnnn` interpretation.
+For example, Classic, CHIP-48, and SUPER-CHIP differ in characteristics such as font resources, display structure, and timing, and in compatibility behavior such as shift source, `Fx55` / `Fx65` index updates, logic-flag handling, `Bnnn` interpretation, and draw timing.
 
 A profile still does not construct:
 
@@ -1316,10 +1465,13 @@ const memory = new Ram(profile.memorySize);
 const stack = new Stack(profile.stackCapacity);
 
 const displayBuffer = new DisplayBuffer(
-  profile.display.width,
-  profile.display.height,
+  profile.display.specification,
   profile.compatibility.spriteOverflow,
 );
+
+const font = profile.largeFont === null
+  ? new ClassicFont(profile.fontBaseAddress)
+  : new SuperChipFont(profile.fontBaseAddress, profile.largeFont.baseAddress);
 
 const executor = new InstructionExecutor(profile.compatibility);
 ```
@@ -1332,7 +1484,11 @@ For example:
 
 ```text
 DisplayBuffer
+    → display specification
     → spriteOverflow
+
+Font implementation
+    → small/large font address layout
 
 InstructionExecutor
     → compatibility-sensitive instruction semantics
@@ -1367,8 +1523,8 @@ The profile supplies constraints such as:
 ```text
 expected memory size
 program start
-font image
-font base address
+small-font image and base address
+optional large-font image and base address
 ```
 
 while the initializer owns the operation:
@@ -1407,9 +1563,10 @@ Likewise, program execution may modify memory, while:
 
 ```text
 profile.fontImage
+profile.largeFont
 ```
 
-remains the static definition used during reset.
+remain static definitions used during reset.
 
 ```text
 profile
@@ -1478,7 +1635,9 @@ This is a design guideline rather than a mechanical rule.
 
 Variant support follows demonstrated historical differences rather than a predeclared collection of generic quirk flags.
 
-CHIP-48 2.25 was the first second historical machine used to exercise the profile architecture.
+CHIP-48 2.25 first exercised compatibility-sensitive profile variation in `v0.8.0`.
+
+SUPER-CHIP 1.1 then demonstrated in `v0.9.0` that a historical profile can also require additional architecture: display modes, backing geometry, instructions, large-font resources, interpreter exit state, and persistent RPL storage.
 
 ### Semantic choices rather than boolean quirk flags
 
@@ -1497,7 +1656,10 @@ logicFlag: "unchanged";
 
 spriteOverflow: "clip";
 
-spriteDrawTiming: "vertical-blank";
+spriteDrawTiming: {
+  kind: "uniform";
+  timing: "vertical-blank";
+}
 ```
 
 This is preferred to flags such as:
@@ -1526,6 +1688,21 @@ unchanged
 
 The `"increment-by-x"` form was added only after CHIP-48 demonstrated that the original two-way model was insufficient.
 
+SUPER-CHIP demonstrated the same kind of pressure for sprite timing. A single timing value was no longer sufficient because low-resolution drawing waits for vertical blank while high-resolution drawing is immediate.
+
+The model therefore grew from one timing value into an explicit timing behavior:
+
+```text
+uniform
+    → one timing for every display mode
+
+display-mode
+    → low-mode timing
+    → high-mode timing
+```
+
+Again, the abstraction was extended only after a real historical target required the third semantic shape.
+
 ### A profile is larger than a compatibility choice
 
 A compatibility choice represents one varying behavior.
@@ -1535,23 +1712,23 @@ A profile represents the complete machine target.
 For example:
 
 ```text
-CHIP48_PROFILE
+SUPERCHIP_PROFILE
     ├── memory characteristics
     ├── stack capacity
-    ├── display geometry and timing
+    ├── SUPER-CHIP display specification and timing
     ├── timer timing
-    ├── CHIP-48 font image and placement
-    └── CHIP-48 compatibility semantics
+    ├── small and large font definitions
+    └── SUPER-CHIP compatibility semantics
 ```
 
 Therefore:
 
 ```text
-CHIP-48
+SUPER-CHIP
     ≠ a quirk
 ```
 
-Instead, CHIP-48 is a historical machine profile that selects several compatibility behaviors among its other machine characteristics.
+Instead, SUPER-CHIP is a historical machine profile that selects compatibility behaviors while also declaring architectural characteristics consumed by other Core components.
 
 ### Named historical profiles remain coherent presets
 
@@ -1562,6 +1739,7 @@ For example:
 ```text
 CLASSIC_CHIP8_PROFILE
 CHIP48_PROFILE
+SUPERCHIP_PROFILE
 ```
 
 should not silently change individual behaviors merely because a particular ROM happens to prefer another interpretation.
@@ -1588,27 +1766,52 @@ Different variations may belong in:
 
 ```text
 profile characteristics
-    → memory / display / timing / fonts
+    → memory / display specification / timing / font resources
 
 compatibility
     → differing semantics of otherwise comparable operations
 
-decoder
-    → supported instruction set
+instruction model / decoder
+    → additional recognized instruction forms
 
-display architecture
-    → additional display modes or planes
+DisplayBuffer
+    → display modes, backing geometry, drawing, scrolling
 
 machine state
-    → additional persistent state
+    → ExitState / RplFlags and future concrete state resources
+
+capabilities
+    → font-address behavior and other demonstrated roles
 
 runtime
     → timing behavior not already represented by profile frequencies
 ```
 
-SUPER-CHIP and XO-CHIP, for example, introduce architectural capabilities and instructions beyond the compatibility choices currently represented by Chip8NX.
+SUPER-CHIP 1.1 is the concrete example that established this distinction.
 
-Those future requirements should extend the architecture only when their concrete implementation creates demonstrated pressure.
+Its support did **not** become a `supportsSuperChip` flag. Instead, each demonstrated difference was placed at the boundary that owns it:
+
+```text
+profile
+    → declares SUPER-CHIP display/font/compatibility characteristics
+
+Decoder
+    → recognizes SUPER-CHIP instruction syntax
+
+DisplayBuffer
+    → owns mode/backing/scroll/drawing state transitions
+
+Font
+    → owns small/large glyph address lookup
+
+ExitState
+    → owns interpreter-exit state
+
+RplFlags
+    → owns persistent user flags
+```
+
+XO-CHIP or another future target should extend these boundaries only where its concrete semantics create new pressure.
 
 ### Profiles do not require a plugin framework
 
@@ -1617,7 +1820,7 @@ Supporting additional profiles can remain simple:
 ```text
 CLASSIC_CHIP8_PROFILE
 CHIP48_PROFILE
-future SUPER_CHIP_PROFILE
+SUPERCHIP_PROFILE
 future XO_CHIP_PROFILE
 ```
 
@@ -1667,6 +1870,8 @@ VerticalBlank
 Keyboard
 Font
 RandomNumberGenerator
+RplFlags
+ExitState
 Clock
 Scheduler
 ```
@@ -1691,10 +1896,13 @@ I                   0
 PC                  profile program start
 Delay timer         0
 Sound timer         0
-DisplayBuffer       cleared
+DisplayBuffer       reset to initial mode and cleared
 VerticalBlank       reset
 Keyboard wait state reset
-Font image          installed
+ExitState           reset
+RplFlags            preserved
+Small font image    installed
+Large font image    installed when configured
 Program image       installed
 ```
 
@@ -1709,12 +1917,14 @@ Initialization validates its known layout relationships before changing state.
 It checks conditions such as:
 
 ```text
-font image non-empty
+small-font image non-empty
+large-font image non-empty when configured
 program image non-empty
 memory size matches profile
-font fits in memory
+small font fits in memory
+large font fits in memory when configured
 program fits in memory
-font/program do not overlap
+small font / large font / program ranges do not overlap
 ```
 
 Only after successful validation does mutation begin.
@@ -1749,6 +1959,8 @@ Ram
 DisplayBuffer
 Keyboard
 RandomNumberGenerator
+RplFlags
+ExitState
 ```
 
 remain the same instances.
@@ -1765,6 +1977,7 @@ Initialization clears memory and reinstalls:
 
 ```text
 profile.fontImage
+profile.largeFont.image when configured
 program MemoryImage
 ```
 
@@ -1832,6 +2045,34 @@ This gives a useful rule:
 
 Generic symmetry is not a reason to add `reset()`, `start()`, or `dispose()` to every interface.
 
+### RPL lifetime is intentionally longer than ordinary reset state
+
+`RplFlags` has an explicit lifecycle exception because SUPER-CHIP provides concrete semantics for it.
+
+A fresh `RplFlags` instance starts deterministically at zero, but `MachineInitializer.initialize()` preserves its current contents.
+
+The owner that composes the machine therefore decides how long that storage instance lives.
+
+For example, the Web host owns one RPL store above individual machine sessions:
+
+```text
+Web application lifetime
+    ↓
+RplFlags
+    ├── ROM/session A
+    ├── reset A
+    ├── profile recomposition
+    └── ROM/session B
+```
+
+This preserves the flags across reset and session replacement within the current application lifetime.
+
+It does **not** imply persistence across browser reloads, process restarts, or some future host's storage boundary. Those would be separate host-persistence policies.
+
+The architectural lesson is:
+
+> Reset semantics belong to the historical resource being modeled; not every piece of machine state must share one universal lifetime.
+
 ### Pause is not reset
 
 Runtime pause suspends scheduled progression while preserving machine state.
@@ -1883,6 +2124,8 @@ debugger UI state
 A host may choose to update those, but that is application policy.
 
 The Core reset boundary ends with machine state and the semantic capability state it explicitly owns.
+
+For persistent resources such as `RplFlags`, Core defines what initialization must preserve while the application still owns the lifetime of the concrete instance.
 
 ## Ownership Through the Lifecycle
 
@@ -1974,21 +2217,24 @@ The machine-state architecture follows a few stable rules:
    `KeyboardState` and deterministic RNG implementations own the internal state required to provide their roles.
 
 7. **Configuration is not live state.**\
-   Profiles describe the complete emulated machine, including architectural characteristics and compatibility-sensitive semantics; runtime configuration describes execution-driving policy.
+   Profiles describe the complete emulated machine, including display specifications, font resources, frequencies, and compatibility-sensitive semantics; runtime configuration describes execution-driving policy.
 
 8. **Profiles are descriptions, not factories.**\
    Applications remain responsible for selecting profiles and constructing concrete implementations from their values.
 
 9. **Variant abstractions follow demonstrated historical variation.**\
-   Compatibility uses semantic choices rather than speculative boolean flags, and new dimensions or outcomes are introduced only when real machine targets demonstrate the need.
+   CHIP-48 expanded compatibility choices; SUPER-CHIP additionally demonstrated display architecture, large-font capability, exit state, and persistent RPL storage.
 
 10. **Construction, initialization, pause, and reset remain separate.**\
     Each lifecycle operation has different ownership and semantics.
 
 11. **Reset scope follows semantic ownership.**\
-    Machine/interpreter state is reset where required; provider-specific capability state is not assumed to have universal reset semantics.
+    Most machine/interpreter state is restored by initialization, but historically persistent resources such as `RplFlags` are deliberately preserved.
 
-12. **Application composition remains explicit.**\
+12. **Different state can have different lifetimes.**\
+    Being machine state does not require every component to reset together; the modeled historical semantics determine reset behavior.
+
+13. **Application composition remains explicit.**\
     Core defines state components, capability roles, configuration, and lifecycle operations without collapsing them into one `Chip8Machine` object.
 
 Together these rules keep the machine model modular and inspectable while preserving clear ownership of state, behavior, configuration, and lifecycle.

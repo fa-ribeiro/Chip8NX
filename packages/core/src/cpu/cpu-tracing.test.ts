@@ -22,6 +22,8 @@ import { ProgramCounter } from "./program-counter/program-counter.ts";
 import { registerIndex } from "./registers/register-index.ts";
 import { Registers } from "./registers/registers.ts";
 import { Stack } from "./stack/stack.ts";
+import { RplFlags } from "../machine/rpl-flags.ts";
+import { ExitState } from "../machine/exit-state.ts";
 
 const profile = CLASSIC_CHIP8_PROFILE;
 
@@ -34,12 +36,15 @@ function createContext(overrides: Partial<ExecutionContext> = {}): ExecutionCont
     indexRegister: new IndexRegister(),
     soundTimer: new Timer(),
     delayTimer: new Timer(),
-    displayBuffer: new DisplayBuffer(profile.display.width, profile.display.height, "clip"),
+    displayBuffer: new DisplayBuffer(profile.display.specification, "clip"),
     verticalBlank: new VerticalBlank(),
     keyboard: new KeyboardState(),
     font: new ClassicFont(profile.fontBaseAddress),
     randomNumberGenerator: new TestRandomNumberGenerator([byte(0)]),
     ...overrides,
+
+    exitState: overrides.exitState ?? new ExitState(),
+    rplFlags: overrides.rplFlags ?? new RplFlags(),
   };
 }
 

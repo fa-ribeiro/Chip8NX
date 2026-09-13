@@ -11,6 +11,7 @@ import {
   DefaultRandomNumberGenerator,
   DisplayBuffer,
   type ExecutionContext,
+  ExitState,
   Frequency,
   IndexRegister,
   INSTRUCTION_SIZE,
@@ -24,8 +25,11 @@ import {
   ProgramCounter,
   Ram,
   Registers,
+  RplFlags,
   Scheduler,
   Stack,
+  SUPERCHIP_PROFILE,
+  SuperChipFont,
   Timer,
   VerticalBlank,
 } from "@chip8nx/core";
@@ -59,8 +63,8 @@ import "./style.css";
 const CPU_FREQUENCY = Frequency.fromInteger(500n);
 const TRACE_HISTORY_CAPACITY = 32;
 
-const DISASSEMBLY_INSTRUCTIONS_BEFORE = 2;
-const DISASSEMBLY_INSTRUCTIONS_AFTER = 4;
+const DISASSEMBLY_INSTRUCTIONS_BEFORE = 3;
+const DISASSEMBLY_INSTRUCTIONS_AFTER = 6;
 
 interface WebMachineSession {
   readonly romName: string;
@@ -85,8 +89,11 @@ interface WebMachineSession {
 const romInput = requireElement<HTMLInputElement>("#rom-input");
 const romLoadButton = requireElement<HTMLButtonElement>("#rom-load-button");
 const romFileName = requireElement<HTMLElement>("#rom-file-name");
+const romFileSize = requireElement<HTMLElement>("#rom-file-size");
 
 const canvas = requireElement<HTMLCanvasElement>("#chip8-display");
+const displayResolution = requireElement<HTMLElement>("#display-resolution");
+
 const status = requireElement<HTMLElement>("#status");
 
 const runToggleButton = requireElement<HTMLButtonElement>("#run-toggle-button");
@@ -97,6 +104,9 @@ const resetButton = requireElement<HTMLButtonElement>("#reset-button");
 
 const machineState = requireElement<HTMLElement>("#machine-state");
 const machineStateLabel = requireElement<HTMLElement>("#machine-state-label");
+
+const cpuStateIndicator = requireElement<HTMLElement>("#cpu-state-indicator");
+const cpuStateIndicatorLabel = requireElement<HTMLElement>("#cpu-state-indicator-label");
 
 const profileSelect = requireElement<HTMLSelectElement>("#profile-select");
 const themeSelect = requireElement<HTMLSelectElement>("#theme-select");
@@ -114,6 +124,8 @@ const inspectionElement = requireElement<HTMLElement>(".inspection");
 const inspection = new WebInspectionRenderer(inspectionElement);
 
 const beeper = new WebAudioBeeper();
+
+const rplFlags = new RplFlags();
 
 let machine: WebMachineSession | undefined;
 
@@ -194,6 +206,7 @@ async function loadAndRun(rom: File): Promise<void> {
 
   inspection.render(undefined);
   romFileName.textContent = "No ROM loaded";
+  romFileSize.textContent = "— bytes";
 
   setStatus(`Loading ${rom.name}...`);
 
@@ -215,6 +228,7 @@ async function loadAndRun(rom: File): Promise<void> {
     runHostLoop(machine);
 
     romFileName.textContent = rom.name;
+    romFileSize.textContent = `${rom.size} bytes`;
   } catch (error) {
     machine = undefined;
 
@@ -243,8 +257,7 @@ function createMachine(
 
   const verticalBlank = new VerticalBlank();
   const displayBuffer = new DisplayBuffer(
-    profile.display.width,
-    profile.display.height,
+    profile.display.specification,
     profile.compatibility.spriteOverflow,
   );
 
@@ -274,9 +287,15 @@ function createMachine(
 
     keyboard,
 
-    font: new ClassicFont(profile.fontBaseAddress),
+    font: profile.largeFont === null
+      ? new ClassicFont(profile.fontBaseAddress)
+      : new SuperChipFont(profile.fontBaseAddress, profile.largeFont.baseAddress),
 
     randomNumberGenerator: new DefaultRandomNumberGenerator(),
+
+    rplFlags,
+
+    exitState: new ExitState(),
   };
 
   const initializer = new MachineInitializer(new MemoryImageLoader());
@@ -518,6 +537,9 @@ function updateControls(): void {
     machineState.dataset.state = "empty";
     machineStateLabel.textContent = "No ROM";
 
+    cpuStateIndicator.dataset.state = "empty";
+    cpuStateIndicatorLabel.textContent = "Idle";
+
     return;
   }
 
@@ -533,10 +555,15 @@ function updateControls(): void {
   machineState.dataset.state = paused ? "paused" : "running";
 
   machineStateLabel.textContent = paused ? "Paused" : "Running";
+
+  cpuStateIndicator.dataset.state = paused ? "paused" : "running";
+  cpuStateIndicatorLabel.textContent = paused ? "Ready" : "Live";
 }
 
 function renderMachine(session: WebMachineSession): void {
   display.render(session.displayBuffer);
+  displayResolution.textContent =
+    `${session.displayBuffer.width} × ${session.displayBuffer.height}`;
   inspection.render(session.snapshotInspection());
 }
 
@@ -665,6 +692,9 @@ function readSelectedProfile(): Chip8Profile {
     case "chip48":
       return CHIP48_PROFILE;
 
+    case "superchip":
+      return SUPERCHIP_PROFILE;
+
     default:
       throw new Error(`Unsupported CHIP-8 profile: ${profileSelect.value}`);
   }
@@ -675,7 +705,7 @@ function createInstructionFormatter(profile: Chip8Profile): InstructionFormatter
     return new ClassicInstructionFormatter();
   }
 
-  if (profile === CHIP48_PROFILE) {
+  if (profile === CHIP48_PROFILE || profile === SUPERCHIP_PROFILE) {
     return new Chip48InstructionFormatter();
   }
 
@@ -731,7 +761,13 @@ function recomposeMachineForSelectedProfile(): void {
      * Restore the selector so it continues to describe the machine that
      * is actually active.
      */
-    profileSelect.value = previousMachine.profile === CHIP48_PROFILE ? "chip48" : "classic";
+    if (previousMachine.profile === CHIP48_PROFILE) {
+      profileSelect.value = "chip48";
+    } else if (previousMachine.profile === SUPERCHIP_PROFILE) {
+      profileSelect.value = "superchip";
+    } else {
+      profileSelect.value = "classic";
+    }
 
     setStatus(`Unable to change profile: ${describeError(error)}`, true);
 

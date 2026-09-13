@@ -12,6 +12,99 @@ During the `0.x` development phase:
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-09-13 - SUPER-CHIP 1.1
+
+### Added
+
+- Added a historical SUPER-CHIP 1.1 machine profile alongside the existing Classic CHIP-8 and CHIP-48 profiles.
+- Added dual-mode SUPER-CHIP display support:
+  - 64×32 low-resolution mode;
+  - 128×64 high-resolution mode;
+  - one shared 128×64 backing framebuffer;
+  - low-resolution logical pixels represented as 2×2 backing pixels;
+  - mode switching without implicitly clearing the framebuffer.
+
+- Added SUPER-CHIP display instructions:
+  - `00Cn` — scroll down by `n` physical rows;
+  - `00FB` — scroll right by four physical pixels;
+  - `00FC` — scroll left by four physical pixels;
+  - `00FD` — exit the interpreter;
+  - `00FE` — enter low-resolution mode;
+  - `00FF` — enter high-resolution mode.
+
+- Added historical SUPER-CHIP `Dxy0` sprite drawing:
+  - 8×16 logical sprites in low-resolution mode;
+  - 16×16 sprites in high-resolution mode;
+  - mode-specific collision/VF behavior;
+  - high-resolution VF reporting affected rows, including rows clipped below the display.
+
+- Added mode-sensitive SUPER-CHIP sprite timing:
+  - low-resolution drawing remains synchronized to vertical blank;
+  - high-resolution drawing executes immediately.
+
+- Added the SUPER-CHIP 1.1 ten-byte large decimal font for digits `0` through `9`.
+- Added `Fx30` (`LD HF, Vx`) large-font address lookup through the existing font capability.
+- Added persistent SUPER-CHIP RPL flag storage for `V0` through `V7`.
+- Added `Fx75` (`LD R, Vx`) and `Fx85` (`LD Vx, R`) RPL transfer instructions, restricted to the historical `V0`–`V7` range.
+- Added historical SUPER-CHIP `Fx1E` index-overflow behavior: moving `I` beyond the 4 KiB address space exits the interpreter.
+- Added historical SUPER-CHIP `00C0` behavior: the zero-row scroll form exits the interpreter rather than acting as a no-op.
+- Added explicit interpreter-exit state used by historical SUPER-CHIP exit conditions (`00FD`, invalid `00C0`, and `Fx1E` index overflow), with CPU execution becoming inert after exit until machine initialization.
+- Added Web-host SUPER-CHIP 1.1 profile selection.
+- Added Web framebuffer rendering of the complete physical display backing store so SUPER-CHIP low- and high-resolution modes are presented correctly.
+
+### Changed
+
+- Extended `Chip8Profile` with explicit display specifications capable of representing fixed displays and SUPER-CHIP's shared dual-resolution backing store.
+- Extended `DisplayBuffer` to distinguish logical display dimensions from backing-store dimensions while retaining display-mode ownership inside Core.
+- Changed SUPER-CHIP `Fx55` / `Fx65` behavior so `I` remains unchanged, matching the targeted historical SUPER-CHIP 1.1 semantics.
+- Extended sprite-draw timing configuration from a uniform timing choice to support display-mode-dependent timing where required by SUPER-CHIP.
+- Extended the font capability to make small- and large-font lookup explicit while keeping Classic CHIP-8 implementations free to reject unsupported large-font requests.
+- Extended machine initialization to install an optional profile-defined large font while validating font/program memory ranges before mutation.
+- Kept RPL flags outside ordinary machine-reset state so their contents survive reset, ROM replacement, and Web machine-session recomposition for the lifetime of the host application.
+- Extended instruction decoding and inspection formatting for SUPER-CHIP instructions while preserving profile-independent opcode decoding.
+- Made `00FD` and `Fx75` / `Fx85` availability explicit profile compatibility semantics so Classic CHIP-8 and CHIP-48 reject SUPER-CHIP-only execution.
+- Added public Core exports for display specification, mode, and sprite-draw result types exposed by public APIs.
+- Extended the Web profile-selection path so switching between Classic CHIP-8, CHIP-48, and SUPER-CHIP 1.1 recomposes the machine with the selected profile.
+- Updated Canvas display presentation to render physical framebuffer coordinates rather than assuming logical and backing dimensions are identical.
+
+### Milestone
+
+`v0.9.0` extends Chip8NX from CHIP-8 compatibility profiles into its first profile with meaningful architectural extensions: **SUPER-CHIP 1.1**.
+
+The implementation deliberately models the historically observable SUPER-CHIP machine rather than treating SUPER-CHIP as a loose collection of modern quirks:
+
+```text
+SUPER-CHIP 1.1
+    ├── CHIP-48-style compatibility semantics
+    ├── 64×32 / 128×64 display modes
+    ├── shared 128×64 framebuffer
+    ├── scrolling and mode-control instructions
+    ├── extended sprite drawing
+    ├── large decimal font
+    ├── persistent RPL flags
+    └── interpreter exit
+```
+
+The architecture continues to separate machine semantics from host presentation:
+
+```text
+Chip8Profile
+    describes the emulated machine
+          ↓
+Core
+    owns display modes, framebuffer semantics,
+    instruction execution, fonts, RPL state,
+    exit state, and initialization
+          ↓
+Applications
+    compose the selected profile and present
+    the resulting machine
+```
+
+SUPER-CHIP support therefore extends the existing profile, capability, and state boundaries instead of introducing a separate emulator hierarchy or a generic variant/quirk engine.
+
+The target for this milestone is the documented historical SUPER-CHIP 1.1 behavior used by Chip8NX, including decimal-only large-font data, persistent `V0`–`V7` RPL flags, `Fx1E` interpreter exit on index overflow, `00C0` interpreter exit, unchanged `I` after `Fx55`/`Fx65`, shared display backing, low-resolution vertical-blank drawing, and immediate high-resolution drawing.
+
 ## [0.8.0] - 2026-09-12 - CHIP-8 Profiles / Variant Foundation
 
 ### Added

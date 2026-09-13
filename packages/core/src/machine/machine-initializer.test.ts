@@ -14,6 +14,7 @@ import { VerticalBlank } from "../../src/display/vertical-blank.ts";
 import { ClassicFont } from "../../src/font/classic-font.ts";
 import { KeyboardState } from "../../src/keyboard/keyboard-state.ts";
 import { CLASSIC_CHIP8_PROFILE } from "../../src/machine/classic/classic-chip8-profile.ts";
+import { SUPERCHIP_PROFILE } from "../../src/machine/superchip/superchip-profile.ts";
 import type { Chip8Profile } from "../../src/machine/chip8-profile.ts";
 import { MachineInitializer } from "../../src/machine/machine-initializer.ts";
 import { MemoryImageLoader } from "../../src/memory/memory-image-loader.ts";
@@ -21,6 +22,8 @@ import { MemoryImage } from "../../src/memory/memory-image.ts";
 import { Ram } from "../../src/memory/ram.ts";
 import { TestRandomNumberGenerator } from "../../src/random/test-random-number-generator.ts";
 import { Timer } from "../../src/timer/timer.ts";
+import { RplFlags } from "./rpl-flags.ts";
+import { ExitState } from "./exit-state.ts";
 
 interface TestMachine {
   readonly context: ExecutionContext;
@@ -40,11 +43,13 @@ function createMachine(profile: Chip8Profile = CLASSIC_CHIP8_PROFILE): TestMachi
     indexRegister: new IndexRegister(),
     soundTimer: new Timer(),
     delayTimer: new Timer(),
-    displayBuffer: new DisplayBuffer(profile.display.width, profile.display.height, "clip"),
+    displayBuffer: new DisplayBuffer(profile.display.specification, "clip"),
     verticalBlank: new VerticalBlank(),
     keyboard,
     font: new ClassicFont(profile.fontBaseAddress),
     randomNumberGenerator,
+    rplFlags: new RplFlags(),
+    exitState: new ExitState(),
   };
 
   return { context, keyboard, randomNumberGenerator };
@@ -73,9 +78,7 @@ Deno.test(
     assertEquals(randomNumberGenerator.nextByte(), byte(0x12));
 
     const program = new MemoryImage([0x60, 0x42, 0x70, 0x01]);
-
     const initializer = new MachineInitializer(new MemoryImageLoader());
-
     initializer.initialize(context, profile, program);
 
     assertEquals(context.memory.read(address(0x300)), byte(0));
@@ -111,6 +114,29 @@ Deno.test(
     }
   },
 );
+
+Deno.test("MachineInitializer resets interpreter exit state", () => {
+  const profile = CLASSIC_CHIP8_PROFILE;
+  const { context } = createMachine(profile);
+
+  context.memory.write(address(0x300), byte(0xaa));
+  context.registers.set(registerIndex(0x3), byte(0xbb));
+  context.stack.push(address(0x345));
+  context.programCounter.setValue(address(0x300));
+  context.indexRegister.setValue(address(0x456));
+  context.delayTimer.setValue(byte(12));
+  context.soundTimer.setValue(byte(34));
+  context.displayBuffer.setPixel(2, 3, true);
+  context.exitState.exit();
+
+  assertEquals(context.exitState.isExited, true);
+
+  const program = new MemoryImage([0x60, 0x42, 0x70, 0x01]);
+  const initializer = new MachineInitializer(new MemoryImageLoader());
+  initializer.initialize(context, profile, program);
+
+  assertEquals(context.exitState.isExited, false);
+});
 
 Deno.test("MachineInitializer rejects an oversized program before mutating the machine", () => {
   const profile = CLASSIC_CHIP8_PROFILE;
@@ -274,4 +300,114 @@ Deno.test("MachineInitializer clears pending vertical blank state", () => {
   initializer.initialize(context, profile, program);
 
   assertEquals(context.verticalBlank.consume(), false);
+});
+
+Deno.test("MachineInitializer restores SUPER-CHIP display to its initial mode", () => {
+  const profile: Chip8Profile = {
+    ...CLASSIC_CHIP8_PROFILE,
+
+    display: {
+      ...CLASSIC_CHIP8_PROFILE.display,
+
+      specification: {
+        kind: "superchip",
+        backingWidth: 128,
+        backingHeight: 64,
+        initialMode: "low",
+      },
+    },
+  };
+
+  const { context } = createMachine(profile);
+
+  const initializer = new MachineInitializer(new MemoryImageLoader());
+  const program = new MemoryImage([0x60, 0x42]);
+
+  context.displayBuffer.setMode("high");
+  context.displayBuffer.setPixel(100, 50, true);
+
+  assertEquals(context.displayBuffer.width, 128);
+  assertEquals(context.displayBuffer.height, 64);
+  assertEquals(context.displayBuffer.getPixel(100, 50), true);
+
+  initializer.initialize(context, profile, program);
+
+  assertEquals(context.displayBuffer.width, 64);
+  assertEquals(context.displayBuffer.height, 32);
+  assertEquals(context.displayBuffer.getPixel(100, 50), false);
+});
+
+Deno.test("MachineInitializer installs the optional large font image", () => {
+  const profile = SUPERCHIP_PROFILE;
+  const { context } = createMachine(profile);
+
+  const program = new MemoryImage([0x60, 0x42]);
+
+  const initializer = new MachineInitializer(new MemoryImageLoader());
+
+  initializer.initialize(context, profile, program);
+
+  const largeFont = profile.largeFont;
+
+  if (largeFont === null) {
+    throw new Error("SUPER-CHIP profile must provide a large font.");
+  }
+
+  for (const [offset, value] of largeFont.image.bytes.entries()) {
+    assertEquals(context.memory.read(address(largeFont.baseAddress + offset)), value);
+  }
+});
+
+Deno.test(
+  "MachineInitializer rejects overlapping small and large font images before mutation",
+  () => {
+    const largeFont = SUPERCHIP_PROFILE.largeFont;
+
+    if (largeFont === null) {
+      throw new Error("SUPER-CHIP profile must provide a large font.");
+    }
+
+    const profile: Chip8Profile = {
+      ...SUPERCHIP_PROFILE,
+
+      largeFont: {
+        ...largeFont,
+        baseAddress: SUPERCHIP_PROFILE.fontBaseAddress,
+      },
+    };
+
+    const { context } = createMachine(profile);
+
+    context.memory.write(address(0x300), byte(0xaa));
+
+    const program = new MemoryImage([0x60, 0x42]);
+
+    const initializer = new MachineInitializer(new MemoryImageLoader());
+
+    assertThrows(
+      () => initializer.initialize(context, profile, program),
+      RangeError,
+      "Large font image overlaps the font image.",
+    );
+
+    assertEquals(context.memory.read(address(0x300)), byte(0xaa));
+  },
+);
+
+Deno.test("initialization preserves RPL flags", () => {
+  const profile = SUPERCHIP_PROFILE;
+
+  const { context } = createMachine(profile);
+
+  context.rplFlags.set(registerIndex(3), byte(0x42));
+
+  const program = new MemoryImage([0x60, 0x42]);
+
+  const initializer = new MachineInitializer(new MemoryImageLoader());
+
+  initializer.initialize(context, profile, program);
+
+  initializer.initialize(context, SUPERCHIP_PROFILE, new MemoryImage([0x00, 0xe0]));
+
+  assertEquals(context.rplFlags.get(registerIndex(3)), byte(0x42));
 });

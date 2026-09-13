@@ -1,7 +1,7 @@
 import type { Address } from "../core/types/address.ts";
 import type { Frequency } from "../core/types/frequency.ts";
 import type { MemoryImage } from "../memory/memory-image.ts";
-
+import type { DisplaySpecification } from "../display/display-specification.ts";
 import type { SpriteOverflowBehavior } from "../display/display-buffer.ts";
 
 /**
@@ -43,6 +43,45 @@ export type LogicFlagBehavior = "reset" | "unchanged";
  * Selects when Dxyn may draw a sprite.
  */
 export type SpriteDrawTiming = "vertical-blank" | "immediate";
+
+/**
+ * Selects whether the machine implements the SUPER-CHIP interpreter-exit
+ * instruction.
+ */
+export type InterpreterExitBehavior = "unsupported" | "exit";
+
+/**
+ * Selects whether Fx75 and Fx85 may access the SUPER-CHIP RPL user flags.
+ */
+export type RplFlagBehavior = "unsupported" | "v0-v7";
+
+/**
+ * Selects what happens when Fx1E moves I beyond the machine address space.
+ */
+export type IndexOverflowBehavior = "continue" | "exit-interpreter";
+
+/**
+ * Selects the historical meaning of SUPER-CHIP 00C0.
+ */
+export type ZeroScrollDownBehavior = "scroll" | "exit-interpreter";
+
+/**
+ * Describes how sprite drawing is synchronized with display refresh.
+ *
+ * A uniform policy applies the same timing in every display state.
+ * A display-mode policy may vary timing between SUPER-CHIP low- and
+ * high-resolution modes.
+ */
+export type SpriteDrawTimingBehavior =
+  | {
+    readonly kind: "uniform";
+    readonly timing: SpriteDrawTiming;
+  }
+  | {
+    readonly kind: "display-mode";
+    readonly low: SpriteDrawTiming;
+    readonly high: SpriteDrawTiming;
+  };
 
 /**
  * Describes compatibility-sensitive CHIP-8 instruction behavior.
@@ -92,7 +131,29 @@ export interface Chip8Compatibility {
    * Determines whether Dxyn must wait for a vertical-blank opportunity
    * before drawing or may draw immediately.
    */
-  readonly spriteDrawTiming: SpriteDrawTiming;
+  readonly spriteDrawTiming: SpriteDrawTimingBehavior;
+
+  /**
+   * Determines whether 00FD may exit the interpreter.
+   */
+  readonly interpreterExit: InterpreterExitBehavior;
+
+  /**
+   * Determines whether Fx75 and Fx85 may access RPL user flags.
+   */
+  readonly rplFlags: RplFlagBehavior;
+
+  /**
+   * Determines whether Fx1E may continue when I leaves the address space or
+   * exits the interpreter as on historical SUPER-CHIP.
+   */
+  readonly indexOverflow: IndexOverflowBehavior;
+
+  /**
+   * Determines whether 00C0 performs a zero-row scroll or exits the
+   * interpreter.
+   */
+  readonly zeroScrollDown: ZeroScrollDownBehavior;
 }
 
 /**
@@ -122,11 +183,17 @@ export interface Chip8Profile {
   readonly stackCapacity: number;
 
   /**
-   * Logical display geometry used by the machine.
+   * Display characteristics used by the machine.
    */
   readonly display: {
-    readonly width: number;
-    readonly height: number;
+    /**
+     * Framebuffer geometry and display model.
+     */
+    readonly specification: DisplaySpecification;
+
+    /**
+     * Frequency at which display refresh opportunities occur.
+     */
     readonly refreshFrequency: Frequency;
   };
 
@@ -144,6 +211,23 @@ export interface Chip8Profile {
    * Address at which the font image is installed in memory.
    */
   readonly fontBaseAddress: Address;
+
+  /**
+   * Optional large-font data provided by the machine.
+   *
+   * Machines without a large font use `null`.
+   */
+  readonly largeFont: {
+    /**
+     * Large-font image installed in machine memory.
+     */
+    readonly image: MemoryImage;
+
+    /**
+     * Address at which the large-font image is installed.
+     */
+    readonly baseAddress: Address;
+  } | null;
 
   /**
    * Compatibility-sensitive instruction behavior.

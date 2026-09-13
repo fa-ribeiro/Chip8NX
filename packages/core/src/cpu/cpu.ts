@@ -48,6 +48,10 @@ export class Cpu {
    * Fetches, decodes, and attempts to execute one CHIP-8 instruction.
    */
   public step(): void {
+    if (this.context.exitState.isExited) {
+      return;
+    }
+
     const traceObserver = this.traceObserver;
 
     let before: CpuState | undefined;

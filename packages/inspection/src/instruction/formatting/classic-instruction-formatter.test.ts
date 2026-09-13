@@ -22,6 +22,55 @@ const cases: readonly FormatCase[] = [
     expected: "CLS",
   },
   {
+    name: "formats LOW display mode",
+    instruction: {
+      kind: "set-display-mode",
+      opcode: opcode(0x00fe),
+      mode: "low",
+    },
+    expected: "LOW",
+  },
+  {
+    name: "formats HIGH display mode",
+    instruction: {
+      kind: "set-display-mode",
+      opcode: opcode(0x00ff),
+      mode: "high",
+    },
+    expected: "HIGH",
+  },
+
+  {
+    name: "formats scroll display down",
+    instruction: {
+      kind: "scroll-display-down",
+      opcode: opcode(0x00c7),
+      rows: 7,
+    },
+    expected: "SCD 7",
+  },
+  {
+    name: "formats scroll display right",
+    instruction: {
+      kind: "scroll-display-horizontal",
+      opcode: opcode(0x00fb),
+      direction: "right",
+      columns: 4,
+    },
+    expected: "SCR",
+  },
+  {
+    name: "formats scroll display left",
+    instruction: {
+      kind: "scroll-display-horizontal",
+      opcode: opcode(0x00fc),
+      direction: "left",
+      columns: 4,
+    },
+    expected: "SCL",
+  },
+
+  {
     name: "formats RET",
     instruction: {
       kind: "return",
@@ -333,6 +382,15 @@ const cases: readonly FormatCase[] = [
     expected: "LD F, VA",
   },
   {
+    name: "formats LD large sprite and register",
+    instruction: {
+      kind: "set-index-to-large-sprite",
+      opcode: opcode(0xfa30),
+      register: registerIndex(0xa),
+    },
+    expected: "LD HF, VA",
+  },
+  {
     name: "formats LD BCD and register",
     instruction: {
       kind: "store-bcd",
@@ -358,6 +416,24 @@ const cases: readonly FormatCase[] = [
       register: registerIndex(0xa),
     },
     expected: "LD VA, [I]",
+  },
+  {
+    name: "formats LD R, Vx",
+    instruction: {
+      kind: "store-rpl-flags",
+      opcode: opcode(0xf375),
+      register: registerIndex(0x3),
+    },
+    expected: "LD R, V3",
+  },
+  {
+    name: "formats LD Vx, R",
+    instruction: {
+      kind: "load-rpl-flags",
+      opcode: opcode(0xf385),
+      register: registerIndex(0x3),
+    },
+    expected: "LD V3, R",
   },
 ];
 

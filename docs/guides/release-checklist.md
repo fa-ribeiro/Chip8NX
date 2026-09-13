@@ -27,10 +27,13 @@ During `0.x`, PATCH releases are maintenance changes that do not represent a new
 - [ ] Update the root `README.md` current-release status.
 - [ ] Update the README milestone history when the release represents a new project milestone.
 - [ ] Reconcile future-work wording so completed capabilities are no longer described as future work.
-- [ ] Update architecture, guide, or documentation indexes when the release added or moved documentation.
+- [ ] Update architecture, guide, reference, or documentation indexes when the release changes documented behavior or adds/moves documentation.
 - [ ] Check examples and command lines against the current repository.
+- [ ] Check documentation for stale assumptions that were invalidated by the milestone, especially constructor signatures, profile lists, lifecycle rules, and responsibility boundaries.
 
 Do not introduce version fields solely for release bookkeeping. Only update files that genuinely carry a project or package version.
+
+Historical milestone text should normally remain historical. Update current-state documentation without rewriting earlier releases as though their later architecture already existed.
 
 ## 3. Run the repository validation contract
 
@@ -55,9 +58,42 @@ Public-API documentation diagnostics can be reviewed with:
 deno task docs:check
 ```
 
-`docs:check` is currently an audit rather than a release gate because the repository still contains historical `missing-jsdoc` diagnostics.
+`docs:check` should be reviewed as part of release preparation. Historical `missing-jsdoc` diagnostics may still exist in the repository; distinguish those known diagnostics from newly introduced documentation problems rather than treating their mere presence as either a new failure or an automatic success.
 
-## 4. Review the release candidate
+## 4. Perform application-level manual verification
+
+Automated tests validate machine semantics and focused adapters, but they cannot prove that a complete host application presents the machine correctly.
+
+For releases that change an interactive host, run that host and exercise the affected workflow manually.
+
+For the Web application:
+
+```bash
+deno task web
+```
+
+Then verify the behavior relevant to the release. Typical checks include:
+
+- [ ] a ROM can be loaded and starts normally;
+- [ ] Start/Pause, Step, and Reset still behave as expected;
+- [ ] physical and virtual keyboard input still work when relevant;
+- [ ] audio presentation still behaves normally when relevant;
+- [ ] inspection views continue to update without affecting execution;
+- [ ] profile changes recompose the machine successfully when profile selection changed;
+- [ ] framebuffer presentation shows the complete emulated display at the correct geometry when display behavior changed.
+
+For `v0.9.0`, explicitly verify:
+
+- [ ] Classic CHIP-8 ROMs still run under the Classic profile;
+- [ ] CHIP-48 ROMs still run under the CHIP-48 profile;
+- [ ] selecting SUPER-CHIP 1.1 recomposes and restarts the current ROM successfully;
+- [ ] a SUPER-CHIP ROM can use both 64×32 and 128×64 display modes;
+- [ ] the full SUPER-CHIP framebuffer is visible in both modes rather than only a scaled top-left region;
+- [ ] changing profiles while a ROM is loaded preserves the expected running/paused host state.
+
+These checks deliberately remain application-owned. A presentation bug does not necessarily imply a Core semantic bug, and a green Core test suite does not prove that a host adapter interprets Core state correctly.
+
+## 5. Review the release candidate
 
 - [ ] Review the complete release diff.
 - [ ] Check for whitespace errors:
@@ -73,10 +109,11 @@ deno task docs:check
   ```
 
 - [ ] Confirm README, changelog, documentation, implementation, tests, and public API describe the same behavior.
+- [ ] Confirm generated or temporary files are not accidentally included in the release commit.
 
 At this point the release candidate is ready to commit.
 
-## 5. Complete the release
+## 6. Complete the release
 
 After committing and pushing the release-preparation changes:
 

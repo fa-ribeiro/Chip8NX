@@ -60,6 +60,7 @@ Each call to `Cpu.step()` processes one CHIP-8 instruction.
 The current cycle is:
 
 ```text
+0. If ExitState is exited, return without fetching
 1. Read the program counter
 2. Read two bytes from memory
 3. Assemble the bytes into an Opcode
@@ -69,6 +70,8 @@ The current cycle is:
 ```
 
 CHIP-8 instructions are two bytes wide, so normal sequential advancement is encapsulated by `ProgramCounter.advance()` using `INSTRUCTION_SIZE`.
+
+The exit guard is deliberately checked before the program counter is read or memory is fetched. Once SUPER-CHIP `00FD` marks the interpreter as exited, later CPU steps are inert until machine initialization resets `ExitState`.
 
 ### Fetching the instruction word
 
@@ -160,6 +163,31 @@ InstructionExecutor
 ```
 
 Those instruction-specific changes include jumps, calls, returns, taken skips, and retries.
+
+### Interpreter exit stops future instruction attempts
+
+SUPER-CHIP interpreter exit does not throw an exception and does not pause `Chip8Runtime`.
+
+The explicit `00FD` instruction and historical exit conditions such as invalid `00C0` and `Fx1E` index overflow all converge on the same explicit machine state:
+
+```text
+00FD / invalid 00C0 / Fx1E overflow
+  → ExitState.exit()
+```
+
+The next `Cpu.step()` observes that state before fetch:
+
+```text
+Cpu.step()
+    ↓
+ExitState exited?
+    ├── yes → return
+    └── no  → fetch / advance / decode / execute
+```
+
+This keeps interpreter-exit semantics inside the emulated machine rather than coupling an instruction or historical boundary condition to host lifecycle policy. A host may choose how to react to an exited machine, but Core does not translate interpreter exit into runtime pause, callback invocation, or process termination.
+
+Machine initialization resets `ExitState`, so reset or program initialization makes the CPU executable again.
 
 ### Waiting instructions restore the current address
 
@@ -292,9 +320,9 @@ X register encoded by the instruction
 
 in the decoded `JumpWithOffsetInstruction`.
 
-Classic execution uses `V0` as the offset and ignores the decoded X register. CHIP-48 execution uses the decoded `Vx` register.
+Classic execution uses `V0` as the offset and ignores the decoded X register. CHIP-48 and SUPER-CHIP execution use the decoded `Vx` register.
 
-The executor therefore does not re-decode X from the original opcode when applying CHIP-48 semantics.
+The executor therefore does not re-decode X from the original opcode when applying CHIP-48-style semantics.
 
 ```text
 raw opcode fields
@@ -353,19 +381,25 @@ The design principle is:
 
 ### Decoding and executability are separate questions
 
-A successfully decoded instruction is not necessarily executable by the generic Core.
+A successfully decoded instruction is not necessarily executable by every composed machine.
 
-Classic `0mmm` is the current example. `Decoder` recognizes it as a `system-call` instruction because the opcode has a defined meaning, but `InstructionExecutor` cannot transfer execution into native CDP1802 machine code.
+Classic `0mmm` is one example. `Decoder` recognizes it as a `system-call` instruction because the opcode has a defined meaning, but `InstructionExecutor` cannot transfer execution into native CDP1802 machine code.
+
+SUPER-CHIP extends the same principle. `Decoder` recognizes SUPER-CHIP instruction syntax such as `00Cn`, `00FB`, `00FC`, `00FD`, `00FE`, `00FF`, `Fx30`, `Fx75`, and `Fx85` without consulting the active profile.
+
+Whether execution is meaningful is decided later by the configured machine components and capabilities. For example, display-mode and scroll instructions require a SUPER-CHIP display specification, while `Fx30` requires a font capability that provides a large font.
 
 ```text
 Decoder
   asks: what instruction does this opcode represent?
 
-InstructionExecutor
-  asks: can this Core execute that instruction?
+InstructionExecutor + capabilities
+  ask: what does this composed machine do with it?
 ```
 
-That separation lets inspection tools identify `0mmm` correctly without pretending the generic virtual machine can execute it.
+This keeps opcode recognition profile-agnostic and avoids variant-specific decoder branches for instruction encodings that are structurally well-defined.
+
+It also lets inspection tools identify both Classic and SUPER-CHIP instructions correctly without making the decoder responsible for machine configuration.
 
 ### The typed instruction is shared infrastructure
 
@@ -439,6 +473,15 @@ Because `Instruction` is a discriminated union, each branch receives exactly the
   → instruction.x
   → instruction.y
   → instruction.height
+
+"set-display-mode"
+  → instruction.mode
+
+"scroll-down"
+  → instruction.rows
+
+"store-rpl-flags" / "load-rpl-flags"
+  → instruction.register
 ```
 
 The executor therefore mirrors the semantic instruction model rather than the binary opcode layout.
@@ -467,6 +510,19 @@ load immediate
 font address
     → Font.getSpriteAddress()
     → IndexRegister.setValue()
+
+SUPER-CHIP display mode
+    → DisplayBuffer.setMode()
+
+SUPER-CHIP scrolling
+    → DisplayBuffer scroll operation
+
+RPL transfer
+    → Registers
+    → RplFlags
+
+interpreter exit
+    → ExitState.exit()
 
 random mask
     → RandomNumberGenerator.nextByte()
@@ -517,8 +573,35 @@ Bnnn
     → offset from encoded Vx
 
 Dxyn
-    → wait for vertical blank
-    → draw immediately
+    → uniform vertical-blank timing
+    → uniform immediate timing
+    → display-mode-dependent timing
+
+00FD
+    → unsupported
+    → exit interpreter
+
+Fx75 / Fx85
+    → unsupported
+    → persistent V0–V7 RPL storage
+
+Fx1E beyond memory
+    → continue with the wider I value
+    → exit interpreter
+
+00C0
+    → ordinary zero-row scroll semantics
+    → exit interpreter
+```
+
+For the SUPER-CHIP 1.1 profile, draw timing is mode-sensitive:
+
+```text
+low-resolution mode
+    → vertical-blank gated
+
+high-resolution mode
+    → immediate
 ```
 
 Sprite overflow is also compatibility-sensitive, but that behavior belongs to `DisplayBuffer` because the buffer owns sprite-pixel placement.
@@ -536,9 +619,9 @@ DisplayBuffer
     → apply compatibility-sensitive sprite-overflow semantics
 ```
 
-For example, both Classic CHIP-8 and CHIP-48 decode `8xy6` into the same semantic instruction shape containing X and Y operands.
+For example, Classic CHIP-8, CHIP-48, and SUPER-CHIP all decode `8xy6` into the same semantic instruction shape containing X and Y operands.
 
-Their profiles then select different execution behavior:
+Their profiles then select execution behavior:
 
 ```text
 Classic CHIP-8
@@ -546,9 +629,62 @@ Classic CHIP-8
 
 CHIP-48
     shiftSource = "vx"
+
+SUPER-CHIP 1.1
+    shiftSource = "vx"
+```
+
+Likewise, SUPER-CHIP reuses the same `Fx55` / `Fx65` instruction model while selecting the historically appropriate `I` behavior:
+
+```text
+SUPER-CHIP 1.1
+    memoryTransferIndex = "unchanged"
 ```
 
 This avoids creating variant-specific decoders for instructions whose encoding is unchanged.
+
+### SUPER-CHIP display instructions preserve display ownership
+
+SUPER-CHIP mode and scrolling instructions are executed through `DisplayBuffer` rather than by manipulating framebuffer storage directly in `InstructionExecutor`.
+
+The mode instructions are:
+
+```text
+00FE
+    → low-resolution mode
+
+00FF
+    → high-resolution mode
+```
+
+Changing mode preserves the shared backing framebuffer. It changes how the backing pixels are interpreted; it does not imply a clear. The ordinary `00E0` clear instruction likewise clears pixels without changing the current display mode.
+
+SUPER-CHIP scrolling operates in physical backing-buffer units:
+
+```text
+00Cn
+    → scroll down N backing rows
+
+00FB
+    → scroll right 4 backing pixels
+
+00FC
+    → scroll left 4 backing pixels
+```
+
+That rule is mode-independent. Low-resolution logical pixels may occupy 2 × 2 backing pixels, but scrolling still moves the shared physical framebuffer directly.
+
+Fixed Classic/CHIP-48 display specifications do not acquire hidden SUPER-CHIP behavior. Mode changes and SUPER-CHIP scrolling require a display buffer configured with the SUPER-CHIP display specification.
+
+This keeps responsibilities aligned:
+
+```text
+InstructionExecutor
+    → instruction-level intent
+
+DisplayBuffer
+    → display mode, backing storage, scrolling, pixel placement
+```
 
 ### Waiting and draw timing remain instruction semantics
 
@@ -564,20 +700,37 @@ Fx0A
       no  → rewind PC
 ```
 
-`Dxyn` depends on the active compatibility:
+Sprite draw timing is represented by `SpriteDrawTimingBehavior`.
+
+A profile can require one timing rule for every display mode:
 
 ```text
-spriteDrawTiming = "vertical-blank"
+{ kind: "uniform", timing: "vertical-blank" }
+{ kind: "uniform", timing: "immediate" }
+```
 
+or different timing according to the current display mode:
+
+```text
+{
+  kind: "display-mode",
+  low: "vertical-blank",
+  high: "immediate",
+}
+```
+
+When the resolved timing is vertical-blank-gated:
+
+```text
 Dxyn
   → VerticalBlank.consume()
       yes → read sprite and draw
       no  → rewind PC
 ```
 
-```text
-spriteDrawTiming = "immediate"
+When the resolved timing is immediate:
 
+```text
 Dxyn
   → do not consult VerticalBlank
   → read sprite and draw immediately
@@ -592,16 +745,36 @@ Registers       → coordinates
 IndexRegister   → sprite start
 Memory          → sprite bytes
 DisplayBuffer   → XOR drawing / collision
-Registers       → VF collision result
+Registers       → VF result
 ```
 
-`VerticalBlank` participates only when the selected profile requires it.
+`VerticalBlank` participates only when the selected profile and current display mode require it.
 
-No lower-level component owns that complete relationship; the instruction does.
+SUPER-CHIP `Dxy0` also demonstrates that sprite geometry can depend on display mode without changing the decoded instruction shape:
+
+```text
+fixed display
+    height 0 retains the existing no-op behavior
+
+SUPER-CHIP low mode
+    16 source bytes
+    8 × 16 logical sprite
+    logical pixels map to 2 × 2 backing pixels
+    VF = boolean collision
+
+SUPER-CHIP high mode
+    32 source bytes
+    16 × 16 sprite
+    VF = collision rows + rows clipped below the bottom
+```
+
+Ordinary low-resolution SUPER-CHIP `Dxyn` drawing uses the same 2 × 2 logical-to-backing mapping while retaining boolean collision semantics.
+
+No lower-level component owns that complete relationship; the instruction coordinates it through focused display and timing capabilities.
 
 ### Unsupported execution and exhaustiveness
 
-`InstructionExecutor` currently falls through to `UnsupportedInstructionError` for instructions it cannot execute. The intentional Classic case is decoded `0mmm`.
+`InstructionExecutor` uses `UnsupportedInstructionError` when a decoded instruction cannot execute on the configured machine. This includes decoded `0mmm` native calls and profile-specific rejection of SUPER-CHIP-only operations such as `00FD` and `Fx75` / `Fx85` under Classic CHIP-8 or CHIP-48.
 
 ```text
 invalid encoded word
@@ -613,11 +786,43 @@ recognized but unexecutable instruction
     → UnsupportedInstructionError
 ```
 
-The current outer switch is therefore not compile-time exhaustive: the default branch handles both intentionally unsupported instructions and any future instruction kind that has not yet received an execution branch.
+The current outer switch is therefore not compile-time exhaustive: the default branch handles instruction kinds that have no executor implementation, while explicit branches may also reject a decoded instruction because the active compatibility configuration does not support that machine operation.
 
 That gives a useful runtime safety net, but a newly added union member may compile and fail only when executed. An exhaustive `never` check would provide stronger compile-time protection, but would require intentionally unsupported execution to be represented more explicitly.
 
 The current implementation keeps the runtime default. Future variant work may provide evidence for revisiting that tradeoff.
+
+### SUPER-CHIP state-transfer instructions use focused capabilities
+
+Several SUPER-CHIP instructions extend machine semantics without requiring a new execution architecture.
+
+`Fx30` uses the existing font capability with an explicit size request:
+
+```text
+Fx29
+    → Font.getSpriteAddress(value, "small")
+
+Fx30
+    → Font.getSpriteAddress(value, "large")
+```
+
+`ClassicFont` supports the small font and rejects a large-font request. `SuperChipFont` supports both the Classic small font and the SUPER-CHIP 1.1 ten-byte large decimal font.
+
+The targeted historical large font contains digits `0` through `9`; the executor does not introduce a separate modern hexadecimal large-font interpretation.
+
+`Fx75` and `Fx85` transfer registers through the explicit `RplFlags` state object:
+
+```text
+Fx75
+    V0..Vx → RplFlags 0..x
+
+Fx85
+    RplFlags 0..x → V0..Vx
+```
+
+The supported RPL storage is limited to the eight historical flags corresponding to `V0` through `V7`. `Fx75` and `Fx85` with `x > 7` are rejected by the decoder as invalid instruction encodings, so execution cannot partially mutate the valid RPL range before discovering an invalid endpoint.
+
+RPL lifetime is intentionally longer than ordinary resettable machine state. `MachineInitializer` does not clear `RplFlags`, so instruction execution can observe values preserved across reset or program initialization when the host reuses the same RPL store.
 
 ## Execution Context
 
@@ -639,11 +844,12 @@ export interface ExecutionContext {
   readonly keyboard: Keyboard;
   readonly font: Font;
   readonly randomNumberGenerator: RandomNumberGenerator;
+  readonly rplFlags: RplFlags;
+  readonly exitState: ExitState;
 }
 ```
 
-The context has no machine behavior of its own. It provides stable access to the components that own state and capabilities.
-`ExecutionContext` deliberately does not contain `Chip8Profile` or `Chip8Compatibility`.
+The context has no machine behavior of its own. It provides stable access to the components that own state and capabilities. `ExecutionContext` deliberately does not contain `Chip8Profile` or `Chip8Compatibility`.
 
 Those values configure the machine when components are composed; they are not mutable machine state or execution capabilities.
 
@@ -655,6 +861,12 @@ profile.compatibility
 
 profile.compatibility.spriteOverflow
     → DisplayBuffer constructor
+
+profile.display.specification
+    → DisplayBuffer constructor
+
+profile.largeFont
+    → font composition and machine initialization
 
 ExecutionContext
     → references the resulting configured components
@@ -779,6 +991,19 @@ Persistent state survives from one instruction to the next because the component
 
 `MachineInitializer` can reuse the same aggregate when establishing or resetting the state of those already-constructed components.
 
+Not every referenced state object has the same reset lifetime. In particular:
+
+```text
+ordinary machine state
+    registers / timers / stack / display / ExitState
+    → reset during initialization
+
+RplFlags
+    → deliberately preserved during initialization
+```
+
+That lifetime distinction belongs to initialization policy, not to `InstructionExecutor`; execution simply reads and writes the provided state object.
+
 The resulting responsibility split is:
 
 ```text
@@ -825,6 +1050,8 @@ Ram
 
 Likewise, `ProgramCounter` stores and advances `Address` values without duplicating memory-size validation. If execution moves outside available RAM, the later `Memory.read()` fails where that contextual information is available.
 
+`Fx1E` is a deliberate profile-specific exception: historical SUPER-CHIP defines leaving the 4 KiB address space through that instruction as interpreter exit, so `InstructionExecutor` compares the resulting `I` value with the configured memory size when that compatibility behavior is selected.
+
 `Stack` similarly owns capacity and underflow. `InstructionExecutor` calls `push()` and `pop()` rather than reproducing stack validation itself.
 
 The general rule is:
@@ -840,8 +1067,9 @@ The main error boundaries are:
 | Domain factory        | numeric value fits its domain                | `RangeError`                  |
 | `Ram`                 | address fits configured memory               | `RangeError`                  |
 | `Stack`               | capacity / underflow                         | `RangeError`                  |
-| `Decoder`             | opcode matches a supported encoding          | `InvalidOpcodeError`          |
+| `Decoder`             | opcode and encoded operands are valid        | `InvalidOpcodeError`          |
 | `InstructionExecutor` | decoded instruction has executable semantics | `UnsupportedInstructionError` |
+| `RplFlags`            | register index fits RPL storage              | `RangeError`                  |
 | Waiting semantics     | key or vblank not ready                      | normal retry, no error        |
 
 This distinguishes malformed numeric data, unsupported encoded words, recognized-but-unexecutable instructions, concrete machine-state violations, and ordinary emulated waiting.
@@ -930,10 +1158,20 @@ The executor suite covers behavior that can be correct for ordinary operands but
 - all three `Fx55` / `Fx65` index-register update behaviors;
 - both V0- and Vx-based jump-offset semantics;
 - draw collision and sprite-overflow behavior;
-- zero-height drawing;
-- vertical-blank-gated and immediate draw timing;
+- fixed-display zero-height drawing;
+- SUPER-CHIP low- and high-resolution `Dxy0` geometry;
+- SUPER-CHIP low-resolution 2 × 2 backing-pixel mapping;
+- high-resolution affected-row `VF` semantics;
+- vertical-blank-gated, immediate, and display-mode-dependent draw timing;
 - preservation of pending vertical blank during immediate drawing;
+- SUPER-CHIP display mode changes and physical scrolling;
+- `Fx30` large-font address lookup;
+- inclusive `Fx75` / `Fx85` RPL transfers;
 - `Fx0A` wait completion;
+- `00FD` support/rejection and exit-state mutation;
+- historical SUPER-CHIP `00C0` interpreter exit;
+- historical SUPER-CHIP `Fx1E` interpreter exit on index overflow;
+- rejection of `Fx75` / `Fx85` encodings above `V7`;
 - unsupported `0mmm` execution.
 
 These cases turn compatibility-sensitive and ordering-sensitive semantics into executable regression evidence.
@@ -948,7 +1186,8 @@ CPU tests use the real collaboration between memory, decoder, executor, and cont
 - pre-advance behavior for calls;
 - jump replacement of the normal address;
 - additional advancement for taken skips;
-- retry by restoring the instruction address.
+- retry by restoring the instruction address;
+- pre-fetch exit guarding after any SUPER-CHIP interpreter-exit condition.
 
 The testing rule is:
 
@@ -1052,6 +1291,9 @@ semantic instruction
 compatibility-sensitive behavior
     → configured explicitly at composition
 
+mode-sensitive behavior
+    → resolved from configured semantics + live machine state
+
 normal PC progression
     → owned by Cpu
 
@@ -1068,4 +1310,4 @@ waiting conditions
     → represented as emulated state, not exceptions
 ```
 
-Together, these boundaries allow Classic CHIP-8 and CHIP-48 to share one decoding and execution architecture while selecting different historical semantics explicitly. The same seams remain available for future CHIP-8-family variation when concrete requirements justify extending them.
+Together, these boundaries allow Classic CHIP-8, CHIP-48, and SUPER-CHIP 1.1 to share one decoding and execution architecture while selecting different historical semantics and machine capabilities explicitly. The same seams remain available for future CHIP-8-family variation when concrete requirements justify extending them.

@@ -7,6 +7,7 @@ import { add8, shiftLeft8, shiftRight8, subtract8 } from "./arithmetic/arithmeti
 import type { ExecutionContext } from "./execution-context.ts";
 import { registerIndex } from "./registers/register-index.ts";
 import { INSTRUCTION_SIZE } from "./program-counter/program-counter.ts";
+import type { SpriteDrawTiming } from "../machine/chip8-profile.ts";
 
 /**
  * Index of the CHIP-8 VF flag register.
@@ -33,6 +34,44 @@ export class InstructionExecutor {
     switch (instruction.kind) {
       case "clear-screen":
         context.displayBuffer.clear();
+        return;
+
+      case "set-display-mode":
+        context.displayBuffer.setMode(instruction.mode);
+        return;
+
+      case "scroll-display-down":
+        if (
+          instruction.rows === 0 &&
+          this.compatibility.zeroScrollDown === "exit-interpreter"
+        ) {
+          context.exitState.exit();
+          return;
+        }
+
+        context.displayBuffer.scrollDown(instruction.rows);
+        return;
+
+      case "scroll-display-horizontal":
+        switch (instruction.direction) {
+          case "right":
+            context.displayBuffer.scrollRight(instruction.columns);
+            return;
+
+          case "left":
+            context.displayBuffer.scrollLeft(instruction.columns);
+            return;
+
+          default:
+            return assertNever(instruction.direction);
+        }
+
+      case "exit-interpreter":
+        if (this.compatibility.interpreterExit === "unsupported") {
+          throw new UnsupportedInstructionError(instruction);
+        }
+
+        context.exitState.exit();
         return;
 
       case "return":
@@ -144,17 +183,32 @@ export class InstructionExecutor {
       case "add-to-index": {
         const value = context.registers.get(instruction.register);
         const index = context.indexRegister.getValue();
+        const nextIndex = index + value;
 
-        context.indexRegister.setValue(address(index + value));
+        context.indexRegister.setValue(address(nextIndex));
+
+        if (
+          this.compatibility.indexOverflow === "exit-interpreter" &&
+          nextIndex >= context.memory.size
+        ) {
+          context.exitState.exit();
+        }
+
         return;
       }
 
       case "set-index-to-sprite": {
-        const value = context.registers.get(instruction.register);
-
-        context.indexRegister.setValue(context.font.getSpriteAddress(value));
+        context.indexRegister.setValue(
+          context.font.getSpriteAddress(context.registers.get(instruction.register), "small"),
+        );
         return;
       }
+
+      case "set-index-to-large-sprite":
+        context.indexRegister.setValue(
+          context.font.getSpriteAddress(context.registers.get(instruction.register), "large"),
+        );
+        return;
 
       case "store-bcd": {
         const value = context.registers.get(instruction.register);
@@ -222,6 +276,30 @@ export class InstructionExecutor {
         return;
       }
 
+      case "store-rpl-flags":
+        if (this.compatibility.rplFlags === "unsupported") {
+          throw new UnsupportedInstructionError(instruction);
+        }
+
+        for (let index = 0; index <= instruction.register; index++) {
+          const register = registerIndex(index);
+
+          context.rplFlags.set(register, context.registers.get(register));
+        }
+        return;
+
+      case "load-rpl-flags":
+        if (this.compatibility.rplFlags === "unsupported") {
+          throw new UnsupportedInstructionError(instruction);
+        }
+
+        for (let index = 0; index <= instruction.register; index++) {
+          const register = registerIndex(index);
+
+          context.registers.set(register, context.rplFlags.get(register));
+        }
+        return;
+
       case "load-immediate":
         context.registers.set(instruction.register, instruction.value);
         return;
@@ -238,10 +316,9 @@ export class InstructionExecutor {
         return;
 
       case "draw-sprite": {
-        if (
-          this.compatibility.spriteDrawTiming === "vertical-blank" &&
-          !context.verticalBlank.consume()
-        ) {
+        const spriteDrawTiming = this.resolveSpriteDrawTiming(context.displayBuffer.mode);
+
+        if (spriteDrawTiming === "vertical-blank" && !context.verticalBlank.consume()) {
           context.programCounter.setValue(
             address(context.programCounter.getValue() - INSTRUCTION_SIZE),
           );
@@ -252,15 +329,33 @@ export class InstructionExecutor {
         const y = context.registers.get(instruction.y);
         const startAddress = context.indexRegister.getValue();
 
+        const displayMode = context.displayBuffer.mode;
+
+        const isSuperChipExtendedSprite = instruction.height === 0 && displayMode !== null;
+
+        const isWideSprite = isSuperChipExtendedSprite && displayMode === "high";
+
+        const spriteByteCount = isSuperChipExtendedSprite
+          ? isWideSprite ? 32 : 16
+          : instruction.height;
+
         const sprite: Byte[] = [];
 
-        for (let row = 0; row < instruction.height; row++) {
-          sprite.push(context.memory.read(address(startAddress + row)));
+        for (let offset = 0; offset < spriteByteCount; offset++) {
+          sprite.push(context.memory.read(address(startAddress + offset)));
         }
 
-        const collision = context.displayBuffer.drawSprite(x, y, sprite);
+        const drawResult = isWideSprite
+          ? context.displayBuffer.drawWideSprite(x, y, sprite)
+          : context.displayBuffer.drawSprite(x, y, sprite);
 
-        context.registers.set(FLAG_REGISTER, byte(collision ? 1 : 0));
+        const collisionValue = context.displayBuffer.mode === "high"
+          ? drawResult.collisionRows + drawResult.clippedBottomRows
+          : drawResult.collision
+          ? 1
+          : 0;
+
+        context.registers.set(FLAG_REGISTER, byte(collisionValue));
 
         return;
       }
@@ -350,15 +445,46 @@ export class InstructionExecutor {
       }
     }
   }
+
+  /**
+   * Resolves the sprite-draw timing for the current display state.
+   *
+   * Uniform timing applies regardless of display mode. Mode-dependent timing
+   * requires a display that exposes a SUPER-CHIP low/high mode.
+   */
+  private resolveSpriteDrawTiming(displayMode: "low" | "high" | null): SpriteDrawTiming {
+    const behavior = this.compatibility.spriteDrawTiming;
+
+    switch (behavior.kind) {
+      case "uniform":
+        return behavior.timing;
+
+      case "display-mode":
+        if (displayMode === null) {
+          throw new Error("Display-mode sprite timing requires a switchable display mode.");
+        }
+
+        return behavior[displayMode];
+
+      default:
+        return assertNever(behavior);
+    }
+  }
 }
 
 /**
- * Thrown when the executor receives an instruction whose execution semantics
- * have not yet been implemented.
+ * Thrown when the configured machine cannot execute a decoded instruction.
+ *
+ * This includes deliberately unsupported machine operations as well as
+ * instruction semantics that are not implemented by the executor.
  */
 export class UnsupportedInstructionError extends Error {
   public constructor(public readonly instruction: Instruction) {
     super(`Unsupported instruction: ${instruction.kind}`);
     this.name = "UnsupportedInstructionError";
   }
+}
+
+function assertNever(value: never): never {
+  throw new Error(`Unexpected value: ${String(value)}`);
 }

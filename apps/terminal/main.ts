@@ -13,6 +13,7 @@ import {
   DefaultRandomNumberGenerator,
   DisplayBuffer,
   type ExecutionContext,
+  ExitState,
   Frequency,
   IndexRegister,
   InstructionExecutor,
@@ -25,6 +26,7 @@ import {
   ProgramCounter,
   Ram,
   Registers,
+  RplFlags,
   Scheduler,
   Stack,
   Timer,
@@ -62,8 +64,7 @@ const soundTimer = new Timer();
 
 const verticalBlank = new VerticalBlank();
 const displayBuffer = new DisplayBuffer(
-  profile.display.width,
-  profile.display.height,
+  profile.display.specification,
   profile.compatibility.spriteOverflow,
 );
 
@@ -82,6 +83,8 @@ const context: ExecutionContext = {
   keyboard: keyboardState,
   font: new ClassicFont(profile.fontBaseAddress),
   randomNumberGenerator: new DefaultRandomNumberGenerator(),
+  rplFlags: new RplFlags(),
+  exitState: new ExitState(),
 };
 
 const initializer = new MachineInitializer(new MemoryImageLoader());

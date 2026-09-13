@@ -1,6 +1,6 @@
 import { type Address, address } from "../core/types/address.ts";
 import type { Byte } from "../core/types/byte.ts";
-import type { Font } from "./font.ts";
+import { type Font, type FontSize } from "./font.ts";
 
 /**
  * Number of glyphs provided by the classic CHIP-8 hexadecimal font.
@@ -35,7 +35,11 @@ export class ClassicFont implements Font {
    *
    * Only the low nibble is used, matching the original CHIP-8 behavior.
    */
-  public getSpriteAddress(value: Byte): Address {
+  public getSpriteAddress(value: Byte, size: FontSize): Address {
+    if (size === "large") {
+      throw new RangeError("Classic CHIP-8 does not provide a large font.");
+    }
+
     const digit = value & 0x0f;
 
     return address(this.baseAddress + digit * CLASSIC_FONT_GLYPH_SIZE);

@@ -1,6 +1,8 @@
 import type { Address } from "../core/types/address.ts";
 import type { Byte } from "../core/types/byte.ts";
 
+export type FontSize = "small" | "large";
+
 /**
  * Resolves CHIP-8 font glyphs to their memory addresses.
  *
@@ -17,7 +19,8 @@ export interface Font {
    * Returns the memory address of the sprite for a register value.
    *
    * @param value - Register value used to select the glyph.
+   * @param size - Size of the font to use for the glyph.
    * @returns Address at which the corresponding sprite begins.
    */
-  getSpriteAddress(value: Byte): Address;
+  getSpriteAddress(value: Byte, size: FontSize): Address;
 }

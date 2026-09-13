@@ -19,8 +19,8 @@
       focusable="false"
     >
       <symbol id="icon-folder-open" viewBox="0 0 24 24">
-        <path d="M3 17V5h7l2 2h9v3" />
-        <path d="M4 19h15l2-9H6z" />
+        <path d="M3 17 2 6 h7 l2 2 h8" />
+        <path d="M4 19 h15 l2 -9 H6 z" />
       </symbol>
 
       <symbol id="icon-play" viewBox="0 0 24 24">
@@ -38,6 +38,18 @@
       <symbol id="icon-reset" viewBox="0 0 24 24">
         <path d="M20 11a8 8 0 1 0-2.34 5.66" />
         <path d="M20 4v7h-7" />
+      </symbol>
+
+      <symbol id="icon-display" viewBox="0 0 24 24">
+        <rect x="3" y="4" width="18" height="13" rx="2" />
+        <path d="M8 21h8M12 17v4" />
+      </symbol>
+
+      <symbol id="icon-command" viewBox="0 0 24 24">
+        <path d="M5 7h14M5 12h14M5 17h14" />
+        <circle cx="8" cy="7" r="1.5" />
+        <circle cx="15" cy="12" r="1.5" />
+        <circle cx="11" cy="17" r="1.5" />
       </symbol>
 
       <symbol id="icon-keypad" viewBox="0 0 24 24">
@@ -65,336 +77,424 @@
     </svg>
 
     <main class="app">
+      <!-- Branding intentionally lives outside the workbench. -->
       <header class="app-header">
-        <h1>Chip8NX</h1>
-        <p>CHIP-8 web host</p>
+        <div>
+          <h1>Chip8NX</h1>
+          <p>CHIP-8 web host</p>
+        </div>
       </header>
 
-      <section class="toolbar" aria-label="Emulator toolbar">
-        <section class="rom-loader" aria-label="ROM loader">
-          <span class="rom-loader-label">ROM</span>
+      <section class="workbench" aria-label="CHIP-8 workbench">
+        <!-- Full-width workbench header. -->
+        <header class="workbench-header">
+          <section class="rom-loader" aria-label="ROM loader">
+            <span class="rom-loader-label">ROM</span>
 
-          <button id="rom-load-button" type="button">
-            <svg class="icon" width="16" height="16" aria-hidden="true" focusable="false">
-              <use href="#icon-folder-open"></use>
-            </svg>
+            <button id="rom-load-button" type="button">
+              <svg class="icon" width="16" height="16" aria-hidden="true" focusable="false">
+                <use href="#icon-folder-open"></use>
+              </svg>
 
-            <span>Load ROM</span>
-          </button>
+              <span>Load ROM</span>
+            </button>
 
-          <span id="rom-file-name" class="rom-file-name"> No ROM loaded </span>
+            <span class="workbench-header-divider" aria-hidden="true"></span>
 
-          <input id="rom-input" type="file" accept=".ch8,application/octet-stream" hidden />
-        </section>
+            <span id="rom-file-name" class="rom-file-name">No ROM loaded</span>
 
-        <section class="controls" aria-label="Emulation controls">
-          <button id="run-toggle-button" type="button" data-action="start" disabled>
-            <svg
-              class="icon run-toggle-icon run-toggle-icon-start"
-              width="16"
-              height="16"
-              aria-hidden="true"
-              focusable="false"
-            >
-              <use href="#icon-play"></use>
-            </svg>
+            <span id="rom-file-size" class="rom-file-size" aria-label="ROM size">— bytes</span>
 
-            <svg
-              class="icon run-toggle-icon run-toggle-icon-pause"
-              width="16"
-              height="16"
-              aria-hidden="true"
-              focusable="false"
-            >
-              <use href="#icon-pause"></use>
-            </svg>
+            <input id="rom-input" type="file" accept=".ch8,application/octet-stream" hidden />
+          </section>
 
-            <span id="run-toggle-label">Start</span>
-          </button>
+          <section class="workbench-options" aria-label="Machine and appearance options">
+            <label class="option-picker" for="profile-select">
+              <span>Profile</span>
+              <select id="profile-select">
+                <option value="classic">Classic CHIP-8</option>
+                <option value="chip48">CHIP-48 2.25</option>
+                <option value="superchip">SUPER-CHIP 1.1</option>
+              </select>
+            </label>
 
-          <button id="step-button" type="button" disabled>
-            <svg class="icon" width="16" height="16" aria-hidden="true" focusable="false">
-              <use href="#icon-step"></use>
-            </svg>
+            <span class="workbench-header-divider" aria-hidden="true"></span>
 
-            <span>Step</span>
-          </button>
+            <label class="option-picker" for="theme-select">
+              <span>Style</span>
+              <select id="theme-select">
+                <option value="retro-green">Retro Green</option>
+                <option value="retro-amber">Retro Amber</option>
+                <option value="dark-theme">Dark</option>
+              </select>
+            </label>
+          </section>
+        </header>
 
-          <button id="reset-button" type="button" disabled>
-            <svg class="icon" width="16" height="16" aria-hidden="true" focusable="false">
-              <use href="#icon-reset"></use>
-            </svg>
+        <!-- Desktop: fixed 50/50 workbench. Narrow/tall: columns stack. -->
+        <div class="workspace">
+          <section class="play-area" aria-label="CHIP-8 play area">
+            <section class="display standard-panel" aria-labelledby="display-heading">
+              <header class="standard-panel-header">
+                <h2 id="display-heading" class="standard-panel-title">
+                  <svg class="icon" width="16" height="16" aria-hidden="true" focusable="false">
+                    <use href="#icon-display"></use>
+                  </svg>
 
-            <span>Reset</span>
-          </button>
-        </section>
+                  <span>CHIP-8 Display</span>
+                </h2>
 
-        <span class="toolbar-divider" aria-hidden="true"></span>
+                <span id="display-resolution" class="standard-panel-indicator code-text"
+                >64 × 32</span>
+              </header>
 
-        <div
-          id="machine-state"
-          class="machine-state"
-          data-state="empty"
-          aria-label="Machine state"
-        >
-          <span class="machine-state-indicator" aria-hidden="true"></span>
-          <span id="machine-state-label">No ROM</span>
+              <div class="standard-panel-body display-body">
+                <canvas
+                  id="chip8-display"
+                  width="64"
+                  height="32"
+                  aria-label="CHIP-8 framebuffer"
+                ></canvas>
+              </div>
+            </section>
+
+            <section class="keypad standard-panel" aria-labelledby="keypad-heading">
+              <header class="standard-panel-header">
+                <h2 id="keypad-heading" class="standard-panel-title">
+                  <svg class="icon" width="16" height="16" aria-hidden="true" focusable="false">
+                    <use href="#icon-keypad"></use>
+                  </svg>
+
+                  <span>Keypad</span>
+                </h2>
+              </header>
+
+              <div class="standard-panel-body">
+                <div class="keypad-content">
+                  <div id="virtual-keypad" class="virtual-keypad">
+                    <button type="button" data-chip8-key="1" disabled>1</button>
+                    <button type="button" data-chip8-key="2" disabled>2</button>
+                    <button type="button" data-chip8-key="3" disabled>3</button>
+                    <button type="button" data-chip8-key="C" disabled>C</button>
+
+                    <button type="button" data-chip8-key="4" disabled>4</button>
+                    <button type="button" data-chip8-key="5" disabled>5</button>
+                    <button type="button" data-chip8-key="6" disabled>6</button>
+                    <button type="button" data-chip8-key="D" disabled>D</button>
+
+                    <button type="button" data-chip8-key="7" disabled>7</button>
+                    <button type="button" data-chip8-key="8" disabled>8</button>
+                    <button type="button" data-chip8-key="9" disabled>9</button>
+                    <button type="button" data-chip8-key="E" disabled>E</button>
+
+                    <button type="button" data-chip8-key="A" disabled>A</button>
+                    <button type="button" data-chip8-key="0" disabled>0</button>
+                    <button type="button" data-chip8-key="B" disabled>B</button>
+                    <button type="button" data-chip8-key="F" disabled>F</button>
+                  </div>
+
+                  <aside class="keypad-mapping" aria-label="Keyboard mapping">
+                    <h3>Keyboard mapping</h3>
+
+                    <div class="keypad-mapping-row">
+                      <kbd>1 2 3 4</kbd>
+                      <span aria-hidden="true">→</span>
+                      <code>1 2 3 C</code>
+                    </div>
+
+                    <div class="keypad-mapping-row">
+                      <kbd>Q W E R</kbd>
+                      <span aria-hidden="true">→</span>
+                      <code>4 5 6 D</code>
+                    </div>
+
+                    <div class="keypad-mapping-row">
+                      <kbd>A S D F</kbd>
+                      <span aria-hidden="true">→</span>
+                      <code>7 8 9 E</code>
+                    </div>
+
+                    <div class="keypad-mapping-row">
+                      <kbd>Z X C V</kbd>
+                      <span aria-hidden="true">→</span>
+                      <code>A 0 B F</code>
+                    </div>
+                  </aside>
+                </div>
+              </div>
+            </section>
+          </section>
+
+          <aside class="inspection" aria-label="Machine controls and inspection">
+            <section class="command-bar standard-panel" aria-labelledby="command-bar-heading">
+              <header class="standard-panel-header">
+                <h2 id="command-bar-heading" class="standard-panel-title">
+                  <svg class="icon" width="16" height="16" aria-hidden="true" focusable="false">
+                    <use href="#icon-command"></use>
+                  </svg>
+
+                  <span>Commands</span>
+                </h2>
+
+                <div
+                  id="machine-state"
+                  class="machine-state standard-panel-indicator"
+                  data-state="empty"
+                  aria-label="Machine state"
+                >
+                  <span class="machine-state-indicator" aria-hidden="true"></span>
+                  <span id="machine-state-label">No ROM</span>
+                </div>
+              </header>
+
+              <div class="standard-panel-body command-bar-body">
+                <div class="controls">
+                  <button id="run-toggle-button" type="button" data-action="start" disabled>
+                    <svg
+                      class="icon run-toggle-icon run-toggle-icon-start"
+                      width="16"
+                      height="16"
+                      aria-hidden="true"
+                      focusable="false"
+                    >
+                      <use href="#icon-play"></use>
+                    </svg>
+
+                    <svg
+                      class="icon run-toggle-icon run-toggle-icon-pause"
+                      width="16"
+                      height="16"
+                      aria-hidden="true"
+                      focusable="false"
+                    >
+                      <use href="#icon-pause"></use>
+                    </svg>
+
+                    <span id="run-toggle-label">Start</span>
+                  </button>
+
+                  <button id="step-button" type="button" disabled>
+                    <svg
+                      class="icon"
+                      width="16"
+                      height="16"
+                      aria-hidden="true"
+                      focusable="false"
+                    >
+                      <use href="#icon-step"></use>
+                    </svg>
+
+                    <span>Step</span>
+                  </button>
+
+                  <button id="reset-button" type="button" disabled>
+                    <svg
+                      class="icon"
+                      width="16"
+                      height="16"
+                      aria-hidden="true"
+                      focusable="false"
+                    >
+                      <use href="#icon-reset"></use>
+                    </svg>
+
+                    <span>Reset</span>
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            <section class="cpu-state standard-panel" aria-labelledby="cpu-state-heading">
+              <header class="standard-panel-header">
+                <h2 id="cpu-state-heading" class="standard-panel-title">
+                  <svg class="icon" width="16" height="16" aria-hidden="true" focusable="false">
+                    <use href="#icon-cpu"></use>
+                  </svg>
+
+                  <span>CPU state</span>
+                </h2>
+
+                <div
+                  id="cpu-state-indicator"
+                  class="machine-state standard-panel-indicator"
+                  data-state="empty"
+                  aria-label="CPU activity"
+                  aria-live="polite"
+                >
+                  <span class="machine-state-indicator" aria-hidden="true"></span>
+                  <span id="cpu-state-indicator-label">Idle</span>
+                </div>
+              </header>
+
+              <div class="standard-panel-body">
+                <!-- Retained as an empty renderer hook; CPU availability is shown in the panel header. -->
+                <p id="cpu-state-empty" hidden></p>
+
+                <div id="cpu-state-values" class="cpu-state-layout" hidden>
+                  <dl class="cpu-special-state" aria-label="CPU special registers">
+                    <div>
+                      <dt>PC:</dt>
+                      <dd id="cpu-program-counter">0x000</dd>
+                    </div>
+
+                    <div>
+                      <dt>I:</dt>
+                      <dd id="cpu-index-register">0x000</dd>
+                    </div>
+
+                    <div>
+                      <dt>DT:</dt>
+                      <dd id="cpu-delay-timer">0x00</dd>
+                    </div>
+
+                    <div>
+                      <dt>ST:</dt>
+                      <dd id="cpu-sound-timer">0x00</dd>
+                    </div>
+                  </dl>
+
+                  <dl class="cpu-stack-state" aria-label="CPU stack">
+                    <div>
+                      <dt>K:</dt>
+                      <dd id="cpu-stack">—</dd>
+                    </div>
+                  </dl>
+
+                  <dl class="register-grid" aria-label="V registers">
+                    <div>
+                      <dt>V0:</dt>
+                      <dd data-register="V0">0x00</dd>
+                    </div>
+                    <div>
+                      <dt>V1:</dt>
+                      <dd data-register="V1">0x00</dd>
+                    </div>
+                    <div>
+                      <dt>V2:</dt>
+                      <dd data-register="V2">0x00</dd>
+                    </div>
+                    <div>
+                      <dt>V3:</dt>
+                      <dd data-register="V3">0x00</dd>
+                    </div>
+
+                    <div>
+                      <dt>V4:</dt>
+                      <dd data-register="V4">0x00</dd>
+                    </div>
+                    <div>
+                      <dt>V5:</dt>
+                      <dd data-register="V5">0x00</dd>
+                    </div>
+                    <div>
+                      <dt>V6:</dt>
+                      <dd data-register="V6">0x00</dd>
+                    </div>
+                    <div>
+                      <dt>V7:</dt>
+                      <dd data-register="V7">0x00</dd>
+                    </div>
+
+                    <div>
+                      <dt>V8:</dt>
+                      <dd data-register="V8">0x00</dd>
+                    </div>
+                    <div>
+                      <dt>V9:</dt>
+                      <dd data-register="V9">0x00</dd>
+                    </div>
+                    <div>
+                      <dt>VA:</dt>
+                      <dd data-register="VA">0x00</dd>
+                    </div>
+                    <div>
+                      <dt>VB:</dt>
+                      <dd data-register="VB">0x00</dd>
+                    </div>
+
+                    <div>
+                      <dt>VC:</dt>
+                      <dd data-register="VC">0x00</dd>
+                    </div>
+                    <div>
+                      <dt>VD:</dt>
+                      <dd data-register="VD">0x00</dd>
+                    </div>
+                    <div>
+                      <dt>VE:</dt>
+                      <dd data-register="VE">0x00</dd>
+                    </div>
+                    <div>
+                      <dt>VF:</dt>
+                      <dd data-register="VF">0x00</dd>
+                    </div>
+                  </dl>
+                </div>
+              </div>
+            </section>
+
+            <div class="instruction-panels">
+              <section
+                class="nearby-instructions standard-panel"
+                aria-labelledby="nearby-instructions-heading"
+              >
+                <header class="standard-panel-header">
+                  <h2 id="nearby-instructions-heading" class="standard-panel-title">
+                    <svg
+                      class="icon"
+                      width="16"
+                      height="16"
+                      aria-hidden="true"
+                      focusable="false"
+                    >
+                      <use href="#icon-nearby"></use>
+                    </svg>
+
+                    <span>Nearby instructions</span>
+                  </h2>
+                </header>
+
+                <div class="standard-panel-body">
+                  <p id="nearby-instructions-empty">No machine loaded.</p>
+                  <ol id="nearby-instructions-list"></ol>
+                </div>
+              </section>
+
+              <section
+                class="instruction-history standard-panel"
+                aria-labelledby="instruction-history-heading"
+              >
+                <header class="standard-panel-header">
+                  <h2 id="instruction-history-heading" class="standard-panel-title">
+                    <svg
+                      class="icon"
+                      width="16"
+                      height="16"
+                      aria-hidden="true"
+                      focusable="false"
+                    >
+                      <use href="#icon-history"></use>
+                    </svg>
+
+                    <span>Recent instructions</span>
+                  </h2>
+                </header>
+
+                <div class="standard-panel-body">
+                  <p id="instruction-history-empty">No instruction attempts yet.</p>
+                  <ol id="instruction-history-list"></ol>
+                </div>
+              </section>
+            </div>
+          </aside>
         </div>
 
-        <span class="toolbar-divider" aria-hidden="true"></span>
-
-        <section class="profile-picker" aria-label="Machine profile">
-          <label for="profile-select">Profile</label>
-
-          <select id="profile-select">
-            <option value="classic">Classic CHIP-8</option>
-            <option value="chip48">CHIP-48 2.25</option>
-          </select>
-        </section>
-
-        <span class="toolbar-divider" aria-hidden="true"></span>
-
-        <section class="theme-picker" aria-label="Appearance">
-          <label for="theme-select">Theme</label>
-
-          <select id="theme-select">
-            <option value="retro-green">Retro Green</option>
-
-            <option value="retro-amber">Retro Amber</option>
-
-            <option value="dark-theme">Dark</option>
-          </select>
-        </section>
+        <footer class="app-status">
+          <p id="status" role="status">
+            TIP: Choose a CHIP-8 ROM and press start. Use your keyboard or the virtual keypad.
+          </p>
+        </footer>
       </section>
-
-      <div class="workspace">
-        <section class="play-area" aria-label="CHIP-8 play area">
-          <section class="display" aria-label="CHIP-8 display">
-            <canvas
-              id="chip8-display"
-              width="64"
-              height="32"
-              aria-label="CHIP-8 framebuffer"
-            ></canvas>
-          </section>
-
-          <section class="keypad" aria-label="Virtual CHIP-8 keypad">
-            <h2 class="panel-heading">
-              <svg class="icon" width="16" height="16" aria-hidden="true" focusable="false">
-                <use href="#icon-keypad"></use>
-              </svg>
-
-              <span>Keypad</span>
-            </h2>
-
-            <p class="keypad-hint">
-              Click or press keys:
-              <span> 1, 2, 3, 4, Q, W, E, R, A, S, D, F, Z, X, C, V </span>
-            </p>
-
-            <div class="keypad-content">
-              <div id="virtual-keypad" class="virtual-keypad">
-                <button type="button" data-chip8-key="1" disabled>1</button>
-                <button type="button" data-chip8-key="2" disabled>2</button>
-                <button type="button" data-chip8-key="3" disabled>3</button>
-                <button type="button" data-chip8-key="C" disabled>C</button>
-
-                <button type="button" data-chip8-key="4" disabled>4</button>
-                <button type="button" data-chip8-key="5" disabled>5</button>
-                <button type="button" data-chip8-key="6" disabled>6</button>
-                <button type="button" data-chip8-key="D" disabled>D</button>
-
-                <button type="button" data-chip8-key="7" disabled>7</button>
-                <button type="button" data-chip8-key="8" disabled>8</button>
-                <button type="button" data-chip8-key="9" disabled>9</button>
-                <button type="button" data-chip8-key="E" disabled>E</button>
-
-                <button type="button" data-chip8-key="A" disabled>A</button>
-                <button type="button" data-chip8-key="0" disabled>0</button>
-                <button type="button" data-chip8-key="B" disabled>B</button>
-                <button type="button" data-chip8-key="F" disabled>F</button>
-              </div>
-
-              <aside class="keypad-mapping" aria-label="Keyboard mapping">
-                <h3>Keyboard mapping</h3>
-
-                <div class="keypad-mapping-row">
-                  <kbd>1 2 3 4</kbd>
-                  <span aria-hidden="true">→</span>
-                  <code>1 2 3 C</code>
-                </div>
-
-                <div class="keypad-mapping-row">
-                  <kbd>Q W E R</kbd>
-                  <span aria-hidden="true">→</span>
-                  <code>4 5 6 D</code>
-                </div>
-
-                <div class="keypad-mapping-row">
-                  <kbd>A S D F</kbd>
-                  <span aria-hidden="true">→</span>
-                  <code>7 8 9 E</code>
-                </div>
-
-                <div class="keypad-mapping-row">
-                  <kbd>Z X C V</kbd>
-                  <span aria-hidden="true">→</span>
-                  <code>A 0 B F</code>
-                </div>
-              </aside>
-            </div>
-          </section>
-        </section>
-
-        <aside class="inspection" aria-label="Machine inspection">
-          <section class="cpu-state" aria-labelledby="cpu-state-heading">
-            <h2 id="cpu-state-heading" class="panel-heading">
-              <svg class="icon" width="16" height="16" aria-hidden="true" focusable="false">
-                <use href="#icon-cpu"></use>
-              </svg>
-
-              <span>CPU state</span>
-            </h2>
-
-            <p id="cpu-state-empty">No machine loaded.</p>
-
-            <div id="cpu-state-values" hidden>
-              <dl class="register-grid">
-                <div>
-                  <dt>V0</dt>
-                  <dd data-register="V0">0x00</dd>
-                </div>
-                <div>
-                  <dt>V1</dt>
-                  <dd data-register="V1">0x00</dd>
-                </div>
-                <div>
-                  <dt>V2</dt>
-                  <dd data-register="V2">0x00</dd>
-                </div>
-                <div>
-                  <dt>V3</dt>
-                  <dd data-register="V3">0x00</dd>
-                </div>
-
-                <div>
-                  <dt>V4</dt>
-                  <dd data-register="V4">0x00</dd>
-                </div>
-                <div>
-                  <dt>V5</dt>
-                  <dd data-register="V5">0x00</dd>
-                </div>
-                <div>
-                  <dt>V6</dt>
-                  <dd data-register="V6">0x00</dd>
-                </div>
-                <div>
-                  <dt>V7</dt>
-                  <dd data-register="V7">0x00</dd>
-                </div>
-
-                <div>
-                  <dt>V8</dt>
-                  <dd data-register="V8">0x00</dd>
-                </div>
-                <div>
-                  <dt>V9</dt>
-                  <dd data-register="V9">0x00</dd>
-                </div>
-                <div>
-                  <dt>VA</dt>
-                  <dd data-register="VA">0x00</dd>
-                </div>
-                <div>
-                  <dt>VB</dt>
-                  <dd data-register="VB">0x00</dd>
-                </div>
-
-                <div>
-                  <dt>VC</dt>
-                  <dd data-register="VC">0x00</dd>
-                </div>
-                <div>
-                  <dt>VD</dt>
-                  <dd data-register="VD">0x00</dd>
-                </div>
-                <div>
-                  <dt>VE</dt>
-                  <dd data-register="VE">0x00</dd>
-                </div>
-                <div>
-                  <dt>VF</dt>
-                  <dd data-register="VF">0x00</dd>
-                </div>
-              </dl>
-
-              <dl class="cpu-special-state">
-                <div>
-                  <dt>I</dt>
-                  <dd id="cpu-index-register">0x000</dd>
-                </div>
-
-                <div>
-                  <dt>PC</dt>
-                  <dd id="cpu-program-counter">0x000</dd>
-                </div>
-
-                <div>
-                  <dt>DT</dt>
-                  <dd id="cpu-delay-timer">0x00</dd>
-                </div>
-
-                <div>
-                  <dt>ST</dt>
-                  <dd id="cpu-sound-timer">0x00</dd>
-                </div>
-
-                <div>
-                  <dt>Stack</dt>
-                  <dd id="cpu-stack">—</dd>
-                </div>
-              </dl>
-            </div>
-          </section>
-
-          <div class="instruction-column">
-            <section class="nearby-instructions" aria-labelledby="nearby-instructions-heading">
-              <h2 id="nearby-instructions-heading" class="panel-heading">
-                <svg class="icon" width="16" height="16" aria-hidden="true" focusable="false">
-                  <use href="#icon-nearby"></use>
-                </svg>
-
-                <span>Nearby instructions</span>
-              </h2>
-
-              <p id="nearby-instructions-empty">No machine loaded.</p>
-
-              <ol id="nearby-instructions-list"></ol>
-            </section>
-
-            <section class="instruction-history" aria-labelledby="instruction-history-heading">
-              <h2 id="instruction-history-heading" class="panel-heading">
-                <svg class="icon" width="16" height="16" aria-hidden="true" focusable="false">
-                  <use href="#icon-history"></use>
-                </svg>
-
-                <span>Recent instructions</span>
-              </h2>
-
-              <p id="instruction-history-empty">No instruction attempts yet.</p>
-
-              <ol id="instruction-history-list"></ol>
-            </section>
-          </div>
-        </aside>
-      </div>
-
-      <footer class="app-status">
-        <p id="status" role="status">
-          TIP: Choose a CHIP-8 ROM and press start. Use your keyboard or the virtual keypad.
-        </p>
-      </footer>
     </main>
 
     <script type="module" src="/src/main.ts"></script>

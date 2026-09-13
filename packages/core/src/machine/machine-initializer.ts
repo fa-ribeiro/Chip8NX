@@ -53,11 +53,21 @@ export class MachineInitializer {
     context.delayTimer.setValue(byte(0));
     context.soundTimer.setValue(byte(0));
 
-    context.displayBuffer.clear();
+    context.displayBuffer.reset();
     context.verticalBlank.reset();
     context.keyboard.reset();
 
+    context.exitState.reset();
+
     this.memoryImageLoader.load(context.memory, profile.fontBaseAddress, profile.fontImage);
+
+    if (profile.largeFont !== null) {
+      this.memoryImageLoader.load(
+        context.memory,
+        profile.largeFont.baseAddress,
+        profile.largeFont.image,
+      );
+    }
 
     this.memoryImageLoader.load(context.memory, profile.programStartAddress, program);
   }
@@ -84,6 +94,41 @@ export class MachineInitializer {
         `Machine memory size ${context.memory.size} does not match ` +
           `profile memory size ${profile.memorySize}.`,
       );
+    }
+
+    if (profile.largeFont !== null) {
+      if (profile.largeFont.image.bytes.length === 0) {
+        throw new RangeError("Large font image must not be empty.");
+      }
+
+      this.validateImageFitsMemory(
+        "Large font",
+        profile.largeFont.baseAddress,
+        profile.largeFont.image,
+        profile.memorySize,
+      );
+
+      if (
+        this.rangesOverlap(
+          profile.fontBaseAddress,
+          profile.fontImage.bytes.length,
+          profile.largeFont.baseAddress,
+          profile.largeFont.image.bytes.length,
+        )
+      ) {
+        throw new RangeError("Large font image overlaps the font image.");
+      }
+
+      if (
+        this.rangesOverlap(
+          profile.largeFont.baseAddress,
+          profile.largeFont.image.bytes.length,
+          profile.programStartAddress,
+          program.bytes.length,
+        )
+      ) {
+        throw new RangeError("Large font image overlaps the program image.");
+      }
     }
 
     this.validateImageFitsMemory(

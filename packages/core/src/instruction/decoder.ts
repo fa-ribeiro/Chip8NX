@@ -120,7 +120,50 @@ export class Decoder {
           opcode,
         };
 
+      case 0x00fb:
+        return {
+          kind: "scroll-display-horizontal",
+          opcode,
+          direction: "right",
+          columns: 4,
+        };
+
+      case 0x00fc:
+        return {
+          kind: "scroll-display-horizontal",
+          opcode,
+          direction: "left",
+          columns: 4,
+        };
+
+      case 0x00fd:
+        return {
+          kind: "exit-interpreter",
+          opcode,
+        };
+
+      case 0x00fe:
+        return {
+          kind: "set-display-mode",
+          opcode,
+          mode: "low",
+        };
+
+      case 0x00ff:
+        return {
+          kind: "set-display-mode",
+          opcode,
+          mode: "high",
+        };
+
       default:
+        if ((opcode & 0xfff0) === 0x00c0) {
+          return {
+            kind: "scroll-display-down",
+            opcode,
+            rows: opcode & 0x000f,
+          };
+        }
         return {
           kind: "system-call",
           opcode,
@@ -310,6 +353,13 @@ export class Decoder {
           register: getX(opcode),
         };
 
+      case 0x30:
+        return {
+          kind: "set-index-to-large-sprite",
+          opcode,
+          register: getX(opcode),
+        };
+
       case 0x33:
         return {
           kind: "store-bcd",
@@ -330,6 +380,34 @@ export class Decoder {
           opcode,
           register: getX(opcode),
         };
+
+      case 0x75: {
+        const register = getX(opcode);
+
+        if (register > 0x7) {
+          throw new InvalidOpcodeError(opcode);
+        }
+
+        return {
+          kind: "store-rpl-flags",
+          opcode,
+          register,
+        };
+      }
+
+      case 0x85: {
+        const register = getX(opcode);
+
+        if (register > 0x7) {
+          throw new InvalidOpcodeError(opcode);
+        }
+
+        return {
+          kind: "load-rpl-flags",
+          opcode,
+          register,
+        };
+      }
 
       default:
         throw new InvalidOpcodeError(opcode);

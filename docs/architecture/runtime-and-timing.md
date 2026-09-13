@@ -146,6 +146,18 @@ runtime.tick();
 
 The runtime and scheduler decide which emulated events are due when that happens.
 
+SUPER-CHIP does not add a profile-specific runtime path. The runtime still produces display-boundary opportunities at the configured display refresh frequency. Instruction execution decides whether the current profile and display mode require a draw to consume one.
+
+```text
+Chip8Runtime
+    → produce display opportunities
+
+InstructionExecutor
+    → apply profile + display-mode drawing semantics
+```
+
+This keeps timing orchestration separate from machine compatibility semantics.
+
 ### Timed machine state remains separate
 
 `Timer` and `VerticalBlank` contain no clock or scheduling logic.
@@ -585,9 +597,35 @@ Applications can compose, initialize, load a ROM, and wire host adapters before 
 
 Pause also does not reset machine state.
 
-Registers, memory, stack, timers, display contents, keyboard state, and any pending vertical blank remain as they were. Reset remains a separate machine-initialization concern.
+Registers, memory, stack, timers, display contents and mode, keyboard state, exit state, RPL flags, and any pending vertical blank remain as they were. Reset remains a separate machine-initialization concern.
 
-See [Machine lifecycle](./machine-lifecycle.md) for the broader construction, initialization, pause/resume, and reset model.
+See [Machine lifecycle](./machine-lifecycle.md) for the broader construction, initialization, pause/resume, exit, and reset model.
+
+### Interpreter exit is not a runtime lifecycle state
+
+SUPER-CHIP interpreter-exit conditions mark `ExitState` as exited. These include explicit `00FD`, historical invalid `00C0`, and `Fx1E` index overflow.
+
+That state belongs to CPU/machine semantics, not to `Chip8Runtime`.
+
+`Cpu.step()` checks `ExitState` before fetching an opcode. Once exited, later CPU attempts return without fetching, decoding, executing, or tracing another instruction.
+
+The runtime is deliberately not auto-paused:
+
+```text
+interpreter-exit condition occurs
+    ↓
+ExitState = exited
+    ↓
+Chip8Runtime may remain resumed
+    ↓
+future scheduled CPU attempts call Cpu.step()
+    ↓
+Cpu.step() returns immediately
+```
+
+Timers and display-boundary scheduling therefore remain runtime concerns even after interpreter exit unless the host chooses to pause the runtime.
+
+This avoids coupling an instruction-level machine condition to host/runtime lifecycle policy. Machine initialization resets `ExitState`, making execution possible again after reset or program initialization.
 
 ## Runtime Ordering at Equal Deadlines
 
@@ -614,7 +652,7 @@ This order is intentional runtime policy.
 
 ### Vertical blank before CPU
 
-A `Dxyn` whose active compatibility requires vertical-blank synchronization may execute at exactly the same emulated instant as a display boundary.
+A `Dxyn` whose active draw timing requires vertical-blank synchronization may execute at exactly the same emulated instant as a display boundary.
 
 If CPU ran first:
 
@@ -642,9 +680,30 @@ CPU deadline
 Dxyn may consume it
 ```
 
-Profiles configured for immediate drawing do not consume this opportunity.
+The runtime always produces display-boundary signals according to the configured display frequency. It does not inspect the active profile or display mode.
 
-The runtime still produces display-boundary signals according to the configured display frequency; instruction semantics decide whether `Dxyn` requires them.
+The execution layer resolves draw timing:
+
+```text
+uniform timing
+    → use the profile's configured draw timing
+
+display-mode timing
+    → inspect the current DisplayBuffer mode
+    → select low- or high-resolution timing
+```
+
+For the built-in SUPER-CHIP 1.1 profile:
+
+```text
+low resolution
+    → vertical-blank gated
+
+high resolution
+    → immediate
+```
+
+An immediate draw does not consume an already-pending vertical-blank opportunity.
 
 Therefore the responsibility remains:
 
@@ -652,13 +711,19 @@ Therefore the responsibility remains:
 Scheduler / Chip8Runtime
     → when display opportunities occur
 
-InstructionExecutor compatibility
-    → whether Dxyn must consume one
+Chip8Profile compatibility
+    → which timing model applies
+
+DisplayBuffer
+    → current display mode
+
+InstructionExecutor
+    → whether this Dxyn attempt must consume an opportunity
 ```
 
 No profile-specific scheduling branch is required.
 
-This is the policy established by [ADR 0013](../decisions/0013-emulated-display-timing.md).
+This extends the policy established by [ADR 0013](../decisions/0013-emulated-display-timing.md) without moving compatibility logic into the runtime.
 
 ### Timers before CPU
 
@@ -764,9 +829,12 @@ Classic CHIP-8
 
 CHIP-48 2.25
     → 64 Hz
+
+SUPER-CHIP 1.1
+    → 64 Hz
 ```
 
-The timer itself remains unaware of either profile.
+The timer itself remains unaware of those profiles.
 
 Delay and sound timers are separate instances because their semantic use differs even though their mechanics are shared.
 
@@ -832,7 +900,11 @@ none pending
 
 ### `Dxyn` may consume state, but never scheduling machinery
 
-When the active compatibility requires vertical-blank-gated drawing, sprite drawing asks:
+Sprite drawing never inspects clocks or scheduler deadlines.
+
+The instruction executor first resolves the active draw timing from the injected compatibility configuration. For display-mode-dependent timing, it also reads the current `DisplayBuffer` mode.
+
+When the resolved timing is vertical-blank-gated:
 
 ```text
 InstructionExecutor
@@ -840,11 +912,9 @@ InstructionExecutor
 VerticalBlank.consume()
 ```
 
-The executor does not inspect clocks or scheduler deadlines.
-
 If no opportunity exists, the instruction rewinds its program counter and can be retried at a later CPU opportunity.
 
-For immediate-draw compatibility:
+When the resolved timing is immediate:
 
 ```text
 InstructionExecutor
@@ -856,6 +926,16 @@ draw immediately
 
 An already-pending vertical-blank opportunity remains untouched.
 
+SUPER-CHIP demonstrates why draw timing is not represented as one global runtime choice:
+
+```text
+SUPER-CHIP low mode
+    → consume vertical blank
+
+SUPER-CHIP high mode
+    → draw immediately
+```
+
 The division is therefore:
 
 ```text
@@ -865,14 +945,17 @@ Scheduler / Runtime
 VerticalBlank
     → store availability
 
-InstructionExecutor compatibility
-    → decide whether Dxyn requires availability
+Chip8Profile compatibility
+    → describe the timing rule
+
+DisplayBuffer
+    → expose current mode when the rule is mode-dependent
 
 InstructionExecutor
-    → consume availability when required
+    → resolve and enforce the active rule
 ```
 
-This keeps execution independent of scheduling machinery while allowing different historical drawing semantics to share the same runtime.
+This keeps execution independent of scheduling machinery while allowing different historical drawing semantics, including mode-dependent SUPER-CHIP behavior, to share the same runtime.
 
 ### Host rendering is separate from emulated vertical blank
 
@@ -1001,7 +1084,7 @@ rewind forever
 
 The debugger could never step past that instruction.
 
-`Chip8Runtime` deliberately remains unaware of instruction compatibility, so `runtime.step()` does not ask whether the current profile requires vertical blank.
+`Chip8Runtime` deliberately remains unaware of instruction compatibility and display mode, so `runtime.step()` does not ask whether the current draw attempt requires vertical blank.
 
 Instead, when no opportunity is already pending, it supplies one temporary opportunity around the CPU attempt:
 
@@ -1015,9 +1098,9 @@ Cpu.step()
 clean up if unused
 ```
 
-For a vertical-blank-gated `Dxyn`, the instruction may consume it.
+For a draw whose resolved timing is vertical-blank-gated, the instruction may consume it. This includes Classic CHIP-8 drawing and SUPER-CHIP drawing in low-resolution mode.
 
-For immediate-draw `Dxyn`, or for an unrelated instruction, the opportunity remains unused and is removed afterward.
+For an immediate draw, including SUPER-CHIP high-resolution drawing, or for an unrelated instruction, the opportunity remains unused and is removed afterward.
 
 This opportunity is a stepping aid, not a scheduled display event.
 
@@ -1059,7 +1142,9 @@ The runtime cleans up only the temporary state it introduced.
 
 `runtime.step()` invokes `Cpu.step()` exactly once.
 
-For retry-style instructions such as `Fx0A`, that may not complete the instruction.
+If `ExitState` is already exited, that CPU attempt is an intentional no-op. The runtime does not reinterpret interpreter exit as a stepping error or as a request to resume/pause itself.
+
+For retry-style instructions such as `Fx0A`, one CPU attempt may also fail to complete the instruction.
 
 No synthetic keyboard event is created:
 
@@ -1085,9 +1170,9 @@ external input not present
     → remain waiting
 ```
 
-Vertical-blank-gated `Dxyn` can make use of the temporary display opportunity because its blocking condition normally comes from the runtime's own suspended display scheduler.
+A `Dxyn` attempt whose resolved timing is vertical-blank-gated can make use of the temporary display opportunity because its blocking condition normally comes from the runtime's own suspended display scheduler.
 
-Immediate-draw `Dxyn` does not need that aid and simply ignores it.
+An immediate `Dxyn` attempt does not need that aid and simply ignores it. In SUPER-CHIP this distinction can change when `00FE` or `00FF` changes the current display mode.
 
 `Fx0A` receives no comparable synthetic input because keyboard input is external machine state rather than a condition normally produced by the runtime scheduler.
 
@@ -1218,6 +1303,10 @@ They verify machine-wide timing behavior such as:
 - vertical-blank-gated `Dxyn` can complete during manual stepping while paused;
 - unused temporary vertical blank is cleaned up after a manual step.
 
+Mode-dependent draw timing itself is verified at the execution layer, where compatibility configuration and `DisplayBuffer` mode are available. The runtime tests remain focused on the generic production and temporary supply of display opportunities rather than on SUPER-CHIP profile identity.
+
+Interpreter-exit behavior is likewise verified at the CPU/execution boundary: SUPER-CHIP exit conditions mark `ExitState`, and later CPU attempts become no-ops before fetch. The runtime deliberately adds no separate exit lifecycle.
+
 ### Equal-deadline ordering is verified through machine state
 
 The runtime suite tests timer-before-CPU ordering using observable semantics.
@@ -1264,7 +1353,7 @@ The overall rule is:
 
 Examples:
 
-````text
+```text
 timer does not underflow
     → Timer test
 
@@ -1285,6 +1374,12 @@ vblank-gated manual draw can complete while paused
 
 temporary stepping vblank does not leak
     → Chip8Runtime integration test
+
+SUPER-CHIP low/high draw timing selection
+    → InstructionExecutor and DisplayBuffer tests
+
+ExitState prevents later fetches
+    → Cpu / instruction-execution tests
 ```
 
 ## Design Summary
@@ -1298,7 +1393,7 @@ The runtime/timing architecture follows a few stable rules:
    Exact periodic deadlines, catch-up, and tie-breaking remain generic.
 
 3. **The runtime owns scheduled timing orchestration, not profile semantics.**\
-   It maps configured frequencies onto CPU, timers, and vertical blank and chooses their equal-deadline registration order; instruction compatibility determines whether drawing consumes the produced display opportunities.
+   It maps configured frequencies onto CPU, timers, and vertical blank and chooses their equal-deadline registration order; instruction compatibility plus current display mode determine whether drawing consumes the produced display opportunities.
 
 4. **Timed state does not schedule itself.**\
    `Timer` and `VerticalBlank` own state and local transitions only.
@@ -1318,5 +1413,7 @@ The runtime/timing architecture follows a few stable rules:
 9. **Machine timing and host execution policy remain distinct.**\
    Timer and display frequencies come from `Chip8Profile`; CPU frequency remains host/runtime configuration.
 
+10. **Interpreter exit is machine state, not runtime lifecycle.**\
+    SUPER-CHIP interpreter-exit conditions cause later CPU attempts to become no-ops through `ExitState`; `Chip8Runtime` does not automatically pause or invent a separate stopped state.
+
 Together these rules keep timing deterministic and testable while leaving host applications free to choose their own event-loop and presentation mechanisms.
-````

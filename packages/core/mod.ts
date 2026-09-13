@@ -32,7 +32,17 @@ export { Stack } from "./src/cpu/stack/stack.ts";
 export type { CpuState } from "./src/cpu/state/cpu-state.ts";
 
 // Display
-export { DisplayBuffer, type SpriteOverflowBehavior } from "./src/display/display-buffer.ts";
+export {
+  DisplayBuffer,
+  type SpriteDrawResult,
+  type SpriteOverflowBehavior,
+} from "./src/display/display-buffer.ts";
+export type {
+  DisplayMode,
+  DisplaySpecification,
+  FixedDisplaySpecification,
+  SuperChipDisplaySpecification,
+} from "./src/display/display-specification.ts";
 export { VerticalBlank } from "./src/display/vertical-blank.ts";
 export type { Display } from "./src/display/display.ts";
 export { NullDisplay } from "./src/display/null-display.ts";
@@ -44,7 +54,8 @@ export {
   CLASSIC_FONT_GLYPH_SIZE,
   ClassicFont,
 } from "./src/font/classic-font.ts";
-export type { Font } from "./src/font/font.ts";
+export { SuperChipFont } from "./src/font/superchip-font.ts";
+export type { Font, FontSize } from "./src/font/font.ts";
 
 // Instructions
 export { Decoder, InvalidOpcodeError } from "./src/instruction/decoder.ts";
@@ -66,15 +77,23 @@ export { KeyboardState } from "./src/keyboard/keyboard-state.ts";
 export type {
   Chip8Compatibility,
   Chip8Profile,
+  IndexOverflowBehavior,
+  InterpreterExitBehavior,
   JumpOffsetSource,
   LogicFlagBehavior,
   MemoryTransferIndexBehavior,
+  RplFlagBehavior,
   ShiftSource,
   SpriteDrawTiming,
+  SpriteDrawTimingBehavior,
+  ZeroScrollDownBehavior,
 } from "./src/machine/chip8-profile.ts";
 export { CLASSIC_CHIP8_PROFILE } from "./src/machine/classic/classic-chip8-profile.ts";
 export { CHIP48_PROFILE } from "./src/machine/chip48/chip48-profile.ts";
+export { SUPERCHIP_PROFILE } from "./src/machine/superchip/superchip-profile.ts";
 export { MachineInitializer } from "./src/machine/machine-initializer.ts";
+export { RplFlags } from "./src/machine/rpl-flags.ts";
+export { ExitState } from "./src/machine/exit-state.ts";
 
 // Memory
 export { MemoryImageLoader } from "./src/memory/memory-image-loader.ts";

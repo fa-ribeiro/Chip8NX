@@ -13,8 +13,7 @@ Deno.test("Classic CHIP-8 profile defines the classic machine characteristics", 
   assertEquals(CLASSIC_CHIP8_PROFILE.stackCapacity, 16);
 
   assertEquals(CLASSIC_CHIP8_PROFILE.display, {
-    width: 64,
-    height: 32,
+    specification: { kind: "fixed", width: 64, height: 32 },
     refreshFrequency: Frequency.fromInteger(60n),
   });
 
@@ -30,6 +29,15 @@ Deno.test("Classic CHIP-8 profile defines the classic machine characteristics", 
     jumpOffsetSource: "v0",
     logicFlag: "reset",
     spriteOverflow: "clip",
-    spriteDrawTiming: "vertical-blank",
+    spriteDrawTiming: {
+      kind: "uniform",
+      timing: "vertical-blank",
+    },
+    interpreterExit: "unsupported",
+    rplFlags: "unsupported",
+    indexOverflow: "continue",
+    zeroScrollDown: "scroll",
   });
+
+  assertEquals(CLASSIC_CHIP8_PROFILE.largeFont, null);
 });

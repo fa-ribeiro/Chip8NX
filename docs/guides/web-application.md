@@ -39,7 +39,8 @@ Open the URL reported by Vite and load a CHIP-8 ROM.
 
 The Web host currently provides:
 
-- Canvas framebuffer presentation;
+- Canvas framebuffer presentation for Classic CHIP-8 and SUPER-CHIP display geometry;
+- selectable Classic CHIP-8, CHIP-48, and SUPER-CHIP 1.1 machine profiles;
 - physical keyboard input;
 - a virtual 4×4 CHIP-8 keypad;
 - explicit physical-keyboard to CHIP-8 keypad mapping;
@@ -52,7 +53,7 @@ The Web host currently provides:
 - persistent Retro Green, Retro Amber, and Dark appearance themes;
 - theme-aware framebuffer presentation.
 
-Loading a valid ROM creates and initializes a fresh Classic CHIP-8 Web session and starts execution immediately.
+Loading a valid ROM creates and initializes a fresh Web session using the currently selected machine profile and starts execution immediately.
 
 ## Architecture
 
@@ -61,6 +62,7 @@ The Web application combines machine execution, passive inspection, and browser 
 ```mermaid
 flowchart TB
     ROM["ROM file"]
+    Profile["Profile selector"]
     Controls["Start/Pause · Step · Reset"]
     Loop["requestAnimationFrame"]
 
@@ -94,6 +96,7 @@ flowchart TB
     end
 
     ROM --> Session
+    Profile --> Session
     Controls --> Session
     Loop --> Runtime
 
@@ -164,6 +167,7 @@ The application retains the currently loaded machine in a small `WebMachineSessi
 interface WebMachineSession {
   readonly romName: string;
   readonly program: MemoryImage;
+  readonly profile: Chip8Profile;
 
   readonly context: ExecutionContext;
   readonly initializer: MachineInitializer;
@@ -187,8 +191,9 @@ This is Web application state, not a generic Core `Chip8Machine` abstraction.
 The browser retains only the collaborators it actually needs for application behavior:
 
 ```text
-ROM lifecycle
+ROM/profile lifecycle
     → program
+    → profile
     → context
     → initializer
 
@@ -264,9 +269,9 @@ which could otherwise occur if independent CPU snapshots were taken while execut
 The Web host currently inspects a bounded neighborhood around the actual program counter:
 
 ```text
-2 instructions before
+3 instructions before
 current instruction
-4 instructions after
+6 instructions after
 ```
 
 The window is application policy rather than part of Core or `@chip8nx/inspection`.
@@ -358,7 +363,7 @@ recent instruction history becomes empty
 
 Start, Pause, and Step do not clear history.
 
-Loading another ROM creates an entirely new `WebMachineSession`, so the replacement machine naturally receives a new trace buffer.
+Loading another ROM or recomposing the machine for another profile creates a new `WebMachineSession`, so the replacement machine naturally receives a new trace buffer. The host-level `RplFlags` store is intentionally separate and survives those replacements.
 
 These lifecycle decisions are Web application policy rather than responsibilities of Core or Inspection.
 
@@ -462,21 +467,39 @@ See [Machine state and capabilities](../architecture/machine-state-and-capabilit
 
 ## Display
 
-`CanvasDisplay` presents `DisplayBuffer`; it does not own CHIP-8 drawing semantics, framebuffer state, or vertical-blank timing.
+`CanvasDisplay` presents `DisplayBuffer`; it does not own CHIP-8 drawing semantics, framebuffer state, display-mode semantics, or vertical-blank timing.
 
-Each CHIP-8 framebuffer pixel maps to one Canvas backing-store pixel:
+The adapter renders the **physical backing framebuffer** exposed by `DisplayBuffer`:
 
 ```text
-DisplayBuffer
-     ↓
+DisplayBuffer backing pixels
+          ↓
 CanvasDisplay
-     ↓
+          ↓
 HTML Canvas bitmap
-     ↓
+          ↓
 CSS-scaled browser presentation
 ```
 
-CSS scales the Canvas for the responsive Web layout while the backing store remains aligned with the CHIP-8 framebuffer dimensions.
+For fixed Classic CHIP-8 and CHIP-48 displays, logical and backing geometry are both 64×32.
+
+SUPER-CHIP uses one shared 128×64 backing store for both display modes:
+
+```text
+SUPER-CHIP low
+    logical 64×32
+    backing 128×64
+
+SUPER-CHIP high
+    logical 128×64
+    backing 128×64
+```
+
+In low-resolution mode, Core represents one logical pixel as a 2×2 block in the backing framebuffer. `CanvasDisplay` does not reproduce that rule; it simply renders the resulting 128×64 backing pixels.
+
+This is important for mode switching and physical scrolling because the backing framebuffer is shared between low- and high-resolution modes.
+
+The Canvas backing-store dimensions are adjusted to `DisplayBuffer.backingWidth` and `DisplayBuffer.backingHeight` when necessary. CSS then scales that bitmap for the responsive Web layout.
 
 The host may render whenever convenient. Browser presentation cadence therefore does not alter emulated display timing.
 
@@ -617,6 +640,24 @@ The browser loop is therefore allowed to run at the browser's presentation caden
 
 See [Runtime and timing architecture](../architecture/runtime-and-timing.md).
 
+### SUPER-CHIP interpreter exit
+
+SUPER-CHIP interpreter-exit conditions mark Core's `ExitState` as exited. These include explicit `00FD`, historical invalid `00C0`, and `Fx1E` index overflow. They do **not** automatically pause `Chip8Runtime` or stop the browser host loop.
+
+Subsequent scheduled CPU attempts become no-ops because `Cpu.step()` checks `ExitState` before fetching another opcode. Timers, host-loop servicing, rendering, and browser lifecycle remain separate concerns.
+
+This preserves the distinction between:
+
+```text
+interpreter exited
+    machine execution state
+
+runtime paused
+    host/runtime lifecycle state
+```
+
+Reset reinitializes `ExitState`, allowing CPU execution to resume from the program start.
+
 ### Stale-frame protection
 
 `runHostLoop()` captures the `WebMachineSession` for which the loop was started.
@@ -750,13 +791,22 @@ stops host loop
 silences audio
 ```
 
-and then asks the retained `MachineInitializer` to initialize the existing `ExecutionContext` from the retained program image using the Classic CHIP-8 profile.
+and then asks the retained `MachineInitializer` to initialize the existing `ExecutionContext` from the retained program image using the session's retained `profile`.
 
 After successful initialization:
 
 ```text
-machine state
-    → program start
+ordinary resettable machine state
+    → profile-defined program start
+
+display
+    → cleared and restored to the profile's initial mode
+
+ExitState
+    → active again
+
+RplFlags
+    → preserved
 
 recent trace history
     → cleared
@@ -767,13 +817,83 @@ runtime
 
 Trace history is cleared only after successful initialization.
 
-Reset therefore creates a new execution epoch for the same loaded ROM without constructing a new browser session.
+SUPER-CHIP RPL flags are deliberately different from ordinary resettable state. The application owns one `RplFlags` instance above individual sessions, and `MachineInitializer` does not clear it. Reset therefore preserves `Fx75`/`Fx85` storage while resetting the normal machine execution state.
+
+Reset creates a new execution epoch for the same loaded ROM and profile without constructing a new browser session.
 
 See [Machine initialization architecture](../architecture/machine-initialization.md).
 
+## Machine profile selection
+
+The Web host exposes the built-in machine profiles through a browser selector:
+
+```text
+Classic CHIP-8
+CHIP-48
+SUPER-CHIP 1.1
+```
+
+The selected profile is used whenever a ROM is loaded. A loaded machine also retains its exact `Chip8Profile` in `WebMachineSession`, so Reset always reinitializes with the profile that actually created that session.
+
+### Recomposing a loaded machine
+
+Changing the profile while a ROM is loaded does not mutate the existing machine in place.
+
+Instead, the host composes a replacement session around the same immutable program image:
+
+```text
+current ROM image
+      +
+selected profile
+      ↓
+create replacement WebMachineSession
+      ↓
+composition succeeds?
+  ├── no  → keep current session
+  │         restore selector
+  │         report error
+  │
+  └── yes → stop old session
+            install replacement
+            preserve paused/running state
+```
+
+Constructing the replacement before disturbing the current session makes profile changes safer than ordinary ROM replacement: a composition failure leaves the working machine intact.
+
+The replacement receives profile-specific machine construction, including:
+
+- memory and stack characteristics;
+- display specification;
+- font capability and optional large font;
+- compatibility-controlled instruction execution;
+- timer and display refresh frequencies;
+- an inspection formatter appropriate to the selected profile.
+
+Classic uses `ClassicInstructionFormatter`. CHIP-48 and SUPER-CHIP currently use the CHIP-48-style formatter for compatibility-sensitive instruction presentation while sharing the common formatting support for SUPER-CHIP instructions.
+
+The Web host does not add a generic profile manager or variant hierarchy. The selector is application policy that chooses an existing `Chip8Profile` and then uses the same explicit composition path as normal ROM loading.
+
+### RPL lifetime across recomposition
+
+The application creates one `RplFlags` store outside `createMachine()`. Every newly composed session receives that same object.
+
+Therefore:
+
+```text
+Web application lifetime
+        │
+        └── RplFlags
+              ├── Classic session
+              ├── CHIP-48 session
+              ├── SUPER-CHIP session
+              └── later replacements
+```
+
+This models the longer-lived storage required by the targeted SUPER-CHIP behavior without making browser-local storage part of Core. Reloading the browser still creates a new application-level RPL store.
+
 ## Loading another ROM
 
-Loading a ROM establishes a new Web machine session.
+Loading a ROM establishes a new Web machine session using the profile currently selected in the toolbar.
 
 ROM replacement currently has **replace-first** semantics rather than transactional replacement.
 
@@ -787,27 +907,29 @@ Before reading and constructing the selected ROM, the host:
 6. releases the reference to the old `WebMachineSession`;
 7. clears the rendered inspection state and loaded-ROM label.
 
-It then reads the selected file and attempts to construct and initialize a fresh Classic CHIP-8 session.
+It then reads the selected file and attempts to construct and initialize a fresh session for the selected profile.
 
 If successful:
 
 ```text
-ROM file
-    ↓
-MemoryImage
-    ↓
-fresh WebMachineSession
-    ↓
-input adapters start
-    ↓
-runtime resumes
-    ↓
-machine is presented
-    ↓
-host loop starts
+ROM file + selected profile
+            ↓
+        MemoryImage
+            ↓
+    fresh WebMachineSession
+            ↓
+    input adapters start
+            ↓
+      runtime resumes
+            ↓
+    machine is presented
+            ↓
+      host loop starts
 ```
 
 Loading therefore starts a valid newly selected ROM automatically.
+
+Each replacement session receives fresh ordinary machine state and a fresh trace buffer, but the application-level `RplFlags` instance is reused. SUPER-CHIP RPL values can therefore survive ROM replacement during the current Web application lifetime.
 
 If loading or machine construction fails, the old machine is **not** restored. The Web host remains without an active machine and presents the error through the status area.
 
@@ -920,11 +1042,32 @@ The Web host then owns policies such as:
 - how many recent attempts to retain;
 - when inspection is rendered;
 - how ROM replacement behaves;
+- which machine profile is selected;
+- how profile recomposition preserves running/paused state;
+- how long host-owned RPL storage lives;
 - which browser inputs are active;
 - how execution controls are presented;
 - which appearance theme is selected.
 
 These policies do not need to become reusable abstractions merely because the Web application has them.
+
+### Profile selection remains composition policy
+
+Multiple supported profiles do not require Core to know which profile a browser user selected.
+
+The Web host resolves that user choice into an existing `Chip8Profile` and composes the appropriate collaborators around it. This keeps the boundary clear:
+
+```text
+profile selector
+    Web policy
+        ↓
+Chip8Profile
+    machine description
+        ↓
+explicit component composition
+```
+
+SUPER-CHIP also demonstrated that some host-owned state can intentionally outlive a machine session. The shared `RplFlags` instance is one narrow, evidence-driven example; it does not imply a generic persistent-state registry.
 
 ### Passive inspection remains passive
 
@@ -974,5 +1117,5 @@ See:
 - [Host composition evaluation](../architecture/composition-evaluation.md)
 - [Terminal composition levels](./terminal-composition-levels.md)
 - [Embedding the Core](./embedding-the-core.md)
-- [Tracing and observation](../architecture/tracing-and-observation.md)
-- [Disassembly and inspection](../architecture/disassembly-and-inspection.md)
+- [Tracing and observation](../architecture/tracing.md)
+- [Disassembly and inspection](../architecture/disassembly.md)

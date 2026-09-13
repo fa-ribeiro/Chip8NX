@@ -28,7 +28,10 @@ new MemoryImageLoader().load(memory, profile.programStartAddress, program);
 import { Decoder } from "@chip8nx/core";
 import { ClassicInstructionFormatter, Disassembler } from "@chip8nx/inspection";
 
-const disassembler = new Disassembler(new Decoder(), new ClassicInstructionFormatter());
+const disassembler = new Disassembler(
+  new Decoder(),
+  new ClassicInstructionFormatter(),
+);
 ```
 
 The roles are:
@@ -51,7 +54,11 @@ Disassembly does not mutate CPU or machine state.
 Use `disassemble()` when the caller already knows that a byte range contains instructions:
 
 ```ts
-const instructions = disassembler.disassemble(memory, profile.programStartAddress, 42);
+const instructions = disassembler.disassemble(
+  memory,
+  profile.programStartAddress,
+  42,
+);
 ```
 
 Each result contains:
@@ -111,7 +118,10 @@ console.log(entry.text);
 An inspection UI or future debugger can use current CPU state to choose the address:
 
 ```ts
-const currentInstruction = disassembler.disassembleAt(memory, cpu.snapshot().programCounter);
+const currentInstruction = disassembler.disassembleAt(
+  memory,
+  cpu.snapshot().programCounter,
+);
 ```
 
 The higher-level consumer owns that relationship. `Disassembler` remains independent of CPU state.
@@ -219,7 +229,11 @@ An odd byte length is valid:
 ```
 
 ```ts
-const instructions = disassembler.disassemble(memory, profile.programStartAddress, 5);
+const instructions = disassembler.disassemble(
+  memory,
+  profile.programStartAddress,
+  5,
+);
 
 // instructions.length === 2
 ```
@@ -261,7 +275,11 @@ Strict range disassembly is fail-fast:
 import { InvalidOpcodeError } from "@chip8nx/core";
 
 try {
-  const instructions = disassembler.disassemble(memory, startAddress, byteLength);
+  const instructions = disassembler.disassemble(
+    memory,
+    startAddress,
+    byteLength,
+  );
 
   // use instructions
 } catch (error) {

@@ -55,7 +55,8 @@ The profile model has since been exercised by more than one historical machine t
 Chip8NX currently provides built-in profiles for:
 
 - Classic CHIP-8;
-- CHIP-48 2.25.
+- CHIP-48 2.25;
+- SUPER-CHIP 1.1.
 
 `Chip8Profile` remains the complete declarative description of the machine being emulated. It now includes both architectural characteristics and compatibility-sensitive behavior.
 
@@ -67,9 +68,10 @@ Chip8Profile
     │   ├── memory size
     │   ├── program start address
     │   ├── stack capacity
-    │   ├── display geometry and refresh frequency
+    │   ├── display specification and refresh frequency
     │   ├── timer frequency
-    │   └── font image and placement
+    │   ├── small-font image and placement
+    │   └── optional large-font image and placement
     │
     └── compatibility
         ├── shift source
@@ -77,7 +79,11 @@ Chip8Profile
         ├── jump-offset source
         ├── logic-operation flag behavior
         ├── sprite overflow behavior
-        └── sprite draw timing
+        ├── sprite draw timing
+        ├── interpreter-exit availability
+        ├── RPL-flag availability
+        ├── index-overflow behavior
+        └── zero-row scroll-down behavior
 ```
 
 Compatibility is therefore one part of a profile, not another name for a profile.
@@ -121,7 +127,7 @@ Component implementations remain independently configurable.
 For example:
 
 ```ts
-new DisplayBuffer(width, height);
+new DisplayBuffer(specification, spriteOverflow);
 new Stack(capacity);
 new Ram(size);
 ```
@@ -142,7 +148,7 @@ The profile simply provides the values appropriate for one complete machine defi
 ### Negative
 
 - Some profile properties are conventional machine choices rather than universally intrinsic properties of all historical interpreters.
-- A future variant with richer modes may require profile fields to evolve.
+- Richer variants can require profile fields to evolve; SUPER-CHIP demonstrated this by replacing fixed display dimensions with a display specification and by adding optional large-font data.
 
 ## Alternatives Considered
 

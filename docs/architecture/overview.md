@@ -56,9 +56,10 @@ Chip8Profile
     │   ├── memory size
     │   ├── program start address
     │   ├── stack capacity
-    │   ├── display geometry and refresh frequency
+    │   ├── display specification and refresh frequency
     │   ├── timer frequency
-    │   └── font image and placement
+    │   ├── small font image and placement
+    │   └── optional large font image and placement
     │
     └── compatibility
         ├── shift source
@@ -66,13 +67,20 @@ Chip8Profile
         ├── jump-offset source
         ├── logic-operation flag behavior
         ├── sprite overflow behavior
-        └── sprite draw timing
+        ├── sprite draw timing behavior
+        ├── interpreter-exit availability
+        ├── RPL-flag availability
+        ├── index-overflow behavior
+        └── zero-row scroll-down behavior
 ```
 
-Chip8NX currently provides two built-in historical profiles:
+The display specification may describe either fixed geometry or a SUPER-CHIP display with one shared backing store and multiple logical modes. Sprite draw timing may likewise be uniform or depend on the active display mode. These are still declarative machine characteristics and semantic choices rather than host presentation policy.
+
+Chip8NX currently provides three built-in historical profiles:
 
 - `CLASSIC_CHIP8_PROFILE`;
-- `CHIP48_PROFILE`, representing CHIP-48 2.25.
+- `CHIP48_PROFILE`, representing CHIP-48 2.25;
+- `SUPERCHIP_PROFILE`, representing the project's documented historical SUPER-CHIP 1.1 target.
 
 Named historical profiles are coherent presets derived from the behavior of their target interpreters. The same `Chip8Profile` type may also represent deliberate custom combinations when a host or test needs them.
 
@@ -110,7 +118,7 @@ flowchart LR
     Executor -->|"read / mutate"| Context
 ```
 
-`Cpu` owns the sequencing of a single instruction attempt. It fetches the two opcode bytes from memory, advances the program counter, decodes the opcode into a typed `Instruction`, and delegates execution to `InstructionExecutor`.
+`Cpu` owns the sequencing of a single instruction attempt. Before fetching, it first checks `ExitState`; an exited interpreter performs no further CPU work until machine initialization resets that state. Otherwise, the CPU fetches the two opcode bytes from memory, advances the program counter, decodes the opcode into a typed `Instruction`, and delegates execution to `InstructionExecutor`.
 
 The typed `Instruction` is the central boundary between encoded representation and instruction semantics.
 
@@ -118,13 +126,17 @@ The typed `Instruction` is the central boundary between encoded representation a
 
 Control-flow instructions override the already-advanced program counter when required. Retry-style instructions such as Classic `Fx0A` and vblank-gated `Dxyn` restore the current instruction address so the same instruction can be attempted again later.
 
+SUPER-CHIP interpreter-exit conditions use `ExitState` rather than exceptions or runtime pause. This includes explicit `00FD`, historical invalid `00C0`, and `Fx1E` index overflow. Once one of those conditions marks the interpreter exited, subsequent `Cpu.step()` calls return before fetch, so no additional instruction attempt or trace is produced until initialization resets the exit state.
+
 This diagram intentionally omits initialization, scheduling, timers, and observation. Those concerns have different lifecycles and are described separately below.
 
 See [Instruction execution architecture](./instruction-execution.md) for the detailed fetch/decode/execute model, typed instruction representation, execution semantics, invariant ownership, and verification strategy.
 
 ## Machine state and capabilities
 
-Core keeps persistent state in focused components such as `Registers`, `Memory`, `Stack`, `ProgramCounter`, `IndexRegister`, `Timer`, `DisplayBuffer`, and `VerticalBlank`.
+Core keeps persistent state in focused components such as `Registers`, `Memory`, `Stack`, `ProgramCounter`, `IndexRegister`, `Timer`, `DisplayBuffer`, `VerticalBlank`, `ExitState`, and `RplFlags`.
+
+`DisplayBuffer` owns both framebuffer contents and the current logical display mode when the selected display specification supports multiple modes. `ExitState` records whether an interpreter-level exit condition has ended execution. `RplFlags` models the eight SUPER-CHIP user flags and deliberately has a longer lifecycle than ordinary resettable machine state.
 
 Roles whose implementations genuinely vary are exposed through capability boundaries such as `Keyboard`, `RandomNumberGenerator`, `Font`, and `Memory`.
 
@@ -138,13 +150,14 @@ new Stack(profile.stackCapacity);
 new ProgramCounter(profile.programStartAddress);
 
 new DisplayBuffer(
-  profile.display.width,
-  profile.display.height,
+  profile.display.specification,
   profile.compatibility.spriteOverflow,
 );
 
 new InstructionExecutor(profile.compatibility);
 ```
+
+Most components grouped by `ExecutionContext` belong to one machine initialization lifecycle. `RplFlags` is the deliberate exception: SUPER-CHIP treats those eight user flags as persistent storage, so `MachineInitializer` does not reset them. The composition root therefore decides how long the store lives and may share it across machine-session replacement.
 
 See [Machine state and capabilities architecture](./machine-state-and-capabilities.md) for focused invariant ownership, snapshot-based state observation, capability substitution, profiles and runtime configuration, reset semantics, and lifecycle ownership.
 
@@ -204,15 +217,14 @@ flowchart LR
 
 Instruction presentation is delegated to `InstructionFormatter`.
 
-Inspection currently provides profile-specific formatters for the two built-in historical targets:
+Inspection currently provides two reusable formatter implementations:
 
-- `ClassicInstructionFormatter` presents Classic CHIP-8 instruction semantics;
-- `Chip48InstructionFormatter` presents CHIP-48 semantics where the textual representation differs, while delegating unchanged instructions to the Classic formatter.
+- `ClassicInstructionFormatter` presents Classic CHIP-8 instruction semantics and the shared textual forms used by the extended instruction model;
+- `Chip48InstructionFormatter` presents CHIP-48-style semantics where the textual representation differs, while delegating unchanged instructions to the Classic formatter.
 
-This distinction matters for instructions such as `Bnnn` and `8xy6` / `8xyE`, whose decoded operands are shared but whose historical interpretation differs between Classic CHIP-8 and CHIP-48.
+This distinction matters for instructions such as `Bnnn` and `8xy6` / `8xyE`, whose decoded operands are shared but whose historical interpretation differs between Classic CHIP-8 and CHIP-48-style profiles. The Web host currently reuses `Chip48InstructionFormatter` for SUPER-CHIP because the targeted SUPER-CHIP profile inherits those CHIP-48-style interpretations while its additional opcodes use the shared formatter forms.
 
-Formatter selection remains a composition concern. Inspection does not inspect a global machine profile or choose a formatter implicitly.
-Disassembly is strict over the requested range: invalid complete opcodes remain decoding errors. Policies such as treating unknown bytes as data and continuing through a whole ROM belong to the consuming application rather than the reusable disassembler.
+Formatter selection remains a composition concern. Inspection does not inspect a global machine profile or choose a formatter implicitly. Disassembly is strict over the requested range: invalid complete opcodes remain decoding errors. Policies such as treating unknown bytes as data and continuing through a whole ROM belong to the consuming application rather than the reusable disassembler.
 
 See [Disassembly architecture](./disassembly.md) for the detailed component boundaries, composition model, range semantics, and extension strategy.
 
@@ -266,7 +278,9 @@ reset machine state
 install font + program
 ```
 
-Known layout errors are rejected before mutation begins.
+Known layout errors are rejected before mutation begins. The initializer validates the small font, optional large font, and program image as non-empty, in-bounds, non-overlapping memory ranges before resetting or loading state.
+
+Initialization resets ordinary machine state, including display state and `ExitState`, and restores the profile-defined initial display mode where applicable. It deliberately does **not** reset `RplFlags`; those flags model persistent SUPER-CHIP storage whose lifetime is owned by the host composition rather than by one initialization cycle.
 
 Initialization does not construct components, perform host I/O, control runtime pause/resume, or provide general rollback after mutation has started.
 
@@ -339,12 +353,13 @@ flowchart LR
     Desktop["Desktop renderer"]
     Tests["Tests / inspection"]
 
+    Profile -->|"display specification"| Buffer
     Profile -->|"display frequency"| Runtime
-    Profile -->|"draw timing"| Cpu
+    Profile -->|"draw timing behavior"| Cpu
     Profile -->|"sprite overflow"| Buffer
 
     Runtime -->|"display frame"| VBlank
-    VBlank -.->|"consumed when profile requires it"| Cpu
+    VBlank -.->|"consumed when profile and mode require it"| Cpu
     Cpu --> Buffer
 
     Buffer -.-> Terminal
@@ -355,7 +370,39 @@ flowchart LR
 
 A renderer observes the buffer and presents it using host-specific technology.
 
-Whether `Dxyn` must consume a vertical-blank opportunity is an instruction-semantics choice supplied by the active profile. Profiles using immediate drawing do not consult or consume `VerticalBlank`.
+### Logical geometry and backing geometry
+
+Fixed Classic CHIP-8 and CHIP-48 displays have identical logical and backing dimensions. SUPER-CHIP demonstrates why those concepts must be distinct:
+
+```text
+                         logical          backing
+Classic CHIP-8           64 × 32          64 × 32
+CHIP-48                  64 × 32          64 × 32
+SUPER-CHIP low           64 × 32         128 × 64
+SUPER-CHIP high         128 × 64         128 × 64
+```
+
+SUPER-CHIP therefore uses one shared 128×64 backing framebuffer. In low-resolution mode, one logical pixel maps to a 2×2 region of that backing store. In high-resolution mode, logical and backing coordinates correspond one-to-one.
+
+The current display mode is mutable machine state owned by `DisplayBuffer`. `00FE` and `00FF` change that mode without implicitly clearing the shared backing store. `00E0` clears pixels while retaining the active mode. SUPER-CHIP scrolling instructions operate in physical backing-buffer units, so scrolling remains well-defined independently of the logical mode.
+
+Raw framebuffer access is expressed in backing coordinates. That keeps host presentation independent of SUPER-CHIP's logical scaling rules: the Web `CanvasDisplay`, for example, renders the complete backing store rather than reinterpreting low-resolution pixels itself.
+
+### Draw timing and collision semantics
+
+Whether `Dxyn` must consume a vertical-blank opportunity is an instruction-semantics choice supplied by the active profile. A uniform profile may always wait or always draw immediately; SUPER-CHIP uses display-mode-dependent timing:
+
+```text
+SUPER-CHIP low
+    → vertical-blank gated
+
+SUPER-CHIP high
+    → immediate
+```
+
+Immediate drawing does not consult or consume a pending `VerticalBlank`. The scheduler remains profile-agnostic: it only produces display opportunities at the configured refresh frequency, while instruction execution decides whether the active profile and display mode require one.
+
+SUPER-CHIP also gives `Dxy0` mode-sensitive sprite dimensions: low resolution consumes 16 bytes as an 8×16 logical sprite, while high resolution consumes 32 bytes as a 16×16 sprite. Low-resolution `VF` retains boolean collision semantics. High-resolution `VF` reports affected rows: collision rows plus sprite rows clipped below the bottom of the display.
 
 Likewise, `DisplayBuffer` owns the selected sprite-overflow behavior without knowing which historical profile selected it.
 
@@ -418,13 +465,15 @@ Current applications illustrate different composition needs:
 
 - the Terminal host composes Core with selected Inspection formatting tools for optional trace output;
 - the disassembler application composes Core decoding and memory semantics with Inspection disassembly and instruction formatting;
-- the Web host composes Core execution and CPU observation with Inspection disassembly, bounded trace history, and profile-appropriate formatting to provide live CPU state, nearby instructions, and recent instruction-attempt presentation. It currently allows the user to choose between Classic CHIP-8 and CHIP-48 2.25.
+- the Web host composes Core execution and CPU observation with Inspection disassembly, bounded trace history, and profile-appropriate formatting to provide live CPU state, nearby instructions, and recent instruction-attempt presentation. It currently allows the user to choose between Classic CHIP-8, CHIP-48 2.25, and SUPER-CHIP 1.1.
 
 The Web host remains responsible for the policy around that composition. It chooses the active machine profile, corresponding instruction formatter, nearby-disassembly window, trace-history capacity, refresh cadence, DOM presentation, and lifecycle behavior without moving those concerns into either reusable package.
 
-Changing the selected profile while a ROM is loaded creates a fresh Web machine session from the retained ROM image. The new session receives the selected profile consistently across initialization, execution, display behavior, runtime timing, and inspection formatting. Whether the previous session was running or paused is preserved as host lifecycle policy.
+Changing the selected profile while a ROM is loaded creates a fresh Web machine session from the retained ROM image. The new session receives the selected profile consistently across initialization, execution, display behavior, runtime timing, font composition, and inspection formatting. Whether the previous session was running or paused is preserved as host lifecycle policy.
 
-Reset is different from profile replacement: it reinitializes the existing machine using the profile already retained by that session.
+Some state intentionally lives above one Web machine session. The Web host owns one `RplFlags` instance for its application lifetime and injects that same store into replacement sessions, so SUPER-CHIP RPL contents survive reset, ROM replacement, and profile recomposition during the current page lifetime. Browser-reload persistence is not currently part of the Core or Web contract.
+
+Reset is different from profile replacement: it reinitializes the existing machine using the profile already retained by that session. Reset restores ordinary machine state and clears interpreter exit, while persistent RPL storage is preserved.
 
 Applications remain responsible for host-specific concerns such as rendering, audio presentation, physical input mapping, filesystem access, DOM or terminal interaction, and lifecycle integration.
 

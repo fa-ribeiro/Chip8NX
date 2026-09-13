@@ -9,6 +9,8 @@ import type { VerticalBlank } from "../display/vertical-blank.ts";
 import type { Keyboard } from "../keyboard/keyboard.ts";
 import type { Font } from "../font/font.ts";
 import type { RandomNumberGenerator } from "../random/random-number-generator.ts";
+import type { ExitState } from "../machine/exit-state.ts";
+import type { RplFlags } from "../machine/rpl-flags.ts";
 
 export interface ExecutionContext {
   readonly registers: Registers;
@@ -23,4 +25,6 @@ export interface ExecutionContext {
   readonly keyboard: Keyboard;
   readonly font: Font;
   readonly randomNumberGenerator: RandomNumberGenerator;
+  readonly rplFlags: RplFlags;
+  readonly exitState: ExitState;
 }

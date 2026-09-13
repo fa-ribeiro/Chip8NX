@@ -1,11 +1,14 @@
 import { assertEquals } from "@std/assert";
 
-import { address } from "../../src/core/types/address.ts";
-import { byte } from "../../src/core/types/byte.ts";
-import { Ram } from "../../src/memory/ram.ts";
-import { MemoryImageLoader } from "../../src/memory/memory-image-loader.ts";
-import { CLASSIC_FONT_GLYPH_SIZE, ClassicFont } from "../../src/font/classic-font.ts";
-import { CLASSIC_FONT_IMAGE } from "../../src/font/classic-font-image.ts";
+import {
+  address,
+  byte,
+  CLASSIC_FONT_GLYPH_SIZE,
+  CLASSIC_FONT_IMAGE,
+  ClassicFont,
+  MemoryImageLoader,
+  Ram,
+} from "../../mod.ts";
 
 Deno.test("ClassicFont sprite addresses point to the loaded font image", () => {
   const memory = new Ram(0x1000);
@@ -16,7 +19,7 @@ Deno.test("ClassicFont sprite addresses point to the loaded font image", () => {
 
   loader.load(memory, fontBaseAddress, CLASSIC_FONT_IMAGE);
 
-  const spriteAddress = font.getSpriteAddress(byte(0x0b));
+  const spriteAddress = font.getSpriteAddress(byte(0x0b), "small");
 
   assertEquals(spriteAddress, address(fontBaseAddress + 0x0b * CLASSIC_FONT_GLYPH_SIZE));
 

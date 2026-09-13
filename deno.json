@@ -18,6 +18,8 @@
     "fmt": "deno fmt",
     "lint": "deno lint",
 
+    "validate": "prettier --print-width 96 --write ./packages ./apps && deno task fmt && deno task lint && deno task check && deno task test && deno task test:conformance && deno task web:build",
+
     "docs:build": "deno doc --html --name='Chip8NX' --output=build/docs/api packages/core/mod.ts packages/inspection/mod.ts",
     "docs:check": "deno doc --lint packages/core/mod.ts packages/inspection/mod.ts",
 

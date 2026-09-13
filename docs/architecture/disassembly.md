@@ -142,9 +142,9 @@ Formatting policy is therefore independent from decoding semantics. A formatter 
 
 Different textual conventions can be introduced without changing Core execution or opcode interpretation.
 
-### `ClassicInstructionFormatter`
+### Built-in instruction formatters
 
-`ClassicInstructionFormatter` is the current Classic CHIP-8 implementation.
+`ClassicInstructionFormatter` provides the conventional Classic CHIP-8 representation. `Chip48InstructionFormatter` provides the demonstrated CHIP-48-style presentation differences, including compatibility-sensitive forms such as offset jumps and shifts.
 
 It produces conventional uppercase assembly such as:
 
@@ -156,7 +156,7 @@ DRW V0, V1, 0x5
 JP 0x200
 ```
 
-Applications or future inspection consumers may provide another formatter without changing traversal or decoding behavior.
+The Web host selects `ClassicInstructionFormatter` for Classic CHIP-8 and `Chip48InstructionFormatter` for CHIP-48 and the current SUPER-CHIP profile. Applications or future inspection consumers may provide another formatter without changing traversal or decoding behavior.
 
 ### `Disassembler`
 
@@ -224,7 +224,10 @@ Applications may also depend directly on Core where they need machine or decodin
 For example:
 
 ```ts
-const disassembler = new Disassembler(new Decoder(), new ClassicInstructionFormatter());
+const disassembler = new Disassembler(
+  new Decoder(),
+  new ClassicInstructionFormatter(),
+);
 ```
 
 The two collaborators intentionally use different forms of coupling:

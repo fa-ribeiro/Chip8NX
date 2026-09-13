@@ -12,7 +12,7 @@ Deno.test("CanvasDisplay renders CHIP-8 pixels into the canvas backing store", (
 
   const display = new CanvasDisplay(canvas as unknown as HTMLCanvasElement, TEST_PALETTE);
 
-  const buffer = new DisplayBuffer(2, 2, "clip");
+  const buffer = new DisplayBuffer({ kind: "fixed", width: 2, height: 2 }, "clip");
 
   buffer.setPixel(0, 0, true);
   buffer.setPixel(1, 1, true);
@@ -57,7 +57,7 @@ Deno.test("CanvasDisplay uses an updated palette on future renders", () => {
     foreground: "#ffb347",
   });
 
-  const buffer = new DisplayBuffer(1, 1, "clip");
+  const buffer = new DisplayBuffer({ kind: "fixed", width: 1, height: 1 }, "clip");
   buffer.setPixel(0, 0, true);
 
   display.render(buffer);
@@ -132,3 +132,46 @@ class RecordingContext {
     });
   }
 }
+
+Deno.test(
+  "CanvasDisplay renders the full SUPER-CHIP backing store in low-resolution mode",
+  () => {
+    const canvas = new RecordingCanvas();
+
+    const display = new CanvasDisplay(canvas as unknown as HTMLCanvasElement, TEST_PALETTE);
+
+    const buffer = new DisplayBuffer(
+      {
+        kind: "superchip",
+        backingWidth: 128,
+        backingHeight: 64,
+        initialMode: "low",
+      },
+      "clip",
+    );
+
+    buffer.setPixel(100, 40, true);
+
+    display.render(buffer);
+
+    assertEquals(canvas.width, 128);
+    assertEquals(canvas.height, 64);
+
+    assertEquals(canvas.context.calls, [
+      {
+        fillStyle: "#112233",
+        x: 0,
+        y: 0,
+        width: 128,
+        height: 64,
+      },
+      {
+        fillStyle: "#aabbcc",
+        x: 100,
+        y: 40,
+        width: 1,
+        height: 1,
+      },
+    ]);
+  },
+);

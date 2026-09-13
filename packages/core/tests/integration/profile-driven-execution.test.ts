@@ -1,6 +1,7 @@
 import { assertEquals } from "@std/assert";
 
 import {
+  address,
   byte,
   CHIP48_PROFILE,
   type Chip8Profile,
@@ -11,6 +12,7 @@ import {
   DefaultRandomNumberGenerator,
   DisplayBuffer,
   type ExecutionContext,
+  ExitState,
   IndexRegister,
   InstructionExecutor,
   KeyboardState,
@@ -21,7 +23,10 @@ import {
   Ram,
   registerIndex,
   Registers,
+  RplFlags,
   Stack,
+  SUPERCHIP_PROFILE,
+  SuperChipFont,
   Timer,
   VerticalBlank,
 } from "../../mod.ts";
@@ -41,14 +46,17 @@ function createMachine(profile: Chip8Profile): TestMachine {
     soundTimer: new Timer(),
     delayTimer: new Timer(),
     displayBuffer: new DisplayBuffer(
-      profile.display.width,
-      profile.display.height,
+      profile.display.specification,
       profile.compatibility.spriteOverflow,
     ),
     verticalBlank: new VerticalBlank(),
     keyboard: new KeyboardState(),
-    font: new ClassicFont(profile.fontBaseAddress),
+    font: profile.largeFont === null
+      ? new ClassicFont(profile.fontBaseAddress)
+      : new SuperChipFont(profile.fontBaseAddress, profile.largeFont.baseAddress),
     randomNumberGenerator: new DefaultRandomNumberGenerator(),
+    rplFlags: new RplFlags(),
+    exitState: new ExitState(),
   };
 
   /*
@@ -86,4 +94,42 @@ Deno.test("machine composition applies profile-specific shift semantics", () => 
 
   assertEquals(chip48.context.registers.get(registerIndex(0xa)), byte(0x41));
   assertEquals(chip48.context.registers.get(registerIndex(0xf)), byte(1));
+});
+
+Deno.test("public API composes SUPER-CHIP display, large font, and exit semantics", () => {
+  const machine = createMachine(SUPERCHIP_PROFILE);
+
+  const program = new MemoryImage([
+    0x00,
+    0xff, // HIGH
+    0x60,
+    0x03, // LD V0, 0x03
+    0xf0,
+    0x30, // LD HF, V0
+    0x00,
+    0xfd, // EXIT
+  ]);
+
+  const initializer = new MachineInitializer(new MemoryImageLoader());
+  initializer.initialize(machine.context, SUPERCHIP_PROFILE, program);
+
+  for (let step = 0; step < 4; step++) {
+    machine.cpu.step();
+  }
+
+  assertEquals(machine.context.displayBuffer.mode, "high");
+  assertEquals(machine.context.displayBuffer.width, 128);
+  assertEquals(machine.context.displayBuffer.height, 64);
+  const largeFont = SUPERCHIP_PROFILE.largeFont;
+
+  if (largeFont === null) {
+    throw new Error("SUPER-CHIP profile must provide a large font.");
+  }
+
+  assertEquals(machine.context.indexRegister.getValue(), address(largeFont.baseAddress + 30));
+  assertEquals(machine.context.exitState.isExited, true);
+
+  const exitedProgramCounter = machine.context.programCounter.getValue();
+  machine.cpu.step();
+  assertEquals(machine.context.programCounter.getValue(), exitedProgramCounter);
 });

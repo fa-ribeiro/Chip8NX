@@ -7,6 +7,7 @@ import {
   DefaultRandomNumberGenerator,
   DisplayBuffer,
   type ExecutionContext,
+  ExitState,
   Frequency,
   IndexRegister,
   InstructionExecutor,
@@ -18,6 +19,7 @@ import {
   ProgramCounter,
   Ram,
   Registers,
+  RplFlags,
   Scheduler,
   Stack,
   Timer,
@@ -50,8 +52,7 @@ export async function createExampleMachine(romPath: string): Promise<ExampleMach
   const keyboard = new KeyboardState();
 
   const displayBuffer = new DisplayBuffer(
-    profile.display.width,
-    profile.display.height,
+    profile.display.specification,
     profile.compatibility.spriteOverflow,
   );
 
@@ -68,6 +69,8 @@ export async function createExampleMachine(romPath: string): Promise<ExampleMach
     keyboard,
     font: new ClassicFont(profile.fontBaseAddress),
     randomNumberGenerator: new DefaultRandomNumberGenerator(),
+    rplFlags: new RplFlags(),
+    exitState: new ExitState(),
   };
 
   const initializer = new MachineInitializer(new MemoryImageLoader());

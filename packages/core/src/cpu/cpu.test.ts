@@ -22,8 +22,11 @@ import { Registers } from "./registers/registers.ts";
 import { Stack } from "./stack/stack.ts";
 import type { InstructionTrace } from "../cpu/observation/instruction-trace.ts";
 import type { InstructionTraceObserver } from "../cpu/observation/instruction-trace-observer.ts";
+import { RplFlags } from "../machine/rpl-flags.ts";
+import { ExitState } from "../machine/exit-state.ts";
 
 import { CLASSIC_CHIP8_PROFILE } from "../machine/classic/classic-chip8-profile.ts";
+import { SUPERCHIP_PROFILE } from "../machine/superchip/superchip-profile.ts";
 
 function createContext(overrides: Partial<ExecutionContext> = {}): ExecutionContext {
   const profile = CLASSIC_CHIP8_PROFILE;
@@ -36,12 +39,14 @@ function createContext(overrides: Partial<ExecutionContext> = {}): ExecutionCont
     indexRegister: new IndexRegister(),
     soundTimer: new Timer(),
     delayTimer: new Timer(),
-    displayBuffer: new DisplayBuffer(profile.display.width, profile.display.height, "clip"),
+    displayBuffer: new DisplayBuffer(profile.display.specification, "clip"),
     verticalBlank: new VerticalBlank(),
     keyboard: new KeyboardState(),
     font: new ClassicFont(profile.fontBaseAddress),
     randomNumberGenerator: new TestRandomNumberGenerator([byte(0)]),
     ...overrides,
+    exitState: overrides.exitState ?? new ExitState(),
+    rplFlags: overrides.rplFlags ?? new RplFlags(),
   };
 }
 
@@ -394,4 +399,60 @@ Deno.test("CPU preserves the original failure when the trace observer throws", (
   }
 
   assertStrictEquals(thrown, observedTrace.error);
+});
+
+Deno.test("CPU does not execute instructions after interpreter exit", () => {
+  const context = createContext();
+
+  context.programCounter.setValue(address(0x200));
+
+  // A valid instruction that would advance PC to 0x202 if executed.
+  context.memory.write(address(0x200), byte(0x60));
+  context.memory.write(address(0x201), byte(0x42));
+
+  const decoder = new Decoder();
+  const executor = new InstructionExecutor(CLASSIC_CHIP8_PROFILE.compatibility);
+  const cpu = new Cpu(context, decoder, executor);
+
+  context.exitState.exit();
+
+  assertEquals(context.exitState.isExited, true);
+
+  cpu.step();
+
+  // No instruction was fetched/executed, therefore PC did not advance.
+  assertEquals(context.programCounter.getValue(), address(0x200));
+
+  // LD V0, 0x42 was not executed either.
+  assertEquals(context.registers.get(registerIndex(0)), byte(0x00));
+});
+
+Deno.test("CPU stops executing after 00FD exits the interpreter", () => {
+  const context = createContext();
+
+  context.programCounter.setValue(address(0x200));
+
+  // 00FD — EXIT
+  context.memory.write(address(0x200), byte(0x00));
+  context.memory.write(address(0x201), byte(0xfd));
+
+  // 6042 — LD V0, 0x42
+  context.memory.write(address(0x202), byte(0x60));
+  context.memory.write(address(0x203), byte(0x42));
+
+  const decoder = new Decoder();
+  const executor = new InstructionExecutor(SUPERCHIP_PROFILE.compatibility);
+  const cpu = new Cpu(context, decoder, executor);
+
+  cpu.step();
+
+  assertEquals(context.exitState.isExited, true);
+
+  assertEquals(context.programCounter.getValue(), address(0x202));
+
+  cpu.step();
+
+  assertEquals(context.programCounter.getValue(), address(0x202));
+
+  assertEquals(context.registers.get(registerIndex(0)), byte(0x00));
 });

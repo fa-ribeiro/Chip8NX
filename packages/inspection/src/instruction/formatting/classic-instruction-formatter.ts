@@ -21,6 +21,36 @@ export class ClassicInstructionFormatter implements InstructionFormatter {
       case "clear-screen":
         return "CLS";
 
+      case "set-display-mode":
+        switch (instruction.mode) {
+          case "low":
+            return "LOW";
+
+          case "high":
+            return "HIGH";
+
+          default:
+            return assertNever(instruction.mode);
+        }
+
+      case "scroll-display-down":
+        return `SCD ${instruction.rows.toString(16).toUpperCase()}`;
+
+      case "scroll-display-horizontal":
+        switch (instruction.direction) {
+          case "right":
+            return "SCR";
+
+          case "left":
+            return "SCL";
+
+          default:
+            return assertNever(instruction.direction);
+        }
+
+      case "exit-interpreter":
+        return "EXIT";
+
       case "return":
         return "RET";
 
@@ -122,6 +152,9 @@ export class ClassicInstructionFormatter implements InstructionFormatter {
       case "set-index-to-sprite":
         return `LD F, ${this.formatRegister(instruction.register)}`;
 
+      case "set-index-to-large-sprite":
+        return `LD HF, ${this.formatRegister(instruction.register)}`;
+
       case "store-bcd":
         return `LD B, ${this.formatRegister(instruction.register)}`;
 
@@ -130,6 +163,12 @@ export class ClassicInstructionFormatter implements InstructionFormatter {
 
       case "load-registers":
         return `LD ${this.formatRegister(instruction.register)}, [I]`;
+
+      case "store-rpl-flags":
+        return `LD R, ${this.formatRegister(instruction.register)}`;
+
+      case "load-rpl-flags":
+        return `LD ${this.formatRegister(instruction.register)}, R`;
 
       default:
         return assertNever(instruction);

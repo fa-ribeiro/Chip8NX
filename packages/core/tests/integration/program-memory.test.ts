@@ -1,26 +1,31 @@
 import { assertEquals } from "@std/assert";
 
-import { address } from "../../src/core/types/address.ts";
-import { byte } from "../../src/core/types/byte.ts";
-import { DisplayBuffer } from "../../src/display/display-buffer.ts";
-import { VerticalBlank } from "../../src/display/vertical-blank.ts";
-import { ClassicFont } from "../../src/font/classic-font.ts";
-import { Decoder } from "../../src/instruction/decoder.ts";
-import { KeyboardState } from "../../src/keyboard/keyboard-state.ts";
-import { MemoryImage } from "../../src/memory/memory-image.ts";
-import { MemoryImageLoader } from "../../src/memory/memory-image-loader.ts";
-import { Ram } from "../../src/memory/ram.ts";
+import {
+  address,
+  byte,
+  CLASSIC_CHIP8_PROFILE,
+  ClassicFont,
+  Cpu,
+  Decoder,
+  DisplayBuffer,
+  type ExecutionContext,
+  ExitState,
+  IndexRegister,
+  InstructionExecutor,
+  KeyboardState,
+  MemoryImage,
+  MemoryImageLoader,
+  ProgramCounter,
+  Ram,
+  registerIndex,
+  Registers,
+  RplFlags,
+  Stack,
+  Timer,
+  VerticalBlank,
+} from "../../mod.ts";
+
 import { TestRandomNumberGenerator } from "../../src/random/test-random-number-generator.ts";
-import { Timer } from "../../src/timer/timer.ts";
-import { Cpu } from "../../src/cpu/cpu.ts";
-import type { ExecutionContext } from "../../src/cpu/execution-context.ts";
-import { IndexRegister } from "../../src/cpu/index-register/index-register.ts";
-import { InstructionExecutor } from "../../src/cpu/instruction-executor.ts";
-import { ProgramCounter } from "../../src/cpu/program-counter/program-counter.ts";
-import { registerIndex } from "../../src/cpu/registers/register-index.ts";
-import { Registers } from "../../src/cpu/registers/registers.ts";
-import { Stack } from "../../src/cpu/stack/stack.ts";
-import { CLASSIC_CHIP8_PROFILE } from "../../src/machine/classic/classic-chip8-profile.ts";
 
 Deno.test("CPU executes a program loaded into memory from a MemoryImage", () => {
   const profile = CLASSIC_CHIP8_PROFILE;
@@ -48,11 +53,13 @@ Deno.test("CPU executes a program loaded into memory from a MemoryImage", () => 
     indexRegister: new IndexRegister(),
     soundTimer: new Timer(),
     delayTimer: new Timer(),
-    displayBuffer: new DisplayBuffer(profile.display.width, profile.display.height, "clip"),
+    displayBuffer: new DisplayBuffer(profile.display.specification, "clip"),
     verticalBlank: new VerticalBlank(),
     keyboard: new KeyboardState(),
     font: new ClassicFont(profile.fontBaseAddress),
     randomNumberGenerator: new TestRandomNumberGenerator([byte(0)]),
+    rplFlags: new RplFlags(),
+    exitState: new ExitState(),
   };
 
   const cpu = new Cpu(context, new Decoder(), new InstructionExecutor(profile.compatibility));

@@ -2,10 +2,42 @@ import type { Address } from "../core/types/address.ts";
 import type { Byte } from "../core/types/byte.ts";
 import type { Opcode } from "../core/types/opcode.ts";
 import type { RegisterIndex } from "../cpu/registers/register-index.ts";
+import type { DisplayMode } from "../display/display-specification.ts";
 
 export interface ClearScreenInstruction {
   readonly kind: "clear-screen";
   readonly opcode: Opcode;
+}
+
+/**
+ * Represents a SUPER-CHIP display-mode selection instruction.
+ *
+ * The instruction changes the logical interpretation of the shared backing
+ * framebuffer without clearing or transforming its pixels.
+ */
+export interface SetDisplayModeInstruction {
+  readonly kind: "set-display-mode";
+  readonly opcode: Opcode;
+  readonly mode: DisplayMode;
+}
+
+/**
+ * Scrolls the SUPER-CHIP backing framebuffer downward.
+ */
+export interface ScrollDisplayDownInstruction {
+  readonly kind: "scroll-display-down";
+  readonly opcode: Opcode;
+  readonly rows: number;
+}
+
+/**
+ * Scrolls the SUPER-CHIP backing framebuffer horizontally.
+ */
+export interface ScrollDisplayHorizontalInstruction {
+  readonly kind: "scroll-display-horizontal";
+  readonly opcode: Opcode;
+  readonly direction: "left" | "right";
+  readonly columns: number;
 }
 
 export interface ReturnInstruction {
@@ -184,6 +216,12 @@ export interface SetIndexToSpriteInstruction {
   readonly register: RegisterIndex;
 }
 
+export interface SetIndexToLargeSpriteInstruction {
+  readonly kind: "set-index-to-large-sprite";
+  readonly opcode: Opcode;
+  readonly register: RegisterIndex;
+}
+
 export interface StoreBcdInstruction {
   readonly kind: "store-bcd";
   readonly opcode: Opcode;
@@ -202,8 +240,28 @@ export interface LoadRegistersInstruction {
   readonly register: RegisterIndex;
 }
 
+export interface StoreRplFlagsInstruction {
+  readonly kind: "store-rpl-flags";
+  readonly opcode: Opcode;
+  readonly register: RegisterIndex;
+}
+
+export interface LoadRplFlagsInstruction {
+  readonly kind: "load-rpl-flags";
+  readonly opcode: Opcode;
+  readonly register: RegisterIndex;
+}
+
+export interface ExitInterpreterInstruction {
+  readonly kind: "exit-interpreter";
+  readonly opcode: Opcode;
+}
+
 export type Instruction =
   | ClearScreenInstruction
+  | SetDisplayModeInstruction
+  | ScrollDisplayDownInstruction
+  | ScrollDisplayHorizontalInstruction
   | ReturnInstruction
   | SystemCallInstruction
   | JumpInstruction
@@ -227,6 +285,10 @@ export type Instruction =
   | SetSoundTimerInstruction
   | AddToIndexInstruction
   | SetIndexToSpriteInstruction
+  | SetIndexToLargeSpriteInstruction
   | StoreBcdInstruction
   | StoreRegistersInstruction
-  | LoadRegistersInstruction;
+  | LoadRegistersInstruction
+  | StoreRplFlagsInstruction
+  | LoadRplFlagsInstruction
+  | ExitInterpreterInstruction;

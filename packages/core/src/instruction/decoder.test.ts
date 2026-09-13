@@ -8,10 +8,67 @@ import { Decoder, InvalidOpcodeError } from "./decoder.ts";
 
 const decoder = new Decoder();
 
+Deno.test("decodes 00C0 as scroll down zero rows", () => {
+  assertEquals(decoder.decode(opcode(0x00c0)), {
+    kind: "scroll-display-down",
+    opcode: opcode(0x00c0),
+    rows: 0,
+  });
+});
+
 Deno.test("decodes 00E0 as clear screen", () => {
   assertEquals(decoder.decode(opcode(0x00e0)), {
     kind: "clear-screen",
     opcode: opcode(0x00e0),
+  });
+});
+
+Deno.test("decodes 00FB as scroll right", () => {
+  assertEquals(decoder.decode(opcode(0x00fb)), {
+    kind: "scroll-display-horizontal",
+    opcode: opcode(0x00fb),
+    direction: "right",
+    columns: 4,
+  });
+});
+
+Deno.test("decodes 00FC as scroll left", () => {
+  assertEquals(decoder.decode(opcode(0x00fc)), {
+    kind: "scroll-display-horizontal",
+    opcode: opcode(0x00fc),
+    direction: "left",
+    columns: 4,
+  });
+});
+
+Deno.test("decodes 00FD as exit interpreter", () => {
+  assertEquals(decoder.decode(opcode(0x00fd)), {
+    kind: "exit-interpreter",
+    opcode: opcode(0x00fd),
+  });
+});
+
+Deno.test("decodes 00FE as low display mode", () => {
+  assertEquals(decoder.decode(opcode(0x00fe)), {
+    kind: "set-display-mode",
+    opcode: opcode(0x00fe),
+    mode: "low",
+  });
+});
+
+Deno.test("decodes 00FF as high display mode", () => {
+  assertEquals(decoder.decode(opcode(0x00ff)), {
+    kind: "set-display-mode",
+    opcode: opcode(0x00ff),
+    mode: "high",
+  });
+});
+
+Deno.test("decodes 00Cn as scroll down", () => {
+  assertEquals(decoder.decode(opcode(0x00c7)), {
+    kind: "scroll-display-down",
+    opcode: opcode(0x00c7),
+    rows: 7,
   });
 });
 
@@ -300,6 +357,14 @@ Deno.test("decodes FX29", () => {
   });
 });
 
+Deno.test("decodes Fx30 as set index to large sprite", () => {
+  assertEquals(decoder.decode(opcode(0xf330)), {
+    kind: "set-index-to-large-sprite",
+    opcode: opcode(0xf330),
+    register: registerIndex(0x3),
+  });
+});
+
 Deno.test("decodes FX33", () => {
   assertEquals(decoder.decode(opcode(0xfa33)), {
     kind: "store-bcd",
@@ -322,6 +387,30 @@ Deno.test("decodes FX65", () => {
     opcode: opcode(0xfa65),
     register: registerIndex(0xa),
   });
+});
+
+Deno.test("decodes FX75", () => {
+  assertEquals(decoder.decode(opcode(0xf375)), {
+    kind: "store-rpl-flags",
+    opcode: opcode(0xf375),
+    register: registerIndex(0x3),
+  });
+});
+
+Deno.test("decodes FX85", () => {
+  assertEquals(decoder.decode(opcode(0xf385)), {
+    kind: "load-rpl-flags",
+    opcode: opcode(0xf385),
+    register: registerIndex(0x3),
+  });
+});
+
+Deno.test("rejects FX75 when X is greater than 7", () => {
+  assertThrows(() => decoder.decode(opcode(0xf875)), InvalidOpcodeError);
+});
+
+Deno.test("rejects FX85 when X is greater than 7", () => {
+  assertThrows(() => decoder.decode(opcode(0xff85)), InvalidOpcodeError);
 });
 
 Deno.test("rejects invalid 5XYN opcode", () => {

@@ -6,62 +6,43 @@ A modular, profile-driven CHIP-8 emulator in TypeScript.
 
 Chip8NX is a CHIP-8 emulator/interpreter built as a hands-on exercise in TypeScript, object-oriented design, emulator architecture, testing, and software engineering.
 
-The project supports accurate **Classic CHIP-8** behavior and **CHIP-48 2.25** through explicit machine profiles, while keeping reusable emulator semantics separate from host-specific applications and inspection tooling.
+The project supports **Classic CHIP-8**, **CHIP-48 2.25**, and **SUPER-CHIP 1.1** through explicit machine profiles, while keeping reusable emulator semantics separate from host-specific applications and inspection tooling.
 
 ## Status
 
-### Current release: `v0.8.0` — CHIP-8 Profiles / Variant Foundation
+### Current release: `v0.9.0` — SUPER-CHIP 1.1
 
-`v0.8.0` extends Chip8NX from a single Classic machine target to an explicit multi-profile architecture.
+`v0.9.0` extends the profile and compatibility foundation established in `v0.8.0` with Chip8NX's first machine profile that introduces architectural capabilities beyond Classic CHIP-8: **SUPER-CHIP 1.1**.
 
-`v0.8.0` provides two built-in historical profiles:
+Chip8NX now provides three coherent machine profiles:
 
-```text
-Classic CHIP-8
-CHIP-48 2.25
-```
+- **Classic CHIP-8** — the original compatibility baseline;
+- **CHIP-48** — the first alternate compatibility profile introduced in `v0.8.0`;
+- **SUPER-CHIP 1.1** — the historical extended machine targeted by `v0.9.0`.
 
-`Chip8Profile` describes the complete emulated machine, including architectural characteristics such as memory, display, timing, and font placement together with compatibility-sensitive instruction and display semantics.
+SUPER-CHIP support includes:
 
-Current modeled compatibility dimensions include:
+- 64×32 low-resolution and 128×64 high-resolution display modes;
+- a shared 128×64 framebuffer backing store;
+- mode switching without implicit framebuffer clearing;
+- physical scrolling through `00Cn`, `00FB`, and `00FC`;
+- `00FE` / `00FF` low- and high-resolution mode selection;
+- `00FD` interpreter exit;
+- historical `Dxy0` extended-sprite behavior in both display modes;
+- mode-specific collision/VF semantics;
+- vertical-blank-gated low-resolution drawing and immediate high-resolution drawing;
+- the historical ten-byte SUPER-CHIP 1.1 decimal font;
+- `Fx30` large-font lookup;
+- persistent `V0`–`V7` RPL flags through `Fx75` / `Fx85`;
+- historical `Fx1E` interpreter exit when `I` moves beyond the 4 KiB address space;
+- historical `00C0` interpreter-exit behavior;
+- SUPER-CHIP `Fx55` / `Fx65` behavior with `I` left unchanged.
 
-- shift-source behavior;
-- `Fx55` / `Fx65` index-register updates;
-- `Bnnn` jump-offset behavior;
-- `VF` handling for logic operations;
-- sprite overflow behavior;
-- sprite draw timing.
+The Web host exposes Classic CHIP-8, CHIP-48, and SUPER-CHIP 1.1 through the machine-profile selector. Changing profile recomposes the machine around the same ROM using the selected profile.
 
-The Web host exposes Classic CHIP-8 and CHIP-48 2.25 through a profile selector. Changing the profile while a ROM is loaded creates a fresh machine session using the retained ROM, while Reset keeps the currently selected profile.
+The Web Canvas adapter renders the physical framebuffer backing store directly, allowing the same presentation component to display Classic 64×32 output as well as both SUPER-CHIP display modes without duplicating machine semantics in the host.
 
-Compatibility is independently exercised with Gulrak's Variant Detection Test v1.4. The same ROM is run under both built-in profiles and checked against separate stable framebuffer results.
-
-The profile model remains deliberately declarative: profiles contain machine characteristics and semantic choices, while applications remain responsible for object composition and host/runtime policy.
-
-### Previous release: `v0.7.0` — Web Inspection Workbench
-
-`v0.7.0` turns the browser host into Chip8NX's first interactive inspection workbench while preserving the separation between machine semantics, passive inspection tooling, and host-specific presentation.
-
-The Web application now composes `@chip8nx/core` with `@chip8nx/inspection` to provide three complementary read-only views of the machine:
-
-```text
-CPU state
-    → what the processor contains now
-
-Nearby instructions
-    → how bytes around the current program counter decode
-
-Recent instructions
-    → what CPU instruction attempts actually occurred
-```
-
-Nearby disassembly is best-effort at the Web application boundary: neighboring addresses are inspected independently, so undecodable bytes remain visible without turning passive inspection into an emulator failure.
-
-Execution observation likewise remains passive. Successful and failed CPU attempts can be retained and presented, including the actual post-failure CPU state, while inspection itself does not decide when execution pauses or resumes.
-
-The Web host also now provides a responsive play-and-inspection workspace with compact execution controls, explicit physical-keyboard mapping, persistent Retro Green, Retro Amber, and Dark appearance themes, and theme-aware framebuffer presentation.
-
-The Classic CHIP-8 Core remains at the `v0.2.0` conformance baseline, with intentional coverage for the complete Classic opcode set and the project's current external conformance suite:
+The Classic CHIP-8 Core remains at the established conformance baseline, with intentional coverage for the complete Classic opcode set and the project's current external conformance suite:
 
 - IBM Logo;
 - original corax89 opcode test;
@@ -225,8 +206,8 @@ Open the URL reported by Vite in a browser, load a CHIP-8 ROM file, and the Web 
 
 The Web host provides:
 
-- selectable Classic CHIP-8 and CHIP-48 2.25 machine profiles;
-- Canvas framebuffer presentation;
+- Canvas framebuffer presentation for Classic and SUPER-CHIP display geometry;
+- selectable Classic CHIP-8, CHIP-48, and SUPER-CHIP 1.1 machine profiles;
 - physical and virtual CHIP-8 keyboard input;
 - Start/Pause, Step, and Reset execution controls;
 - Web Audio sound presentation;
@@ -482,15 +463,36 @@ Compatibility is independently validated with Gulrak's Variant Detection Test v1
 
 The milestone establishes the variant foundation without introducing a generic quirk engine, strategy hierarchy, profile registry, or universal machine-session abstraction: new variation continues to be modeled only when concrete historical targets demonstrate the need.
 
+### `v0.9.0` — SUPER-CHIP 1.1 ✓
+
+Chip8NX adds its first extended CHIP-8-family machine profile: historical SUPER-CHIP 1.1.
+
+The display model evolves from fixed geometry to an explicit display specification capable of representing SUPER-CHIP's 64×32 and 128×64 modes over one shared 128×64 backing framebuffer. Display mode remains machine state, while the Web Canvas adapter renders the resulting physical framebuffer without reproducing SUPER-CHIP semantics in the presentation layer.
+
+The release adds SUPER-CHIP scrolling and mode-control instructions, interpreter exit, extended `Dxy0` sprites, mode-specific draw timing and VF behavior, the historical ten-byte decimal font through `Fx30`, and persistent `V0`–`V7` RPL flags through `Fx75` / `Fx85`.
+
+SUPER-CHIP is composed through the same `Chip8Profile`, `ExecutionContext`, decoder, executor, runtime, initialization, and host boundaries already used by Classic CHIP-8 and CHIP-48. No parallel emulator hierarchy or generic quirk engine is introduced.
+
+The Web profile selector now exposes all three supported machines:
+
+```text
+Classic CHIP-8
+CHIP-48
+SUPER-CHIP 1.1
+```
+
+Changing profile rebuilds the current Web machine session around the selected profile while preserving host-owned persistent state such as the SUPER-CHIP RPL flags.
+
 ## Future work
 
-Post-`v0.8.0` development can proceed across areas such as:
+Post-`v0.9.0` development can proceed across areas such as:
 
-- active debugger behavior built on the completed read-only Web inspection workbench, when concrete needs such as breakpoints, watchpoints, or richer stepping semantics are demonstrated;
-- additional CHIP-8-family profiles when concrete targets demonstrate new architectural or compatibility requirements;
-- richer memory or static-analysis inspection when concrete application workflows justify it;
-- public reusable-package APIs and composition ergonomics when additional architectural evidence creates concrete pressure for change;
+- active debugger behavior built on the existing passive inspection foundation, when concrete needs such as breakpoints, watchpoints, or richer stepping semantics are demonstrated;
+- richer memory or static-analysis inspection when concrete workflows justify it;
+- additional CHIP-8-family profiles such as XO-CHIP when their architectural differences are ready to be modeled explicitly;
+- further public reusable-package API and composition refinement when additional consumers create demonstrated pressure for change;
 - desktop hosts;
+- broader SUPER-CHIP compatibility and conformance evidence where additional historical tests expose meaningful behavior not already represented.
 
 The current CPU-observation boundary deliberately remains observational. Breakpoints, execution-control policy, observer fan-out, timestamps, replay, whole-machine snapshots, persistent trace formats, and richer history-query APIs should be introduced only when concrete debugger or analysis consumers demonstrate the need.
 

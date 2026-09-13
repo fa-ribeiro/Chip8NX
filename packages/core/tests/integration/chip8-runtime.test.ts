@@ -1,29 +1,35 @@
 import { assertEquals, assertThrows } from "@std/assert";
 
+import {
+  address,
+  byte,
+  Chip8Runtime,
+  CLASSIC_CHIP8_PROFILE,
+  ClassicFont,
+  Cpu,
+  Decoder,
+  DisplayBuffer,
+  type Duration,
+  duration,
+  type ExecutionContext,
+  ExitState,
+  Frequency,
+  IndexRegister,
+  InstructionExecutor,
+  KeyboardState,
+  ProgramCounter,
+  Ram,
+  registerIndex,
+  Registers,
+  RplFlags,
+  Scheduler,
+  Stack,
+  Timer,
+  VerticalBlank,
+} from "../../mod.ts";
+
 import { TestClock } from "../../src/clock/test-clock.ts";
-import { address } from "../../src/core/types/address.ts";
-import { byte } from "../../src/core/types/byte.ts";
-import { type Duration, duration } from "../../src/core/types/duration.ts";
-import { Frequency } from "../../src/core/types/frequency.ts";
-import { Cpu } from "../../src/cpu/cpu.ts";
-import type { ExecutionContext } from "../../src/cpu/execution-context.ts";
-import { IndexRegister } from "../../src/cpu/index-register/index-register.ts";
-import { InstructionExecutor } from "../../src/cpu/instruction-executor.ts";
-import { ProgramCounter } from "../../src/cpu/program-counter/program-counter.ts";
-import { registerIndex } from "../../src/cpu/registers/register-index.ts";
-import { Registers } from "../../src/cpu/registers/registers.ts";
-import { Stack } from "../../src/cpu/stack/stack.ts";
-import { DisplayBuffer } from "../../src/display/display-buffer.ts";
-import { VerticalBlank } from "../../src/display/vertical-blank.ts";
-import { ClassicFont } from "../../src/font/classic-font.ts";
-import { Decoder } from "../../src/instruction/decoder.ts";
-import { KeyboardState } from "../../src/keyboard/keyboard-state.ts";
-import { CLASSIC_CHIP8_PROFILE } from "../../src/machine/classic/classic-chip8-profile.ts";
-import { Ram } from "../../src/memory/ram.ts";
 import { TestRandomNumberGenerator } from "../../src/random/test-random-number-generator.ts";
-import { Chip8Runtime } from "../../src/runtime/chip8-runtime.ts";
-import { Scheduler } from "../../src/scheduler/scheduler.ts";
-import { Timer } from "../../src/timer/timer.ts";
 
 interface RuntimeHarness {
   readonly runtime: Chip8Runtime;
@@ -50,11 +56,13 @@ function createRuntime(cpuFrequency: Frequency = Frequency.fromInteger(500n)): R
     indexRegister: new IndexRegister(),
     soundTimer,
     delayTimer,
-    displayBuffer: new DisplayBuffer(profile.display.width, profile.display.height, "clip"),
+    displayBuffer: new DisplayBuffer(profile.display.specification, "clip"),
     verticalBlank: verticalBlank,
     keyboard: new KeyboardState(),
     font: new ClassicFont(profile.fontBaseAddress),
     randomNumberGenerator: new TestRandomNumberGenerator([byte(0)]),
+    rplFlags: new RplFlags(),
+    exitState: new ExitState(),
   };
 
   /*

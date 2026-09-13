@@ -285,7 +285,7 @@ Further Timendus fixtures will be added when they exercise behavior applicable t
 
 The Timendus Beep test depends on host audio presentation and is therefore deferred until Chip8NX has an appropriate audio integration boundary.
 
-The Timendus Scrolling test targets SUPER-CHIP and XO-CHIP instructions and is not applicable to the current Classic CHIP-8 profile.
+The Timendus Scrolling test is not applicable to the Classic CHIP-8 profile. It is now relevant to the supported SUPER-CHIP 1.1 profile and is a candidate for future automated SUPER-CHIP conformance coverage once its exact legacy mode, fixture version, checksum, and expected completion state are pinned here.
 
 When a new fixture becomes part of an automated conformance test:
 

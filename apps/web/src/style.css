@@ -22,13 +22,7 @@
   background: var(--color-background);
 }
 
-/*
- * Theme palettes
- *
- * Keep each theme explicit and self-contained. Although some declarations
- * repeat, they are theme data rather than accidental component duplication.
- * --color-display-foreground is consumed from TypeScript via getComputedStyle().
- */
+/* Theme palettes. */
 
 :root,
 :root[data-theme="retro-green"] {
@@ -164,13 +158,13 @@ select {
   stroke-linejoin: round;
 }
 
-/* Application shell */
+/* Application shell and branding */
 
 .app {
   display: grid;
   gap: var(--space-layout);
 
-  width: min(1440px, calc(100% - 2rem));
+  width: min(1480px, calc(100% - 2rem));
   margin: 0 auto;
   padding: 1rem 0 1.25rem;
 }
@@ -189,17 +183,39 @@ select {
   margin: 0;
 }
 
+.app-header h1 {
+  font-size: clamp(1.8rem, 3vw, 2.6rem);
+  line-height: 1;
+}
+
 .app-header p {
+  margin-top: 0.3rem;
   color: var(--color-text-muted);
 }
 
-/* Toolbar */
+/* Workbench frame */
 
-.toolbar {
-  position: sticky;
-  top: 0;
-  z-index: 10;
+.workbench {
+  display: grid;
+  gap: var(--space-layout);
+}
 
+.workbench-header,
+.command-bar,
+.display,
+.keypad,
+.cpu-state,
+.nearby-instructions,
+.instruction-history,
+.app-status {
+  min-width: 0;
+
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+}
+
+.workbench-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -208,34 +224,29 @@ select {
   padding: 0.75rem;
 
   background: var(--color-toolbar-background);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-panel);
   box-shadow: 0 0.35rem 1rem var(--color-shadow);
-
-  backdrop-filter: blur(8px);
 }
 
-.rom-loader {
+.rom-loader,
+.workbench-options {
   display: flex;
   align-items: center;
-  flex: 1 1 26rem;
-  gap: var(--space-layout);
-
+  gap: 0.65rem;
   min-width: 0;
 }
 
+.rom-loader {
+  flex: 1 1 auto;
+}
+
+.workbench-options {
+  flex: 0 0 auto;
+}
+
 .rom-loader-label,
-.profile-picker label,
-.theme-picker label {
+.option-picker > span {
+  flex: 0 0 auto;
   font-weight: 600;
-}
-
-.rom-loader-label {
-  flex: 0 0 auto;
-}
-
-#rom-load-button {
-  flex: 0 0 auto;
 }
 
 .rom-file-name {
@@ -244,20 +255,32 @@ select {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-
-  color: var(--color-text-muted);
 }
 
-.profile-picker,
-.theme-picker {
-  display: flex;
+.rom-file-size {
   flex: 0 0 auto;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.workbench-header-divider,
+.command-bar-divider {
+  flex: 0 0 auto;
+  width: 1px;
+  height: 2rem;
+  background: var(--color-border-strong);
+  opacity: 0.65;
+}
+
+.option-picker {
+  display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 
-#profile-select,
-#theme-select {
+.option-picker select {
   padding: 0.55rem 0.7rem;
 
   color: var(--color-text);
@@ -268,16 +291,11 @@ select {
   cursor: pointer;
 }
 
-#profile-select:hover,
-#theme-select:hover {
+.option-picker select:hover {
   background: var(--color-surface-hover);
 }
 
-/*
- * Toolbar command buttons
- *
- * All emulator commands share the same worn, backlit hardware treatment.
- */
+/* Worn/backlit hardware controls retained from the current visual language. */
 
 #rom-load-button,
 .controls button {
@@ -338,21 +356,6 @@ select {
 #rom-load-button:active,
 .controls button:active:not(:disabled) {
   transform: translateY(1px);
-
-  box-shadow:
-    inset 0 2px 5px #0009,
-    0 0 0.25rem var(--color-command-glow);
-}
-
-.controls {
-  display: flex;
-  flex: 0 0 auto;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.controls button {
-  min-width: 5.5rem;
 }
 
 .controls button:disabled {
@@ -360,100 +363,27 @@ select {
   cursor: default;
 }
 
-#run-toggle-button {
-  min-width: 6.75rem;
-}
-
-#run-toggle-button[data-action="start"] .run-toggle-icon-pause,
-#run-toggle-button[data-action="pause"] .run-toggle-icon-start {
-  display: none;
-}
-
-.machine-state {
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 0.45rem;
-
-  min-width: 5.5rem;
-
-  color: var(--color-text-muted);
-
-  font-size: 0.9rem;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.machine-state-indicator {
-  width: 0.6rem;
-  height: 0.6rem;
-
-  background: var(--color-text-muted);
-  border-radius: 50%;
-}
-
-.machine-state[data-state="running"] {
-  color: var(--color-accent-strong);
-  text-shadow: 0 0 0.45em var(--color-command-glow);
-}
-
-.machine-state[data-state="running"] .machine-state-indicator {
-  background: var(--color-accent);
-  box-shadow: 0 0 0.45rem var(--color-display-glow);
-}
-
-.machine-state[data-state="empty"] .machine-state-indicator {
-  background: transparent;
-  border: 1px solid var(--color-text-muted);
-}
-
-.toolbar-divider {
-  flex: 0 0 auto;
-  width: 1px;
-  height: 2rem;
-
-  background: var(--color-border-strong);
-  opacity: 0.65;
-}
-
-/* Workspace */
+/* Main workbench: deliberately 50/50 on desktop. */
 
 .workspace {
   display: grid;
-  grid-template-columns:
-    minmax(0, 2fr)
-    minmax(24rem, 1fr);
+  grid-template-columns: minmax(0, 1.25fr) minmax(24rem, 1fr);
   gap: var(--space-layout);
   align-items: start;
 }
 
 .play-area,
-.instruction-column {
+.inspection {
   display: grid;
   min-width: 0;
   gap: var(--space-layout);
-}
-
-.instruction-column {
   align-content: start;
 }
 
-/* Shared panel surfaces */
-
-.display,
-.keypad,
-.cpu-state,
-.nearby-instructions,
-.instruction-history,
-.app-status {
-  min-width: 0;
-
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-panel);
-}
+/* Shared panel content */
 
 .keypad,
+.command-bar,
 .cpu-state,
 .nearby-instructions,
 .instruction-history {
@@ -499,25 +429,9 @@ select {
   margin-bottom: 0;
 }
 
-.keypad-hint {
-  margin: 0.35rem 0 0.75rem;
-
-  color: var(--color-text-muted);
-
-  font-size: 0.8rem;
-  text-align: right;
-}
-
-.keypad-hint span {
-  color: var(--color-text);
-  font-family: var(--font-mono);
-}
-
 .keypad-content {
   display: grid;
-  grid-template-columns:
-    minmax(0, 1fr)
-    max-content;
+  grid-template-columns: minmax(0, 1fr) max-content;
   gap: 1rem;
   align-items: start;
 }
@@ -612,23 +526,70 @@ select {
   color: var(--color-accent-strong);
 }
 
-/* Inspector */
+/* Command bar */
 
-.inspection {
-  position: sticky;
-  top: 5.5rem;
-
-  display: grid;
-  min-width: 0;
-  max-height: calc(100vh - 6.5rem);
-  gap: var(--space-layout);
-  align-content: start;
-
-  padding-right: 0.25rem;
-
-  overflow: auto;
-  scrollbar-gutter: stable;
+.command-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
 }
+
+.controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  flex: 1 1 auto;
+  gap: 0.5rem;
+}
+
+.controls button {
+  min-width: 0;
+}
+
+#run-toggle-button[data-action="start"] .run-toggle-icon-pause,
+#run-toggle-button[data-action="pause"] .run-toggle-icon-start {
+  display: none;
+}
+
+.machine-state {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.45rem;
+
+  min-width: 7rem;
+
+  color: var(--color-text-muted);
+
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.machine-state-indicator {
+  width: 0.6rem;
+  height: 0.6rem;
+
+  background: var(--color-text-muted);
+  border-radius: 50%;
+}
+
+.machine-state[data-state="running"] {
+  color: var(--color-accent-strong);
+  text-shadow: 0 0 0.45em var(--color-command-glow);
+}
+
+.machine-state[data-state="running"] .machine-state-indicator {
+  background: var(--color-accent);
+  box-shadow: 0 0 0.45rem var(--color-display-glow);
+}
+
+.machine-state[data-state="empty"] .machine-state-indicator {
+  background: transparent;
+  border: 1px solid var(--color-text-muted);
+}
+
+/* CPU state */
 
 #cpu-state-empty,
 #nearby-instructions-empty,
@@ -637,55 +598,72 @@ select {
   color: var(--color-text-muted);
 }
 
-/* CPU state */
+.cpu-state-layout {
+  display: grid;
+  grid-template-columns: minmax(8.5rem, 0.72fr) minmax(0, 2fr);
+  gap: 1rem;
+  align-items: start;
+}
 
-.register-grid,
-.cpu-special-state {
+.cpu-special-state,
+.register-grid {
   margin: 0;
+}
+
+.cpu-special-state {
+  display: grid;
+  gap: 0.45rem;
 }
 
 .register-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(4.25rem, 1fr));
-  gap: 0.5rem;
+  grid-template-columns: repeat(4, minmax(4.5rem, 1fr));
+  gap: 0.45rem;
 }
 
-.register-grid div,
-.cpu-special-state div {
+.cpu-special-state div,
+.register-grid div {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: 0.45rem;
+  min-width: 0;
 }
 
-.register-grid dt,
-.cpu-special-state dt {
-  color: var(--color-text-muted);
+.cpu-special-state dt,
+.register-grid dt {
+  flex: 0 0 auto;
+  color: var(--color-text);
+  font-size: 0.85rem;
+  font-weight: 500;
 }
 
-.register-grid dd,
-.cpu-special-state dd {
+.cpu-special-state dd,
+.register-grid dd {
+  min-width: 3.25rem;
   margin: 0;
+  padding: 0.2rem 0.4rem;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  color: var(--color-accent-strong);
+  background: var(--color-accent-surface);
+  border: 1px solid color-mix(in srgb, var(--color-accent), transparent 65%);
+  border-radius: 0.25rem;
 
   font-family: var(--font-mono);
+  font-size: 0.82rem;
   font-variant-numeric: tabular-nums;
-}
-
-.cpu-special-state {
-  display: grid;
-  gap: 0.5rem;
-
-  margin-top: 1rem;
-  padding-top: 1rem;
-
-  border-top: 1px solid var(--color-border);
-}
-
-#cpu-stack {
-  overflow-wrap: anywhere;
   text-align: right;
 }
 
-/* Instruction inspection */
+#cpu-stack {
+  max-width: 8rem;
+}
+
+/* Instruction inspection: retained from the current layout. */
 
 #nearby-instructions-list {
   display: grid;
@@ -699,11 +677,7 @@ select {
 
 .nearby-instruction-row {
   display: grid;
-  grid-template-columns:
-    1rem
-    max-content
-    max-content
-    minmax(0, 1fr);
+  grid-template-columns: 1rem max-content max-content minmax(0, 1fr);
   align-items: baseline;
   gap: 0.5rem;
 
@@ -776,7 +750,7 @@ select {
   font-weight: 600;
 }
 
-/* Bottom status */
+/* Full-width bottom status bar. */
 
 .app-status {
   padding: 0.65rem 0.85rem;
@@ -796,115 +770,86 @@ select {
 /* Keyboard accessibility */
 
 button:focus-visible,
-#profile-select:focus-visible,
-#theme-select:focus-visible {
+select:focus-visible {
   outline: 2px solid var(--color-accent-strong);
   outline-offset: 2px;
 }
 
-/* Narrow desktop / tablet */
+/*
+ * Responsive rule requested for the redesign:
+ * keep branding/header/status full width; stack the two workspace halves only.
+ */
 
-@media (max-width: 1100px) {
+@media (max-width: 980px), (orientation: portrait) and (max-width: 1200px) {
   .app {
-    width: min(100% - 1.5rem, 960px);
-  }
-
-  .toolbar {
-    flex-wrap: wrap;
-  }
-
-  .rom-loader {
-    flex-basis: 100%;
-  }
-
-  .controls {
-    margin-right: auto;
+    width: min(100% - 1.5rem, 900px);
   }
 
   .workspace {
     grid-template-columns: 1fr;
   }
-
-  .inspection {
-    position: static;
-
-    grid-template-columns:
-      minmax(15rem, 0.8fr)
-      minmax(0, 1.2fr);
-
-    max-height: none;
-    padding-right: 0;
-
-    overflow: visible;
-  }
 }
 
-/* Mobile */
-
-@media (max-width: 700px) {
+@media (max-width: 760px) {
   .app {
     width: calc(100% - 1rem);
     padding-top: 0.5rem;
   }
 
-  .app-header {
-    display: block;
+  .workbench-header {
+    display: grid;
+    gap: 0.75rem;
   }
 
-  .app-header p {
-    margin-top: 0.25rem;
-  }
-
-  .toolbar {
-    align-items: stretch;
-    padding: 0.65rem;
+  .rom-loader,
+  .workbench-options {
+    width: 100%;
   }
 
   .rom-loader {
     display: grid;
-    grid-template-columns: auto auto minmax(0, 1fr);
-    width: 100%;
+    grid-template-columns: auto auto 1px minmax(0, 1fr) auto;
   }
 
-  .controls {
-    display: grid;
-    grid-template-columns:
-      minmax(0, 2fr)
-      minmax(0, 1fr)
-      minmax(0, 1fr);
-    width: 100%;
+  .workbench-options {
+    justify-content: space-between;
   }
 
-  .controls button {
+  .option-picker {
     min-width: 0;
+  }
+
+  .option-picker select {
+    min-width: 0;
+    max-width: 12rem;
+  }
+
+  .command-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .command-bar-divider {
+    width: 100%;
+    height: 1px;
   }
 
   .machine-state {
     min-width: 0;
   }
 
-  .toolbar-divider {
-    display: none;
+  .cpu-state-layout {
+    grid-template-columns: 1fr;
   }
 
-  .profile-picker,
-  .theme-picker {
-    width: 100%;
-    justify-content: space-between;
+  .cpu-special-state {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding-bottom: 0.85rem;
+    border-bottom: 1px solid var(--color-border);
   }
 
-  #profile-select,
-  #theme-select {
-    flex: 1 1 auto;
-    max-width: 14rem;
-  }
-
-  .display {
-    padding: 0.5rem;
-  }
-
-  .keypad {
-    padding: 0.75rem;
+  .register-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .keypad-content {
@@ -912,8 +857,65 @@ button:focus-visible,
   }
 
   .keypad-mapping {
-    width: auto;
-    font-size: 0.7rem;
+    width: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .app-header h1 {
+    font-size: 1.75rem;
+  }
+
+  .rom-loader {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .rom-loader-label,
+  .rom-loader .workbench-header-divider {
+    display: none;
+  }
+
+  #rom-load-button {
+    grid-column: 1;
+  }
+
+  .rom-file-name {
+    grid-column: 2;
+  }
+
+  .rom-file-size {
+    grid-column: 3;
+  }
+
+  .workbench-options {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.6rem;
+  }
+
+  .workbench-options .workbench-header-divider {
+    display: none;
+  }
+
+  .option-picker {
+    justify-content: space-between;
+  }
+
+  .option-picker select {
+    flex: 1 1 auto;
+    max-width: 13rem;
+  }
+
+  .controls {
+    grid-template-columns: 1.5fr 1fr 1fr;
+  }
+
+  .keypad,
+  .command-bar,
+  .cpu-state,
+  .nearby-instructions,
+  .instruction-history {
+    padding: 0.75rem;
   }
 
   .virtual-keypad button {
@@ -921,8 +923,272 @@ button:focus-visible,
     padding: 0.5rem;
   }
 
-  .inspection {
-    grid-template-columns: 1fr;
+  .cpu-special-state,
+  .register-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ========================================================================== */
+/* Standard panel system — layout prototype v2                                */
+/* ========================================================================== */
+
+:root {
+  --font-size-register-name: 0.85rem;
+  --font-size-code: 0.84rem;
+  --panel-header-height: 2.65rem;
+}
+
+.standard-panel {
+  min-width: 0;
+  overflow: hidden;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-panel);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--color-text), transparent 92%),
+    inset 0 -1px 0 #0008,
+    0 0.28rem 0.8rem #0005;
+}
+
+.standard-panel-header {
+  min-height: var(--panel-header-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.62rem 0.85rem;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-surface-raised), var(--color-text) 3%),
+    var(--color-surface-raised)
+  );
+  border-bottom: 1px solid var(--color-border);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--color-text), transparent 94%),
+    inset 0 -1px 0 #0004;
+}
+
+.standard-panel-title {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  color: var(--color-text);
+  font-size: 1rem;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.standard-panel-title .icon {
+  color: var(--color-accent-strong);
+  filter: drop-shadow(0 0 0.22rem var(--color-display-glow));
+}
+
+.standard-panel-indicator {
+  min-width: 0;
+  flex: 0 0 auto;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.standard-panel-body {
+  min-width: 0;
+  padding: 0.9rem;
+}
+
+.display,
+.keypad,
+.command-bar,
+.cpu-state,
+.nearby-instructions,
+.instruction-history {
+  padding: 0;
+}
+
+.command-bar {
+  display: block;
+}
+
+.code-text,
+.cpu-special-state dd,
+.register-grid dd,
+.cpu-stack-state dd,
+.nearby-instruction-row,
+#instruction-history-list code,
+.keypad-mapping kbd,
+.keypad-mapping code {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-code);
+  font-variant-numeric: tabular-nums;
+}
+
+.display-body {
+  padding: 0.75rem;
+}
+
+#chip8-display {
+  border-color: color-mix(in srgb, var(--color-border-strong), var(--color-accent) 12%);
+  box-shadow:
+    inset 0 0 1.2rem #000b,
+    0 0 1rem var(--color-display-glow);
+}
+
+.command-bar-body {
+  padding: 0.75rem;
+}
+
+.controls {
+  width: 100%;
+}
+
+.machine-state {
+  min-width: 0;
+  justify-content: flex-end;
+  font-size: 0.82rem;
+}
+
+.cpu-state-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.85rem;
+}
+
+/* Each CPU-state group owns a complete row of the panel. */
+.cpu-special-state,
+.cpu-stack-state,
+.register-grid {
+  grid-column: 1 / -1;
+}
+
+.cpu-special-state,
+.register-grid,
+.cpu-stack-state {
+  margin: 0;
+}
+
+/*
+ * PC/I/DT/ST deliberately behave like one row of V registers:
+ * four columns at normal widths, two columns on small/tall layouts.
+ */
+.cpu-special-state,
+.register-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(4.5rem, 1fr));
+  gap: 0.45rem;
+}
+
+.cpu-special-state div,
+.register-grid div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.cpu-special-state dt,
+.register-grid dt,
+.cpu-stack-state dt {
+  flex: 0 0 auto;
+  color: var(--color-text);
+  font-size: var(--font-size-register-name);
+  font-weight: 500;
+}
+
+.cpu-special-state dd,
+.register-grid dd,
+.cpu-stack-state dd {
+  margin: 0;
+  padding: 0.2rem 0.4rem;
+  color: var(--color-accent-strong);
+  background: var(--color-accent-surface);
+  border: 1px solid color-mix(in srgb, var(--color-accent), transparent 65%);
+  border-radius: 0.25rem;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-code);
+  font-variant-numeric: tabular-nums;
+}
+
+.cpu-special-state dd,
+.register-grid dd {
+  min-width: 3.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+}
+
+/* Full-width stack row between the special-register row and V0–VF. */
+.cpu-stack-state {
+  padding-block: 0.65rem;
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.cpu-stack-state div {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: center;
+}
+
+#cpu-stack {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.instruction-panels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: var(--space-layout);
+  align-items: start;
+  min-width: 0;
+}
+
+.nearby-instructions,
+.instruction-history {
+  min-width: 0;
+}
+
+.nearby-instruction-row,
+#instruction-history-list code {
+  color: var(--color-text);
+}
+
+#instruction-history-list {
+  min-width: 0;
+}
+
+.panel-heading {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .cpu-special-state,
+  .register-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .standard-panel-body {
+    padding: 0.8rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .standard-panel-header {
+    padding: 0.58rem 0.7rem;
+  }
+
+  .standard-panel-body {
+    padding: 0.7rem;
   }
 
   .register-grid {

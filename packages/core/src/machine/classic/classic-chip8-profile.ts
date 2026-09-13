@@ -19,8 +19,7 @@ export const CLASSIC_CHIP8_PROFILE: Chip8Profile = {
   stackCapacity: 16,
 
   display: {
-    width: 64,
-    height: 32,
+    specification: { kind: "fixed", width: 64, height: 32 },
     refreshFrequency: Frequency.fromInteger(60n),
   },
 
@@ -30,12 +29,21 @@ export const CLASSIC_CHIP8_PROFILE: Chip8Profile = {
 
   fontBaseAddress: address(0x50),
 
+  largeFont: null,
+
   compatibility: {
     shiftSource: "vy",
     memoryTransferIndex: "increment-by-count",
     jumpOffsetSource: "v0",
     logicFlag: "reset",
     spriteOverflow: "clip",
-    spriteDrawTiming: "vertical-blank",
+    spriteDrawTiming: {
+      kind: "uniform",
+      timing: "vertical-blank",
+    },
+    interpreterExit: "unsupported",
+    rplFlags: "unsupported",
+    indexOverflow: "continue",
+    zeroScrollDown: "scroll",
   },
 };

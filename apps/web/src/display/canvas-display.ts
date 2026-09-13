@@ -8,7 +8,7 @@ export interface CanvasDisplayPalette {
 /**
  * Browser display adapter backed by an HTML canvas.
  *
- * Each CHIP-8 framebuffer pixel maps to one canvas backing-store pixel.
+ * Each backing-framebuffer pixel maps to one canvas backing-store pixel.
  * CSS is responsible for scaling the canvas for presentation.
  *
  * Rendering only observes the DisplayBuffer. It does not participate in
@@ -51,12 +51,12 @@ export class CanvasDisplay implements Display {
 
     this.context.fillStyle = this.palette.background;
 
-    this.context.fillRect(0, 0, buffer.width, buffer.height);
+    this.context.fillRect(0, 0, buffer.backingWidth, buffer.backingHeight);
 
     this.context.fillStyle = this.palette.foreground;
 
-    for (let y = 0; y < buffer.height; y++) {
-      for (let x = 0; x < buffer.width; x++) {
+    for (let y = 0; y < buffer.backingHeight; y++) {
+      for (let x = 0; x < buffer.backingWidth; x++) {
         if (!buffer.getPixel(x, y)) {
           continue;
         }
@@ -67,11 +67,14 @@ export class CanvasDisplay implements Display {
   }
 
   private resizeBackingStore(buffer: DisplayBuffer): void {
-    if (this.canvas.width === buffer.width && this.canvas.height === buffer.height) {
+    if (
+      this.canvas.width === buffer.backingWidth &&
+      this.canvas.height === buffer.backingHeight
+    ) {
       return;
     }
 
-    this.canvas.width = buffer.width;
-    this.canvas.height = buffer.height;
+    this.canvas.width = buffer.backingWidth;
+    this.canvas.height = buffer.backingHeight;
   }
 }

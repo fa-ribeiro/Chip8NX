@@ -13,8 +13,7 @@ Deno.test("CHIP-48 profile defines the CHIP-48 2.25 machine characteristics", ()
   assertEquals(CHIP48_PROFILE.stackCapacity, 16);
 
   assertEquals(CHIP48_PROFILE.display, {
-    width: 64,
-    height: 32,
+    specification: { kind: "fixed", width: 64, height: 32 },
     refreshFrequency: Frequency.fromInteger(64n),
   });
 
@@ -30,6 +29,15 @@ Deno.test("CHIP-48 profile defines the CHIP-48 2.25 machine characteristics", ()
     jumpOffsetSource: "vx",
     logicFlag: "unchanged",
     spriteOverflow: "clip",
-    spriteDrawTiming: "vertical-blank",
+    spriteDrawTiming: {
+      kind: "uniform",
+      timing: "vertical-blank",
+    },
+    interpreterExit: "unsupported",
+    rplFlags: "unsupported",
+    indexOverflow: "continue",
+    zeroScrollDown: "scroll",
   });
+
+  assertEquals(CHIP48_PROFILE.largeFont, null);
 });
