@@ -1,4 +1,4 @@
-export type WebTheme = "dark-theme" | "retro-green" | "retro-amber";
+export type WebTheme = "dark-theme" | "retro-green" | "retro-amber" | "lcd-calculator";
 
 export const DEFAULT_WEB_THEME: WebTheme = "retro-green";
 
@@ -7,6 +7,7 @@ const WEB_THEME_STORAGE_KEY = "chip8nx.web.theme";
 /**
  * Minimal storage capability required by Web theme persistence.
  *
+ * @remarks
  * Window.localStorage satisfies this contract, while tests can provide a
  * lightweight substitute without implementing the full Storage interface.
  */
@@ -20,6 +21,7 @@ export function parseWebTheme(value: string | null): WebTheme | undefined {
     case "dark-theme":
     case "retro-green":
     case "retro-amber":
+    case "lcd-calculator":
       return value;
 
     default:

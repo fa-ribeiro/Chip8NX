@@ -1,6 +1,7 @@
 :root {
   color-scheme: dark;
 
+  /* Structural design tokens. Themes do not override these. */
   --font-mono: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
 
   --space-layout: 0.75rem;
@@ -8,8 +9,18 @@
   --radius-control: 0.3rem;
   --radius-compact: 0.4rem;
 
+  --font-size-register-name: 0.85rem;
+  --font-size-code: 0.84rem;
+  --panel-header-height: 2.65rem;
+
+  /* Shared color defaults. Individual themes may override them if needed. */
   --color-danger: #ff8a8a;
-  --color-shadow: #0008;
+  --color-shadow-soft: #0005;
+  --color-shadow-medium: #0008;
+  --color-shadow-deep: #000b;
+  --color-shadow-control: #0007;
+  --color-highlight-soft: #ffffff12;
+  --color-highlight-medium: #ffffff18;
 
   font-family:
     system-ui,
@@ -22,7 +33,12 @@
   background: var(--color-background);
 }
 
-/* Theme palettes. */
+/* -------------------------------------------------------------------------- */
+/* Theme palettes                                                             */
+/*                                                                            */
+/* Themes provide colors only. Layout, typography, geometry, and component    */
+/* behavior are defined once below and shared by every theme.                 */
+/* -------------------------------------------------------------------------- */
 
 :root,
 :root[data-theme="retro-green"] {
@@ -118,7 +134,40 @@
   --color-command-glow: #ffffff30;
 }
 
-/* Base */
+:root[data-theme="lcd-calculator"] {
+  --color-background: #d8ddd2;
+
+  --color-surface: #e1e6dc;
+  --color-surface-raised: #edf0e8;
+  --color-surface-hover: #d6ddd1;
+
+  --color-border: #a1ab9d;
+  --color-border-strong: #7f8f82;
+
+  --color-text: #37516d;
+  --color-text-muted: #708290;
+
+  --color-accent: #6f879d;
+  --color-accent-strong: #587188;
+  --color-accent-surface: #d4ddce;
+  --color-on-accent: #f2f5ef;
+
+  --color-display-background: #c5ceaf;
+  --color-display-foreground: #35506c;
+  --color-display-glow: #35506c12;
+
+  --color-toolbar-background: #e4e8dff2;
+
+  --color-command-surface-top: #edf1e8;
+  --color-command-surface-bottom: #d4dbcf;
+  --color-command-border: #98a58d;
+  --color-command-text: #37516d;
+  --color-command-glow: #35506c14;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Base                                                                       */
+/* -------------------------------------------------------------------------- */
 
 * {
   box-sizing: border-box;
@@ -158,7 +207,22 @@ select {
   stroke-linejoin: round;
 }
 
-/* Application shell and branding */
+.code-text,
+.cpu-special-state dd,
+.register-grid dd,
+.cpu-stack-state dd,
+.nearby-instruction-row,
+#instruction-history-list code,
+.keypad-mapping kbd,
+.keypad-mapping code {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-code);
+  font-variant-numeric: tabular-nums;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Application shell and site header                                          */
+/* -------------------------------------------------------------------------- */
 
 .app {
   display: grid;
@@ -169,44 +233,119 @@ select {
   padding: 1rem 0 1.25rem;
 }
 
-.app-header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
+.workbench-header {
+  min-width: 0;
 
-  padding: 0.25rem 0;
+  background: var(--color-toolbar-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  box-shadow: 0 0.35rem 1rem var(--color-shadow-medium);
 }
 
-.app-header h1,
-.app-header p {
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-width: 0;
+
+  padding: 0.25rem 0.15rem 0.35rem;
+}
+
+.app-header-start,
+.app-header-end,
+.app-branding {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.app-header-start,
+.app-header-end {
+  gap: 0.75rem;
+}
+
+.app-header-end {
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+.app-branding {
+  gap: 0.7rem;
+}
+
+.app-brand-mark {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+
+  width: 2.65rem;
+  height: 2.65rem;
+
+  color: var(--color-display-foreground);
+  background: var(--color-display-background);
+
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-compact);
+
+  box-shadow: inset 0 0 0.35rem var(--color-display-glow);
+}
+
+.app-brand-mark svg {
+  width: 1.8rem;
+  height: auto;
+
+  fill: currentColor;
+}
+
+.app-brand-copy {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.app-brand-name,
+.app-branding p {
   margin: 0;
 }
 
-.app-header h1 {
-  font-size: clamp(1.8rem, 3vw, 2.6rem);
+.app-brand-name {
+  color: var(--color-text);
+
+  font-family: var(--font-mono);
+  font-size: 1.3rem;
+  font-weight: 800;
   line-height: 1;
+  letter-spacing: 0.035em;
 }
 
-.app-header p {
-  margin-top: 0.3rem;
+.app-brand-name-accent {
+  color: var(--color-accent);
+}
+
+.app-branding p {
   color: var(--color-text-muted);
+
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
-/* Workbench frame */
+.app-theme-picker {
+  flex: 0 0 auto;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Workbench frame                                                            */
+/* -------------------------------------------------------------------------- */
 
 .workbench {
   display: grid;
   gap: var(--space-layout);
 }
 
-.workbench-header,
-.command-bar,
-.display,
-.keypad,
-.cpu-state,
-.nearby-instructions,
-.instruction-history,
 .app-status {
   min-width: 0;
 
@@ -222,9 +361,6 @@ select {
   gap: 1rem;
 
   padding: 0.75rem;
-
-  background: var(--color-toolbar-background);
-  box-shadow: 0 0.35rem 1rem var(--color-shadow);
 }
 
 .rom-loader,
@@ -308,7 +444,7 @@ select {
 
   color: var(--color-command-text);
   background: linear-gradient(
-    180deg,
+    135deg,
     var(--color-command-surface-top) 0%,
     var(--color-command-surface-bottom) 100%
   );
@@ -316,8 +452,8 @@ select {
   border-radius: var(--radius-control);
 
   box-shadow:
-    inset 0 1px 0 #ffffff12,
-    inset 0 -2px 4px #0007,
+    inset 0 1px 0 var(--color-highlight-soft),
+    inset 0 -2px 4px var(--color-shadow-control),
     0 0 0.3rem var(--color-command-glow);
 
   font-weight: 600;
@@ -340,7 +476,7 @@ select {
 #rom-load-button:hover,
 .controls button:hover:not(:disabled) {
   background: linear-gradient(
-    180deg,
+    135deg,
     color-mix(in srgb, var(--color-command-surface-top), var(--color-command-text) 8%),
     color-mix(in srgb, var(--color-command-surface-bottom), var(--color-command-text) 5%)
   );
@@ -348,8 +484,8 @@ select {
   border-color: var(--color-command-text);
 
   box-shadow:
-    inset 0 1px 0 #ffffff18,
-    inset 0 -2px 4px #0007,
+    inset 0 1px 0 var(--color-highlight-medium),
+    inset 0 -2px 4px var(--color-shadow-control),
     0 0 0.5rem var(--color-command-glow);
 }
 
@@ -362,8 +498,6 @@ select {
   opacity: 0.45;
   cursor: default;
 }
-
-/* Main workbench: deliberately 50/50 on desktop. */
 
 .workspace {
   display: grid;
@@ -380,33 +514,81 @@ select {
   align-content: start;
 }
 
-/* Shared panel content */
+/* -------------------------------------------------------------------------- */
+/* Reusable panel component                                                   */
+/* -------------------------------------------------------------------------- */
 
-.keypad,
-.command-bar,
-.cpu-state,
-.nearby-instructions,
-.instruction-history {
-  padding: 1rem;
+.standard-panel {
+  min-width: 0;
+  overflow: hidden;
+
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-panel);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--color-text), transparent 92%),
+    inset 0 -1px 0 var(--color-shadow-medium),
+    0 0.28rem 0.8rem var(--color-shadow-soft);
 }
 
-.panel-heading {
+.standard-panel-header {
+  min-height: var(--panel-header-height);
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  justify-content: space-between;
+  gap: 0.75rem;
 
-  margin: 0 0 1rem;
+  padding: 0.62rem 0.85rem;
 
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-surface-raised), var(--color-text) 3%),
+    var(--color-surface-raised)
+  );
+  border-bottom: 1px solid var(--color-border);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--color-text), transparent 94%),
+    inset 0 -1px 0 color-mix(in srgb, var(--color-shadow-medium), transparent 50%);
+}
+
+.standard-panel-title {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  margin: 0;
+
+  color: var(--color-text);
   font-size: 1rem;
+  font-weight: 650;
+  line-height: 1.2;
 }
 
-.panel-heading .icon {
+.standard-panel-title .icon {
   color: var(--color-accent-strong);
+  filter: drop-shadow(0 0 0.22rem var(--color-display-glow));
 }
 
-/* CHIP-8 display */
+.standard-panel-indicator {
+  min-width: 0;
+  flex: 0 0 auto;
 
-.display {
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.standard-panel-body {
+  min-width: 0;
+  padding: 0.9rem;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Display                                                                    */
+/* -------------------------------------------------------------------------- */
+
+.display-body {
   padding: 0.75rem;
 }
 
@@ -416,18 +598,18 @@ select {
   aspect-ratio: 2 / 1;
 
   background: var(--color-display-background);
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid color-mix(in srgb, var(--color-border-strong), var(--color-accent) 12%);
   border-radius: var(--radius-control);
-  box-shadow: 0 0 1rem var(--color-display-glow);
+  box-shadow:
+    inset 0 0 1.2rem var(--color-shadow-deep),
+    0 0 1rem var(--color-display-glow);
 
   image-rendering: pixelated;
 }
 
-/* Virtual keypad */
-
-.keypad .panel-heading {
-  margin-bottom: 0;
-}
+/* -------------------------------------------------------------------------- */
+/* Virtual keypad                                                             */
+/* -------------------------------------------------------------------------- */
 
 .keypad-content {
   display: grid;
@@ -513,11 +695,6 @@ select {
   gap: 0.45rem;
 }
 
-.keypad-mapping kbd,
-.keypad-mapping code {
-  font-family: var(--font-mono);
-}
-
 .keypad-mapping kbd {
   color: var(--color-text);
 }
@@ -526,20 +703,20 @@ select {
   color: var(--color-accent-strong);
 }
 
-/* Command bar */
+/* -------------------------------------------------------------------------- */
+/* Command panel                                                              */
+/* -------------------------------------------------------------------------- */
 
-.command-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+.command-bar-body {
+  padding: 0.75rem;
 }
 
 .controls {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  flex: 1 1 auto;
   gap: 0.5rem;
+
+  width: 100%;
 }
 
 .controls button {
@@ -555,13 +732,14 @@ select {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
+  justify-content: flex-end;
   gap: 0.45rem;
 
-  min-width: 7rem;
+  min-width: 0;
 
   color: var(--color-text-muted);
 
-  font-size: 0.9rem;
+  font-size: 0.82rem;
   font-weight: 600;
   white-space: nowrap;
 }
@@ -589,7 +767,9 @@ select {
   border: 1px solid var(--color-text-muted);
 }
 
-/* CPU state */
+/* -------------------------------------------------------------------------- */
+/* CPU state                                                                  */
+/* -------------------------------------------------------------------------- */
 
 #cpu-state-empty,
 #nearby-instructions-empty,
@@ -600,21 +780,19 @@ select {
 
 .cpu-state-layout {
   display: grid;
-  grid-template-columns: minmax(8.5rem, 0.72fr) minmax(0, 2fr);
-  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.85rem;
   align-items: start;
 }
 
 .cpu-special-state,
+.cpu-stack-state,
 .register-grid {
+  grid-column: 1 / -1;
   margin: 0;
 }
 
-.cpu-special-state {
-  display: grid;
-  gap: 0.45rem;
-}
-
+.cpu-special-state,
 .register-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(4.5rem, 1fr));
@@ -631,39 +809,73 @@ select {
 }
 
 .cpu-special-state dt,
-.register-grid dt {
+.register-grid dt,
+.cpu-stack-state dt {
   flex: 0 0 auto;
   color: var(--color-text);
-  font-size: 0.85rem;
+  font-size: var(--font-size-register-name);
   font-weight: 500;
 }
 
 .cpu-special-state dd,
-.register-grid dd {
-  min-width: 3.25rem;
+.register-grid dd,
+.cpu-stack-state dd {
   margin: 0;
   padding: 0.2rem 0.4rem;
-
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 
   color: var(--color-accent-strong);
   background: var(--color-accent-surface);
   border: 1px solid color-mix(in srgb, var(--color-accent), transparent 65%);
   border-radius: 0.25rem;
+}
 
-  font-family: var(--font-mono);
-  font-size: 0.82rem;
-  font-variant-numeric: tabular-nums;
+.cpu-special-state dd,
+.register-grid dd {
+  min-width: 3.25rem;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
   text-align: right;
 }
 
-#cpu-stack {
-  max-width: 8rem;
+.cpu-stack-state {
+  padding-block: 0.65rem;
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
 }
 
-/* Instruction inspection: retained from the current layout. */
+.cpu-stack-state div {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: center;
+}
+
+#cpu-stack {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  text-align: left;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Instruction inspection                                                     */
+/* -------------------------------------------------------------------------- */
+
+.instruction-panels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: var(--space-layout);
+  align-items: start;
+  min-width: 0;
+}
 
 #nearby-instructions-list {
   display: grid;
@@ -683,10 +895,8 @@ select {
 
   padding: 0.2rem 0.35rem;
 
+  color: var(--color-text);
   border-radius: 0.25rem;
-
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
 }
 
 .nearby-instruction-marker {
@@ -728,6 +938,7 @@ select {
 }
 
 #instruction-history-list {
+  min-width: 0;
   max-height: 16rem;
   margin: 0;
   padding-left: 2.25rem;
@@ -740,8 +951,7 @@ select {
 }
 
 #instruction-history-list code {
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
+  color: var(--color-text);
   white-space: nowrap;
 }
 
@@ -750,13 +960,21 @@ select {
   font-weight: 600;
 }
 
-/* Full-width bottom status bar. */
+/* -------------------------------------------------------------------------- */
+/* Status bar                                                                 */
+/* -------------------------------------------------------------------------- */
 
 .app-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+
   padding: 0.65rem 0.85rem;
 }
 
 #status {
+  min-width: 12rem;
   min-height: 1.5rem;
   margin: 0;
 
@@ -767,7 +985,130 @@ select {
   color: var(--color-danger);
 }
 
-/* Keyboard accessibility */
+.status-details {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.35rem 0;
+
+  margin: 0;
+}
+
+.status-detail {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+
+  padding: 0 0.65rem;
+  border-left: 1px solid var(--color-border);
+
+  white-space: nowrap;
+}
+
+.status-detail:first-child {
+  border-left: 0;
+}
+
+.status-detail:last-child {
+  padding-right: 0;
+}
+
+.status-detail-label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  color: var(--color-text-muted);
+  cursor: help;
+}
+
+.status-detail-label .icon {
+  display: block;
+}
+
+.status-detail-label::before,
+.status-detail-label::after {
+  position: absolute;
+  left: 50%;
+  z-index: 20;
+
+  opacity: 0;
+  pointer-events: none;
+
+  transform: translate(-50%, 0.2rem);
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+}
+
+.status-detail-label::before {
+  content: "";
+  bottom: calc(100% + 0.3rem);
+
+  border: 0.28rem solid transparent;
+  border-top-color: var(--color-text);
+}
+
+.status-detail-label::after {
+  content: attr(data-tooltip);
+  bottom: calc(100% + 0.85rem);
+
+  width: max-content;
+  max-width: 15rem;
+  padding: 0.35rem 0.5rem;
+
+  color: var(--color-background);
+  background: var(--color-text);
+  border-radius: var(--radius-control);
+  box-shadow: 0 0.25rem 0.7rem var(--color-shadow-medium);
+
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.status-detail-label:hover::before,
+.status-detail-label:hover::after,
+.status-detail-label:focus-visible::before,
+.status-detail-label:focus-visible::after {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.status-detail-label:focus-visible {
+  outline: 2px solid var(--color-accent-strong);
+  outline-offset: 3px;
+  border-radius: 0.15rem;
+}
+
+.status-detail dd {
+  margin: 0;
+
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Keyboard accessibility                                                     */
+/* -------------------------------------------------------------------------- */
 
 button:focus-visible,
 select:focus-visible {
@@ -775,10 +1116,9 @@ select:focus-visible {
   outline-offset: 2px;
 }
 
-/*
- * Responsive rule requested for the redesign:
- * keep branding/header/status full width; stack the two workspace halves only.
- */
+/* -------------------------------------------------------------------------- */
+/* Responsive layout                                                          */
+/* -------------------------------------------------------------------------- */
 
 @media (max-width: 980px), (orientation: portrait) and (max-width: 1200px) {
   .app {
@@ -824,32 +1164,27 @@ select:focus-visible {
     max-width: 12rem;
   }
 
-  .command-bar {
-    align-items: stretch;
+  .app-status {
+    align-items: flex-start;
     flex-direction: column;
   }
 
-  .command-bar-divider {
-    width: 100%;
-    height: 1px;
+  .status-details {
+    justify-content: flex-start;
   }
 
-  .machine-state {
-    min-width: 0;
+  .status-detail:first-child {
+    padding-left: 0;
   }
 
-  .cpu-state-layout {
-    grid-template-columns: 1fr;
+  .cpu-special-state,
+  .register-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .cpu-special-state {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
     padding-bottom: 0.85rem;
     border-bottom: 1px solid var(--color-border);
-  }
-
-  .register-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .keypad-content {
@@ -859,11 +1194,32 @@ select:focus-visible {
   .keypad-mapping {
     width: 100%;
   }
+
+  .standard-panel-body {
+    padding: 0.8rem;
+  }
 }
 
 @media (max-width: 520px) {
-  .app-header h1 {
-    font-size: 1.75rem;
+  .app-header {
+    padding: 0.2rem 0;
+  }
+
+  .app-header-start,
+  .app-header-end {
+    gap: 0.6rem;
+  }
+
+  .app-branding p {
+    display: none;
+  }
+
+  .app-theme-picker {
+    min-width: 0;
+  }
+
+  .app-theme-picker select {
+    max-width: 9.5rem;
   }
 
   .rom-loader {
@@ -910,14 +1266,6 @@ select:focus-visible {
     grid-template-columns: 1.5fr 1fr 1fr;
   }
 
-  .keypad,
-  .command-bar,
-  .cpu-state,
-  .nearby-instructions,
-  .instruction-history {
-    padding: 0.75rem;
-  }
-
   .virtual-keypad button {
     min-height: 3.25rem;
     padding: 0.5rem;
@@ -927,271 +1275,12 @@ select:focus-visible {
   .register-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-}
 
-/* ========================================================================== */
-/* Standard panel system — layout prototype v2                                */
-/* ========================================================================== */
-
-:root {
-  --font-size-register-name: 0.85rem;
-  --font-size-code: 0.84rem;
-  --panel-header-height: 2.65rem;
-}
-
-.standard-panel {
-  min-width: 0;
-  overflow: hidden;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-panel);
-  box-shadow:
-    inset 0 1px 0 color-mix(in srgb, var(--color-text), transparent 92%),
-    inset 0 -1px 0 #0008,
-    0 0.28rem 0.8rem #0005;
-}
-
-.standard-panel-header {
-  min-height: var(--panel-header-height);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.62rem 0.85rem;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--color-surface-raised), var(--color-text) 3%),
-    var(--color-surface-raised)
-  );
-  border-bottom: 1px solid var(--color-border);
-  box-shadow:
-    inset 0 1px 0 color-mix(in srgb, var(--color-text), transparent 94%),
-    inset 0 -1px 0 #0004;
-}
-
-.standard-panel-title {
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 0;
-  color: var(--color-text);
-  font-size: 1rem;
-  font-weight: 650;
-  line-height: 1.2;
-}
-
-.standard-panel-title .icon {
-  color: var(--color-accent-strong);
-  filter: drop-shadow(0 0 0.22rem var(--color-display-glow));
-}
-
-.standard-panel-indicator {
-  min-width: 0;
-  flex: 0 0 auto;
-  color: var(--color-text-muted);
-  font-size: 0.8rem;
-  white-space: nowrap;
-}
-
-.standard-panel-body {
-  min-width: 0;
-  padding: 0.9rem;
-}
-
-.display,
-.keypad,
-.command-bar,
-.cpu-state,
-.nearby-instructions,
-.instruction-history {
-  padding: 0;
-}
-
-.command-bar {
-  display: block;
-}
-
-.code-text,
-.cpu-special-state dd,
-.register-grid dd,
-.cpu-stack-state dd,
-.nearby-instruction-row,
-#instruction-history-list code,
-.keypad-mapping kbd,
-.keypad-mapping code {
-  font-family: var(--font-mono);
-  font-size: var(--font-size-code);
-  font-variant-numeric: tabular-nums;
-}
-
-.display-body {
-  padding: 0.75rem;
-}
-
-#chip8-display {
-  border-color: color-mix(in srgb, var(--color-border-strong), var(--color-accent) 12%);
-  box-shadow:
-    inset 0 0 1.2rem #000b,
-    0 0 1rem var(--color-display-glow);
-}
-
-.command-bar-body {
-  padding: 0.75rem;
-}
-
-.controls {
-  width: 100%;
-}
-
-.machine-state {
-  min-width: 0;
-  justify-content: flex-end;
-  font-size: 0.82rem;
-}
-
-.cpu-state-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 0.85rem;
-}
-
-/* Each CPU-state group owns a complete row of the panel. */
-.cpu-special-state,
-.cpu-stack-state,
-.register-grid {
-  grid-column: 1 / -1;
-}
-
-.cpu-special-state,
-.register-grid,
-.cpu-stack-state {
-  margin: 0;
-}
-
-/*
- * PC/I/DT/ST deliberately behave like one row of V registers:
- * four columns at normal widths, two columns on small/tall layouts.
- */
-.cpu-special-state,
-.register-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(4.5rem, 1fr));
-  gap: 0.45rem;
-}
-
-.cpu-special-state div,
-.register-grid div {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.45rem;
-  min-width: 0;
-}
-
-.cpu-special-state dt,
-.register-grid dt,
-.cpu-stack-state dt {
-  flex: 0 0 auto;
-  color: var(--color-text);
-  font-size: var(--font-size-register-name);
-  font-weight: 500;
-}
-
-.cpu-special-state dd,
-.register-grid dd,
-.cpu-stack-state dd {
-  margin: 0;
-  padding: 0.2rem 0.4rem;
-  color: var(--color-accent-strong);
-  background: var(--color-accent-surface);
-  border: 1px solid color-mix(in srgb, var(--color-accent), transparent 65%);
-  border-radius: 0.25rem;
-  font-family: var(--font-mono);
-  font-size: var(--font-size-code);
-  font-variant-numeric: tabular-nums;
-}
-
-.cpu-special-state dd,
-.register-grid dd {
-  min-width: 3.25rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: right;
-}
-
-/* Full-width stack row between the special-register row and V0–VF. */
-.cpu-stack-state {
-  padding-block: 0.65rem;
-  border-top: 1px solid var(--color-border);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.cpu-stack-state div {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 0.75rem;
-  align-items: center;
-}
-
-#cpu-stack {
-  width: 100%;
-  min-width: 0;
-  max-width: none;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: left;
-}
-
-.instruction-panels {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
-  gap: var(--space-layout);
-  align-items: start;
-  min-width: 0;
-}
-
-.nearby-instructions,
-.instruction-history {
-  min-width: 0;
-}
-
-.nearby-instruction-row,
-#instruction-history-list code {
-  color: var(--color-text);
-}
-
-#instruction-history-list {
-  min-width: 0;
-}
-
-.panel-heading {
-  display: none;
-}
-
-@media (max-width: 760px) {
-  .cpu-special-state,
-  .register-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .standard-panel-body {
-    padding: 0.8rem;
-  }
-}
-
-@media (max-width: 520px) {
   .standard-panel-header {
     padding: 0.58rem 0.7rem;
   }
 
   .standard-panel-body {
     padding: 0.7rem;
-  }
-
-  .register-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

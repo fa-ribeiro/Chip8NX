@@ -34,6 +34,8 @@ Deno.test("parses supported Web themes", () => {
 
   assertEquals(parseWebTheme("retro-amber"), "retro-amber");
 
+  assertEquals(parseWebTheme("lcd-calculator"), "lcd-calculator");
+
   assertEquals(parseWebTheme("unknown"), undefined);
 });
 
@@ -48,7 +50,7 @@ Deno.test("loads and stores a Web theme preference", () => {
 
   assertEquals(loadWebTheme(storage), "retro-green");
 
-  storeWebTheme(storage, "retro-amber");
+  storeWebTheme(storage, "lcd-calculator");
 
-  assertEquals(readValue(), "retro-amber");
+  assertEquals(readValue(), "lcd-calculator");
 });

@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Chip8NX CHIP-8 web emulator" />
+    <link id="favicon" rel="icon" type="image/svg+xml" />
 
     <title>Chip8NX Web</title>
   </head>
@@ -74,14 +75,74 @@
         <path d="M5.5 16.5A8 8 0 1 0 4 10" />
         <path d="M12 8v5l3 2" />
       </symbol>
+
+      <symbol id="icon-profile" viewBox="0 0 24 24">
+        <path d="m12 3 8 4-8 4-8-4z" />
+        <path d="m4 12 8 4 8-4" />
+        <path d="m4 17 8 4 8-4" />
+      </symbol>
+
+      <symbol id="icon-timer" viewBox="0 0 24 24">
+        <circle cx="12" cy="13" r="8" />
+        <path d="M12 9v5l3 2M9 2h6M12 5V2" />
+      </symbol>
+
+      <symbol id="icon-refresh" viewBox="0 0 24 24">
+        <path d="M20 7v5h-5" />
+        <path d="M4 17v-5h5" />
+        <path d="M6.1 8a7 7 0 0 1 11.7-1L20 12" />
+        <path d="M17.9 16a7 7 0 0 1-11.7 1L4 12" />
+      </symbol>
+
+      <symbol id="icon-version" viewBox="0 0 24 24">
+        <path d="M20 13 13 20 4 11V4h7z" />
+        <circle cx="8.5" cy="8.5" r="1.5" />
+      </symbol>
     </svg>
 
     <main class="app">
-      <!-- Branding intentionally lives outside the workbench. -->
       <header class="app-header">
-        <div>
-          <h1>Chip8NX</h1>
-          <p>CHIP-8 web host</p>
+        <div class="app-header-start">
+          <div class="app-branding">
+            <span class="app-brand-mark" aria-hidden="true">
+              <svg viewBox="0 0 11 8" shape-rendering="crispEdges" focusable="false">
+                <path
+                  d="
+              M2 0h1v1H2z M8 0h1v1H8z
+              M3 1h1v1H3z M7 1h1v1H7z
+              M2 2h7v1H2z
+              M1 3h2v1H1z M4 3h3v1H4z M8 3h2v1H8z
+              M0 4h11v1H0z
+              M0 5h1v1H0z M2 5h7v1H2z M10 5h1v1h-1z
+              M0 6h1v1H0z M2 6h1v1H2z M8 6h1v1H8z M10 6h1v1h-1z
+              M3 7h2v1H3z M6 7h2v1H6z
+            "
+                />
+              </svg>
+            </span>
+
+            <div class="app-brand-copy">
+              <h1 class="app-brand-name">
+                <span>CHIP8</span><span class="app-brand-name-accent">NX</span>
+              </h1>
+
+              <p>CHIP-8 emulator in your browser</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="app-header-end">
+          <!-- Future project navigation and actions belong before the theme selector. -->
+          <label class="option-picker app-theme-picker" for="theme-select">
+            <span>Style</span>
+
+            <select id="theme-select">
+              <option value="retro-green">Retro Green</option>
+              <option value="retro-amber">Retro Amber</option>
+              <option value="dark-theme">Dark</option>
+              <option value="lcd-calculator">LCD Calculator</option>
+            </select>
+          </label>
         </div>
       </header>
 
@@ -108,7 +169,7 @@
             <input id="rom-input" type="file" accept=".ch8,application/octet-stream" hidden />
           </section>
 
-          <section class="workbench-options" aria-label="Machine and appearance options">
+          <section class="workbench-options" aria-label="Machine options">
             <label class="option-picker" for="profile-select">
               <span>Profile</span>
               <select id="profile-select">
@@ -117,21 +178,9 @@
                 <option value="superchip">SUPER-CHIP 1.1</option>
               </select>
             </label>
-
-            <span class="workbench-header-divider" aria-hidden="true"></span>
-
-            <label class="option-picker" for="theme-select">
-              <span>Style</span>
-              <select id="theme-select">
-                <option value="retro-green">Retro Green</option>
-                <option value="retro-amber">Retro Amber</option>
-                <option value="dark-theme">Dark</option>
-              </select>
-            </label>
           </section>
         </header>
 
-        <!-- Desktop: fixed 50/50 workbench. Narrow/tall: columns stack. -->
         <div class="workspace">
           <section class="play-area" aria-label="CHIP-8 play area">
             <section class="display standard-panel" aria-labelledby="display-heading">
@@ -145,7 +194,8 @@
                 </h2>
 
                 <span id="display-resolution" class="standard-panel-indicator code-text"
-                >64 × 32</span>
+                  >64 × 32</span
+                >
               </header>
 
               <div class="standard-panel-body display-body">
@@ -355,7 +405,7 @@
 
                   <dl class="cpu-stack-state" aria-label="CPU stack">
                     <div>
-                      <dt>K:</dt>
+                      <dt>Stack:</dt>
                       <dd id="cpu-stack">—</dd>
                     </div>
                   </dl>
@@ -493,6 +543,76 @@
           <p id="status" role="status">
             TIP: Choose a CHIP-8 ROM and press start. Use your keyboard or the virtual keypad.
           </p>
+
+          <dl class="status-details" aria-label="Machine configuration">
+            <div class="status-detail">
+              <dt class="status-detail-label" data-tooltip="Machine profile" tabindex="0">
+                <svg class="icon" width="15" height="15" aria-hidden="true" focusable="false">
+                  <use href="#icon-profile"></use>
+                </svg>
+                <span class="visually-hidden">Machine profile</span>
+              </dt>
+              <dd id="status-profile">Classic CHIP-8</dd>
+            </div>
+
+            <div class="status-detail">
+              <dt class="status-detail-label" data-tooltip="CPU frequency" tabindex="0">
+                <svg class="icon" width="15" height="15" aria-hidden="true" focusable="false">
+                  <use href="#icon-cpu"></use>
+                </svg>
+                <span class="visually-hidden">CPU frequency</span>
+              </dt>
+              <dd id="status-cpu-frequency">500 Hz</dd>
+            </div>
+
+            <div class="status-detail">
+              <dt class="status-detail-label" data-tooltip="Timer frequency" tabindex="0">
+                <svg class="icon" width="15" height="15" aria-hidden="true" focusable="false">
+                  <use href="#icon-timer"></use>
+                </svg>
+                <span class="visually-hidden">Timer frequency</span>
+              </dt>
+              <dd id="status-timer-frequency">60 Hz</dd>
+            </div>
+
+            <div class="status-detail">
+              <dt
+                class="status-detail-label"
+                data-tooltip="Display refresh frequency"
+                tabindex="0"
+              >
+                <svg class="icon" width="15" height="15" aria-hidden="true" focusable="false">
+                  <use href="#icon-refresh"></use>
+                </svg>
+                <span class="visually-hidden">Display refresh frequency</span>
+              </dt>
+              <dd id="status-refresh-frequency">60 Hz</dd>
+            </div>
+
+            <div class="status-detail">
+              <dt
+                class="status-detail-label"
+                data-tooltip="Display resolution and mode"
+                tabindex="0"
+              >
+                <svg class="icon" width="15" height="15" aria-hidden="true" focusable="false">
+                  <use href="#icon-display"></use>
+                </svg>
+                <span class="visually-hidden">Display resolution and mode</span>
+              </dt>
+              <dd id="status-display">64 × 32</dd>
+            </div>
+
+            <div class="status-detail">
+              <dt class="status-detail-label" data-tooltip="Chip8NX version" tabindex="0">
+                <svg class="icon" width="15" height="15" aria-hidden="true" focusable="false">
+                  <use href="#icon-version"></use>
+                </svg>
+                <span class="visually-hidden">Chip8NX version</span>
+              </dt>
+              <dd>v0.9.0</dd>
+            </div>
+          </dl>
         </footer>
       </section>
     </main>

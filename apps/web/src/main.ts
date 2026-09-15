@@ -58,6 +58,7 @@ import {
   storeWebTheme,
   type WebTheme,
 } from "./theme/web-theme.ts";
+import { createWebFaviconDataUrl } from "./theme/web-favicon.ts";
 import "./style.css";
 
 const CPU_FREQUENCY = Frequency.fromInteger(500n);
@@ -93,8 +94,12 @@ const romFileSize = requireElement<HTMLElement>("#rom-file-size");
 
 const canvas = requireElement<HTMLCanvasElement>("#chip8-display");
 const displayResolution = requireElement<HTMLElement>("#display-resolution");
-
 const status = requireElement<HTMLElement>("#status");
+const statusProfile = requireElement<HTMLElement>("#status-profile");
+const statusCpuFrequency = requireElement<HTMLElement>("#status-cpu-frequency");
+const statusTimerFrequency = requireElement<HTMLElement>("#status-timer-frequency");
+const statusRefreshFrequency = requireElement<HTMLElement>("#status-refresh-frequency");
+const statusDisplay = requireElement<HTMLElement>("#status-display");
 
 const runToggleButton = requireElement<HTMLButtonElement>("#run-toggle-button");
 const runToggleLabel = requireElement<HTMLElement>("#run-toggle-label");
@@ -118,6 +123,8 @@ const initialTheme = loadWebTheme(globalThis.localStorage);
 document.documentElement.dataset.theme = initialTheme;
 themeSelect.value = initialTheme;
 
+updateWebFavicon();
+
 const display = new CanvasDisplay(canvas, readCanvasDisplayPalette());
 
 const inspectionElement = requireElement<HTMLElement>(".inspection");
@@ -132,6 +139,7 @@ let machine: WebMachineSession | undefined;
 let animationFrameId: number | undefined;
 
 updateControls();
+updateStatusDetails();
 inspection.render(undefined);
 
 romLoadButton.addEventListener("click", () => {
@@ -170,6 +178,10 @@ resetButton.addEventListener("click", () => {
 
 profileSelect.addEventListener("change", () => {
   recomposeMachineForSelectedProfile();
+
+  if (machine === undefined) {
+    updateStatusDetails();
+  }
 });
 
 themeSelect.addEventListener("change", () => {
@@ -560,15 +572,90 @@ function updateControls(): void {
   cpuStateIndicatorLabel.textContent = paused ? "Ready" : "Live";
 }
 
+function updateWebFavicon(): void {
+  const styles = getComputedStyle(document.documentElement);
+
+  const favicon = document.getElementById("favicon") as HTMLLinkElement;
+
+  favicon.href = createWebFaviconDataUrl({
+    background: requireCssCustomProperty(styles, "--color-display-background"),
+
+    foreground: requireCssCustomProperty(styles, "--color-display-foreground"),
+
+    border: requireCssCustomProperty(styles, "--color-border-strong"),
+
+    accent: requireCssCustomProperty(styles, "--color-accent"),
+  });
+}
+
 function renderMachine(session: WebMachineSession): void {
   display.render(session.displayBuffer);
   displayResolution.textContent =
     `${session.displayBuffer.width} × ${session.displayBuffer.height}`;
+  updateStatusDetails(session);
   inspection.render(session.snapshotInspection());
+}
+
+function updateStatusDetails(session: WebMachineSession | undefined = machine): void {
+  const profile = session?.profile ?? readSelectedProfile();
+
+  statusProfile.textContent = describeProfile(profile);
+  statusCpuFrequency.textContent = formatFrequency(CPU_FREQUENCY);
+  statusTimerFrequency.textContent = formatFrequency(profile.timerFrequency);
+  statusRefreshFrequency.textContent = formatFrequency(profile.display.refreshFrequency);
+  statusDisplay.textContent = session === undefined
+    ? describeInitialDisplay(profile)
+    : describeDisplay(session.displayBuffer);
+}
+
+function describeProfile(profile: Chip8Profile): string {
+  if (profile === CLASSIC_CHIP8_PROFILE) {
+    return "Classic CHIP-8";
+  }
+
+  if (profile === CHIP48_PROFILE) {
+    return "CHIP-48 2.25";
+  }
+
+  if (profile === SUPERCHIP_PROFILE) {
+    return "SUPER-CHIP 1.1";
+  }
+
+  return "Custom";
+}
+
+function formatFrequency(frequency: Frequency): string {
+  if (frequency.denominator === 1n) {
+    return `${frequency.numerator} Hz`;
+  }
+
+  const value = Number(frequency.numerator) / Number(frequency.denominator);
+
+  return `${value.toFixed(2)} Hz`;
+}
+
+function describeInitialDisplay(profile: Chip8Profile): string {
+  const specification = profile.display.specification;
+
+  if (specification.kind === "fixed") {
+    return `${specification.width} × ${specification.height}`;
+  }
+
+  return `${specification.backingWidth / 2} × ${specification.backingHeight / 2} LOW`;
+}
+
+function describeDisplay(displayBuffer: DisplayBuffer): string {
+  const resolution = `${displayBuffer.width} × ${displayBuffer.height}`;
+
+  return displayBuffer.mode === null
+    ? resolution
+    : `${resolution} ${displayBuffer.mode.toUpperCase()}`;
 }
 
 function applyWebTheme(theme: WebTheme): void {
   document.documentElement.dataset.theme = theme;
+
+  updateWebFavicon();
 
   display.setPalette(readCanvasDisplayPalette());
 
