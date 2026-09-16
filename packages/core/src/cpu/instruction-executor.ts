@@ -50,7 +50,7 @@ export class InstructionExecutor {
       case "scroll-display-down":
         this.requireSuperChipInstruction(instruction);
 
-        if (instruction.rows === 0 && this.instructionSet.kind === "superchip-1.1") {
+        if (instruction.rows === 0) {
           context.exitState.exit();
           return;
         }
