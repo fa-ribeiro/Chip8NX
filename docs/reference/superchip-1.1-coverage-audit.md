@@ -182,18 +182,44 @@ The public profile API test also verifies that Classic CHIP-8, CHIP-48, and SUPE
 
 ## External conformance status
 
-The existing automated external conformance suite continues to cover the Classic baseline and multi-profile compatibility dimensions already established before `v0.9.0`.
+Chip8NX now includes automated external conformance coverage for its historical SUPER-CHIP 1.1 profile using the pinned Timendus CHIP-8 test suite fixtures.
 
-A dedicated automated legacy SUPER-CHIP acceptance fixture is **not yet part of the release gate**.
+The Timendus suite is pinned to:
 
-Timendus provides legacy SUPER-CHIP modes in its Quirks and Scrolling tests. Those are the preferred next external fixtures once the project pins:
+```text
+Release:  v4.2
+Commit:   cb24d55
+```
 
-1. the exact upstream test-suite version;
-2. the local ROM filename and checksum;
-3. the forced legacy-SUPER-CHIP configuration;
-4. a stable completion/result condition suitable for automation.
+The SUPER-CHIP conformance coverage currently includes:
 
-Until then, SUPER-CHIP release confidence comes from focused unit/integration coverage plus manual Web testing rather than an unclaimed external conformance pass.
+- the Timendus Quirks test in forced legacy SUPER-CHIP mode (`0x1FF = 4`);
+- the Timendus Scrolling test in legacy low-resolution mode (`0x1FF = 2`);
+- the Timendus Scrolling test in high-resolution mode (`0x1FF = 3`).
+
+The Quirks test provides external evidence for compatibility-sensitive behavior including:
+
+- logical-operation `VF` behavior;
+- `Fx55` / `Fx65` index-register behavior;
+- display synchronization;
+- sprite clipping;
+- shift-source behavior;
+- jump-offset behavior.
+
+The Scrolling test provides external evidence for:
+
+- `00FB` horizontal scrolling;
+- `00FC` horizontal scrolling;
+- `00Cn` vertical scrolling;
+- historical low-resolution scrolling in physical backing pixels;
+- high-resolution scrolling;
+- low/high display-mode behavior exercised through the normal machine pipeline.
+
+These tests execute the third-party ROMs through Chip8NX's normal initialization, CPU, runtime, scheduler, timer, vertical-blank, and display collaborators rather than testing the individual instructions in isolation.
+
+The exact fixture filenames, checksums, automation selections, upstream release, and licensing information are documented in [`packages/core/tests/conformance/README.md`](../../packages/core/tests/conformance/README.md) and the repository-level [`THIRD_PARTY_NOTICES.md`](../../THIRD_PARTY_NOTICES.md).
+
+Focused unit and integration tests remain the primary evidence for SUPER-CHIP behaviors not exercised by these external fixtures, including interpreter exit, RPL persistence, large-font behavior, wide-sprite collision semantics, and historical boundary cases such as `00C0` and overflowing `Fx1E`.
 
 ## Deliberate historical exclusions
 

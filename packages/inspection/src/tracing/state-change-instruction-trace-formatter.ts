@@ -54,11 +54,11 @@ export class StateChangeInstructionTraceFormatter implements InstructionTraceFor
 
     if (before.programCounter !== after.programCounter) {
       changes.push(
-        `PC:${this.formatAddress(before.programCounter)}${STATE_CHANGE_SEPARATOR}${
+        `PC:${
           this.formatAddress(
-            after.programCounter,
+            before.programCounter,
           )
-        }`,
+        }${STATE_CHANGE_SEPARATOR}${this.formatAddress(after.programCounter)}`,
       );
     }
 

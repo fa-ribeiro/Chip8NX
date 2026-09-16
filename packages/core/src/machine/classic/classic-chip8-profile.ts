@@ -11,7 +11,7 @@ import type { Chip8Profile } from "../chip8-profile.ts";
  * assembling a Classic CHIP-8 interpreter. It does not select concrete host
  * implementations such as keyboards, displays, memory, clocks, or schedulers.
  */
-export const CLASSIC_CHIP8_PROFILE: Chip8Profile = {
+export const CLASSIC_CHIP8_PROFILE = {
   memorySize: 0x1000,
 
   programStartAddress: address(0x200),
@@ -31,6 +31,8 @@ export const CLASSIC_CHIP8_PROFILE: Chip8Profile = {
 
   largeFont: null,
 
+  instructionSet: { kind: "chip8" },
+
   compatibility: {
     shiftSource: "vy",
     memoryTransferIndex: "increment-by-count",
@@ -41,9 +43,6 @@ export const CLASSIC_CHIP8_PROFILE: Chip8Profile = {
       kind: "uniform",
       timing: "vertical-blank",
     },
-    interpreterExit: "unsupported",
-    rplFlags: "unsupported",
     indexOverflow: "continue",
-    zeroScrollDown: "scroll",
   },
-};
+} satisfies Chip8Profile;

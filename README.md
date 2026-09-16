@@ -1,530 +1,353 @@
-# Chip8NX
+# Conformance Tests
 
-`Chip8NX = CHIP-8 + N(ext) / e(X)tensible`
+This directory contains end-to-end conformance tests that run external CHIP-8 ROMs through the normal Chip8NX machine pipeline.
 
-A modular, profile-driven CHIP-8 emulator in TypeScript.
+Third-party ROM images are **not distributed with Chip8NX**.
 
-Chip8NX is a CHIP-8 emulator/interpreter built as a hands-on exercise in TypeScript, object-oriented design, emulator architecture, testing, and software engineering.
+To run these tests locally, obtain the required ROMs from their upstream sources and place them in the documented paths below.
 
-The project supports **Classic CHIP-8**, **CHIP-48 2.25**, and **SUPER-CHIP 1.1** through explicit machine profiles, while keeping reusable emulator semantics separate from host-specific applications and inspection tooling.
+The repository-level [`THIRD_PARTY_NOTICES.md`](../../../../THIRD_PARTY_NOTICES.md) records provenance and licensing information for external test suites.
 
-## Status
+## Running conformance tests
 
-### Current release: `v0.9.0` — SUPER-CHIP 1.1
-
-`v0.9.0` extends the profile and compatibility foundation established in `v0.8.0` with Chip8NX's first machine profile that introduces architectural capabilities beyond Classic CHIP-8: **SUPER-CHIP 1.1**.
-
-Chip8NX now provides three coherent machine profiles:
-
-- **Classic CHIP-8** — the original compatibility baseline;
-- **CHIP-48** — the first alternate compatibility profile introduced in `v0.8.0`;
-- **SUPER-CHIP 1.1** — the historical extended machine targeted by `v0.9.0`.
-
-SUPER-CHIP support includes:
-
-- 64×32 low-resolution and 128×64 high-resolution display modes;
-- a shared 128×64 framebuffer backing store;
-- mode switching without implicit framebuffer clearing;
-- physical scrolling through `00Cn`, `00FB`, and `00FC`;
-- `00FE` / `00FF` low- and high-resolution mode selection;
-- `00FD` interpreter exit;
-- historical `Dxy0` extended-sprite behavior in both display modes;
-- mode-specific collision/VF semantics;
-- vertical-blank-gated low-resolution drawing and immediate high-resolution drawing;
-- the historical ten-byte SUPER-CHIP 1.1 decimal font;
-- `Fx30` large-font lookup;
-- persistent `V0`–`V7` RPL flags through `Fx75` / `Fx85`;
-- historical `Fx1E` interpreter exit when `I` moves beyond the 4 KiB address space;
-- historical `00C0` interpreter-exit behavior;
-- SUPER-CHIP `Fx55` / `Fx65` behavior with `I` left unchanged.
-
-The Web host exposes Classic CHIP-8, CHIP-48, and SUPER-CHIP 1.1 through the machine-profile selector. Changing profile recomposes the machine around the same ROM using the selected profile.
-
-The Web Canvas adapter renders the physical framebuffer backing store directly, allowing the same presentation component to display Classic 64×32 output as well as both SUPER-CHIP display modes without duplicating machine semantics in the host.
-
-The Classic CHIP-8 Core remains at the established conformance baseline, with intentional coverage for the complete Classic opcode set and the project's current external conformance suite:
-
-- IBM Logo;
-- original corax89 opcode test;
-- Timendus Corax+;
-- Timendus Flags;
-- Timendus Quirks in Classic CHIP-8 mode;
-- Timendus Keypad.
-
-`0mmm` is recognized and decoded but intentionally rejected because it transfers execution to native CDP1802 code outside the generic CHIP-8 virtual machine.
-
-Additional Classic conformance remains useful when it provides new behavioral evidence, but it no longer blocks feature development.
-
-## Goals
-
-This project is intended both as an emulator and as a learning exercise.
-
-The main goals are to:
-
-- build a solid foundation in TypeScript;
-- practice object-oriented and modular software design;
-- understand the CHIP-8 architecture and instruction set;
-- model CHIP-8 variants and quirks explicitly when multiple behaviors genuinely need to coexist;
-- keep components independently testable and replaceable;
-- use external conformance ROMs as behavioral acceptance tests;
-- support multiple host applications without coupling the emulator core to a specific UI or platform.
-
-## Architecture
-
-Chip8NX separates reusable machine semantics, passive inspection tooling, and host-specific application concerns.
-
-```mermaid
-flowchart LR
-    Apps["Applications"]
-    Inspection["@chip8nx/inspection"]
-    Core["@chip8nx/core"]
-
-    Apps -->|"depends on"| Core
-    Apps -->|"when needed"| Inspection
-    Inspection -->|"depends on"| Core
-```
-
-The arrows represent dependency direction.
-
-`@chip8nx/core` owns the emulated machine: machine profiles and compatibility semantics, machine state and capabilities, initialization, CPU execution, runtime orchestration, scheduling, and the minimal CPU-observation contract.
-
-Within Core, one instruction attempt follows the canonical path:
-
-```text
-Memory → Cpu → Decoder → Instruction → InstructionExecutor → ExecutionContext
-```
-
-`Cpu` owns fetch/decode/execute sequencing. `InstructionExecutor` applies typed instruction semantics through the focused state and capability components grouped by `ExecutionContext`, using the compatibility selected by the active machine profile.
-
-Compatibility configuration is not stored in `ExecutionContext`: it configures components during composition rather than acting as mutable machine state or an execution capability.
-
-`@chip8nx/inspection` builds only on Core's public API and provides passive tooling:
-
-```text
-instruction formatting
-disassembly
-bounded instruction-trace history
-trace formatting
-```
-
-Core does not depend on Inspection.
-
-Applications are the composition roots. They construct Core components, choose host adapters, optionally compose Inspection tools, and own platform-specific concerns such as rendering, audio presentation, keyboard adaptation, filesystem access, terminal or DOM interaction, and lifecycle integration.
-
-This keeps the reusable responsibilities distinct:
-
-```text
-Core
-    → what the machine is and what happened
-
-Inspection
-    → how machine semantics and observations can be inspected
-
-Applications
-    → how the machine is hosted and presented
-```
-
-For diagrams and more detail, see [Architecture](./docs/architecture/README.md).
-
-## Quick start
-
-### Requirements
-
-- Deno 2.x
-
-### Check the project
-
-```bash
-deno task check
-```
-
-This performs TypeScript checking, formatting validation, and linting.
-
-### Run unit and integration tests
-
-```bash
-deno task test
-```
-
-Third-party conformance ROMs are intentionally not included in the repository, so conformance tests remain separate from the default test task.
-
-### Run conformance tests
-
-After installing the required external ROM fixtures as documented in [`packages/core/tests/conformance/README.md`](./packages/core/tests/conformance/README.md):
+From the repository root:
 
 ```bash
 deno task test:conformance
 ```
 
-### Run the CI contract locally
+Individual tests can also be run directly:
 
 ```bash
-deno task ci
+deno test --allow-read packages/core/tests/conformance/ibm-logo.test.ts
+deno test --allow-read packages/core/tests/conformance/corax89.test.ts
+deno test --allow-read packages/core/tests/conformance/timendus-corax-plus.test.ts
+deno test --allow-read packages/core/tests/conformance/timendus-flags.test.ts
+deno test --allow-read packages/core/tests/conformance/timendus-quirks.test.ts
+deno test --allow-read packages/core/tests/conformance/timendus-keypad.test.ts
+deno test --allow-read packages/core/tests/conformance/variant-detection.test.ts
 ```
 
-### Run the terminal application
+The `roms/` directory is intended for local test fixtures and should not contain redistributed third-party ROMs in the public repository.
 
-```bash
-deno task terminal <rom-path>
-```
+### IBM Logo ROM
 
-The terminal host presents the 64×32 Classic framebuffer using Unicode block characters with a retro green presentation and accepts the conventional CHIP-8 keyboard mapping.
-
-To run the same emulator with line-oriented instruction tracing:
-
-```bash
-deno task terminal --trace <rom-path>
-```
-
-Trace mode keeps keyboard input and emulated execution active while disabling the Terminal's alternate-screen framebuffer presentation so trace lines can use stdout cleanly.
-
-Press `Escape` to exit. `Ctrl+C` remains available as an alternative exit path.
-
-### Compare terminal composition levels
-
-The terminal application provides the first Chip8NX composition case study.
-
-The same terminal host is available as three runnable examples:
+Expected path:
 
 ```text
-apps/terminal/examples/01-components.ts
-apps/terminal/examples/02-standard-compositions.ts
-apps/terminal/examples/03-standard-host.ts
+packages/core/tests/conformance/roms/ibm-logo.ch8
 ```
 
-The model has now been evaluated against the Web host and remains a terminal-specific composition model rather than a mandatory project-wide framework. See [Terminal composition levels](./docs/guides/terminal-composition-levels.md) and [Host composition evaluation](./docs/architecture/composition-evaluation.md).
+The IBM Logo ROM is a historical CHIP-8 test/program image used to verify basic end-to-end execution and drawing behavior.
 
-### Run the Web application
+Chip8NX does not redistribute this ROM.
 
-Start the Vite development server:
+Expected fixture identity:
+
+```text
+Filename: ibm-logo.ch8
+Size:     132 bytes
+MD5:      2dbace8066709ac9a264d23281820d32
+SHA-256:  8bf3b46d8a64c2074e7538200f684a2eaced258404d3c7d3bd7a917c3d0143e5
+```
+
+The conformance test executes the ROM through the normal machine initialization, CPU, runtime, and scheduler pipeline and compares the resulting framebuffer against the expected IBM Logo output.
+
+### corax89 CHIP-8 Test ROM
+
+Expected path:
+
+```text
+packages/core/tests/conformance/roms/test_opcode.ch8
+```
+
+Obtain the ROM from the upstream repository:
+
+<https://github.com/corax89/chip8-test-rom>
+
+The expected fixture is:
+
+```text
+Filename: test_opcode.ch8
+Size:     478 bytes
+SHA-256:  67759cf9f5b27db66f0769ea8fd0b30ba220f46d6f19f8ba4fd4108d986ce0ab
+```
+
+Chip8NX does not redistribute this ROM.
+
+The upstream corax89 project is MIT-licensed. See the repository-level [`THIRD_PARTY_NOTICES.md`](../../../../THIRD_PARTY_NOTICES.md) for provenance information.
+
+### Timendus CHIP-8 test suite
+
+The Timendus CHIP-8 test suite is a collection of ROM images designed to help developers create and test their own CHIP-8 interpreters or emulators. It includes various tests to validate the functionality and quirks of these systems, ensuring accurate implementation.
+
+#### Timendus test suite version
+
+Chip8NX pins Timendus CHIP-8 test-suite fixtures to:
+
+```text
+Release:  v4.2
+Commit:   cb24d55
+```
+
+Pinning the upstream version is part of the conformance contract. Test ROM behavior, automation hooks, and expected output must not silently change because a newer upstream release becomes available.
+
+The fixture checksums documented below identify the exact ROM images expected by the automated tests.
+
+#### Timendus Corax+ Opcode Test
+
+Expected path:
+
+```text
+packages/core/tests/conformance/roms/3-corax+.ch8
+```
+
+Obtain the ROM from the Timendus CHIP-8 test suite:
+
+<https://github.com/Timendus/chip8-test-suite#corax-opcode-test>
+
+The expected fixture is:
+
+```text
+Filename: 3-corax+.ch8
+Size:     761 bytes
+SHA-256:  1c7e14eae14d6d5e1e47693804110354cbc4081defe4e6e5d9167c25ffc7b4b0
+```
+
+The Timendus CHIP-8 test suite is licensed under GPL-3.0. The external ROM remains subject to its upstream license and is not covered by the Chip8NX MIT license.
+
+The Corax+ test extends the original corax89 opcode test with additional coverage including call/return behavior, `8XY7`, `FX1E`, `FX65`, BCD edge cases, and 8-bit register width.
+
+#### Timendus Flags Test
+
+Expected path:
+
+```text
+packages/core/tests/conformance/roms/4-flags.ch8
+```
+
+Obtain the ROM from the Timendus CHIP-8 test suite:
+
+<https://github.com/Timendus/chip8-test-suite#flags-test>
+
+The expected fixture is:
+
+```text
+Filename: 4-flags.ch8
+Size:     1041 bytes
+SHA-256:  f00ddadd37bc878473de0c8f16faecf9985dea39036a3a796d551bc9fec47cfa
+```
+
+Chip8NX does not redistribute this ROM.
+
+The Timendus CHIP-8 test suite is licensed under GPL-3.0. The external ROM remains subject to its upstream license and is not covered by the Chip8NX MIT license.
+
+The Flags test verifies arithmetic and logical result values, VF flag behavior, carry and borrow cases, shifted-out bits, use of VF as an instruction operand, and Fx1E with both a normal register and VF.
+
+#### Timendus Quirks Test
+
+Expected path:
+
+```text
+packages/core/tests/conformance/roms/5-quirks.ch8
+```
+
+Obtain the ROM from the Timendus CHIP-8 test suite:
+
+<https://github.com/Timendus/chip8-test-suite#quirks-test>
+
+The expected fixture is:
+
+```text
+Filename: 5-quirks.ch8
+Size:     3232 bytes
+SHA-256:  d839350268a3e73c7a16562b3d23c85aa1b92a567f5f61bd6727b1ea44635679
+```
+
+Chip8NX does not redistribute this ROM.
+
+The Timendus CHIP-8 test suite is licensed under GPL-3.0. The external ROM remains subject to its upstream license and is not covered by the Chip8NX MIT license.
+
+The ROM supports automated platform selection by writing a value to address `0x1FF`.
+
+Chip8NX currently uses:
+
+- `1` — Classic CHIP-8;
+- `4` — SUPER-CHIP with legacy behavior.
+
+The Classic conformance test verifies these compatibility behaviors:
+
+- `VF` reset by `8XY1`, `8XY2`, and `8XY3`;
+- `I` increment after `FX55` and `FX65`;
+- display synchronization with vertical blank;
+- sprite clipping and coordinate wrapping;
+- `8XY6` and `8XYE` shift-source behavior;
+- `BNNN` jump-offset behavior.
+
+The legacy SUPER-CHIP selection is used by dedicated SUPER-CHIP conformance coverage.
+
+#### Timendus Keypad Test
+
+Expected path:
+
+```text
+packages/core/tests/conformance/roms/6-keypad.ch8
+```
+
+Obtain the ROM from the Timendus CHIP-8 test suite:
+
+<https://github.com/Timendus/chip8-test-suite#keypad-test>
+
+The expected fixture is:
+
+```text
+Filename: 6-keypad.ch8
+Size:     913 bytes
+SHA-256:  558902b0e406bb97dc808c16d55abf493706598246e3c77aea9d9401063169c9
+```
+
+Chip8NX does not redistribute this ROM.
+
+The Timendus CHIP-8 test suite is licensed under GPL-3.0. The external ROM remains subject to its upstream license and is not covered by the Chip8NX MIT license.
+
+The Keypad test exercises all three Classic CHIP-8 keyboard instructions:
+
+- `EX9E` — skip when the key stored in `VX` is pressed;
+- `EXA1` — skip when the key stored in `VX` is not pressed;
+- `FX0A` — wait for a key press followed by release.
+
+The ROM supports automated test selection by writing a value to address `0x1FF`:
+
+1. selects `EX9E`;
+2. selects `EXA1`;
+3. selects `FX0A`.
+
+The EX9E and EXA1 conformance tests drive `KeyboardState` directly. The FX0A test additionally verifies that execution remains blocked while waiting, CHIP-8 timers continue to advance, and execution resumes only after the selected key is released.
+
+#### Timendus Scrolling Test
+
+Expected path:
+
+```text
+packages/core/tests/conformance/roms/8-scrolling.ch8
+```
+
+Obtain the ROM from the pinned Timendus CHIP-8 test suite release:
+
+<https://github.com/Timendus/chip8-test-suite#scrolling-test>
+
+The expected fixture is:
+
+```text
+Filename: 8-scrolling.ch8
+Size:     1330 bytes
+SHA-256:  3f43507c45a949e5b014445853205dd1f36bb532cf25baa22209b7c300c596d7
+```
+
+Chip8NX does not redistribute this ROM.
+
+The Timendus CHIP-8 test suite is licensed under GPL-3.0. The external ROM remains subject to its upstream license and is not covered by the Chip8NX MIT license.
+
+The scrolling ROM supports automated selection by writing a value to address `0x1FF`.
+
+Chip8NX uses the SUPER-CHIP selections relevant to its historical SUPER-CHIP 1.1 profile:
+
+- `2` — SUPER-CHIP low resolution with legacy behavior;
+- `3` — SUPER-CHIP high resolution.
+
+These modes are used by the dedicated SUPER-CHIP conformance tests.
+
+### Gulrak Variant Detection Test
+
+Expected path:
+
+```text
+packages/core/tests/conformance/roms/variant-detection-1.4.ch8
+```
+
+Obtain the ROM from Gulrak's Variant Detection Test:
+
+<https://github.com/gulrak/cadmium/wiki/Variant-Detection-Test>
+
+The expected fixture is:
+
+```text
+Filename: variant-detection-1.4.ch8
+Size:     2192 bytes
+SHA-256:  ed53823dd9e133c1a30ad5557eab54dc9f8252cf4016f5cf94cd948828ff03ca
+```
+
+Chip8NX does not redistribute this ROM.
+
+The Variant Detection Test is published by Steffen Schümann (Gulrak) as part of the Cadmium project, which is MIT-licensed. The external ROM remains subject to its upstream license and is not covered by the Chip8NX MIT license.
+
+The test identifies historical CHIP-8 variants and reports compatibility-sensitive behavior for:
+
+- `VF` reset by `8XY1`, `8XY2`, and `8XY3`;
+- `I` updates after `FX55` and `FX65`;
+- `8XY6` and `8XYE` shift-source behavior;
+- `BNNN` / `BXNN` jump-offset behavior;
+- display synchronization behavior;
+- sprite wrapping and clipping behavior.
+
+Its memory test distinguishes all three index-register behaviors relevant to Chip8NX:
+
+- `MEM1` — `I += X + 1`;
+- `MEMX` — `I += X`;
+- `MEM0` — `I` remains unchanged.
+
+## Verifying downloaded ROMs
+
+After downloading the file, calculate its SHA-256 checksum locally.
+
+### Linux
 
 ```bash
-deno task web
+sha256sum packages/core/tests/conformance/roms/ibm-logo.ch8
+sha256sum packages/core/tests/conformance/roms/test_opcode.ch8
+sha256sum packages/core/tests/conformance/roms/3-corax+.ch8
+sha256sum packages/core/tests/conformance/roms/4-flags.ch8
+sha256sum packages/core/tests/conformance/roms/5-quirks.ch8
+sha256sum packages/core/tests/conformance/roms/6-keypad.ch8
+sha256sum packages/core/tests/conformance/roms/8-scrolling.ch8
+sha256sum packages/core/tests/conformance/roms/variant-detection-1.4.ch8
 ```
 
-Open the URL reported by Vite in a browser, load a CHIP-8 ROM file, and the Web host will initialize and run it.
-
-The Web host provides:
-
-- Canvas framebuffer presentation for Classic and SUPER-CHIP display geometry;
-- selectable Classic CHIP-8, CHIP-48, and SUPER-CHIP 1.1 machine profiles;
-- physical and virtual CHIP-8 keyboard input;
-- Start/Pause, Step, and Reset execution controls;
-- Web Audio sound presentation;
-- live CPU-state inspection;
-- best-effort nearby disassembly around the current program counter;
-- bounded recent instruction-attempt history;
-- responsive desktop and narrow-screen layouts;
-- persistent Retro Green, Retro Amber, and Dark appearance themes.
-
-![Chip8NX Web Inspection Workbench running the IBM Logo ROM](./docs/images/web-inspection-workbench-ibm-logo.png)
-
-_Chip8NX Web Inspection Workbench running the IBM Logo ROM._
-
-To verify the production Web build:
+### macOS
 
 ```bash
-deno task web:build
+shasum -a 256 packages/core/tests/conformance/roms/ibm-logo.ch8
+shasum -a 256 packages/core/tests/conformance/roms/test_opcode.ch8
+shasum -a 256 packages/core/tests/conformance/roms/3-corax+.ch8
+shasum -a 256 packages/core/tests/conformance/roms/4-flags.ch8
+shasum -a 256 packages/core/tests/conformance/roms/5-quirks.ch8
+shasum -a 256 packages/core/tests/conformance/roms/6-keypad.ch8
+shasum -a 256 packages/core/tests/conformance/roms/8-scrolling.ch8
+shasum -a 256 packages/core/tests/conformance/roms/variant-detection-1.4.ch8
 ```
 
-### Disassemble a ROM
+### PowerShell
 
-The disassembler CLI provides an exploratory linear view of a CHIP-8 ROM:
-
-```bash
-deno task disassemble <rom-path>
+```powershell
+Get-FileHash packages/core/tests/conformance/roms/ibm-logo.ch8 -Algorithm SHA256
+Get-FileHash packages/core/tests/conformance/roms/test_opcode.ch8 -Algorithm SHA256
+Get-FileHash packages/core/tests/conformance/roms/3-corax+.ch8 -Algorithm SHA256
+Get-FileHash packages/core/tests/conformance/roms/4-flags.ch8 -Algorithm SHA256
+Get-FileHash packages/core/tests/conformance/roms/5-quirks.ch8 -Algorithm SHA256
+Get-FileHash packages/core/tests/conformance/roms/6-keypad.ch8 -Algorithm SHA256
+Get-FileHash packages/core/tests/conformance/roms/8-scrolling.ch8 -Algorithm SHA256
+Get-FileHash packages/core/tests/conformance/roms/variant-detection-1.4.ch8 -Algorithm SHA256
 ```
 
-For example:
+## Future Fixtures
 
-```bash
-deno task disassemble packages/core/tests/conformance/roms/test_opcode.ch8
-```
+Further Timendus fixtures will be added when they exercise behavior applicable to the supported Chip8NX machine profiles.
 
-Output contains the source address, opcode word, and decoded Classic CHIP-8 instruction:
+The Timendus Beep test depends on host audio presentation and is therefore deferred until Chip8NX has an appropriate audio integration boundary.
 
-```text
-0x200  124E  JP 0x24E
-0x202  EAAC  UNKNOWN
-0x204  AAEA  LD I, 0xAEA
-```
+When a new fixture becomes part of an automated conformance test:
 
-Unsupported words are reported as `UNKNOWN` and traversal continues. The CLI performs a linear sweep and does not attempt to distinguish executable code from embedded data. A word that decodes successfully may therefore still represent sprite, table, string, or other non-executable data.
-
-See [Disassembling CHIP-8 programs](./docs/guides/disassembling-programs.md).
-
-### Generate API documentation
-
-```bash
-deno task docs:build
-```
-
-Generated API documentation is written to:
-
-```text
-build/docs/api/
-```
-
-The generated API reference covers the public entrypoints of both `@chip8nx/core` and `@chip8nx/inspection`.
-
-### Check public API documentation
-
-```bash
-deno task docs:check
-```
-
-## Repository structure
-
-```text
-Chip8NX/
-├── packages/
-│   ├── core/
-│   │   ├── mod.ts
-│   │   └── src/
-│   └── inspection/
-│       ├── mod.ts
-│       └── src/
-├── apps/
-│   ├── terminal/
-│   ├── web/
-│   └── disassembler/
-├── docs/
-├── build/
-└── deno.json
-```
-
-### `packages/core`
-
-`@chip8nx/core` contains the reusable CHIP-8 machine.
-
-Its responsibilities include:
-
-- machine profiles and initialization;
-- focused machine state and capability boundaries;
-- opcode decoding and typed instruction semantics;
-- CPU execution;
-- runtime scheduling and timing;
-- timers and vertical blank;
-- display-buffer state;
-- keyboard, font, and random-number capability seams;
-- the minimal CPU instruction-observation contract.
-
-Core does not depend on host-specific presentation or passive Inspection tooling.
-
-### `packages/inspection`
-
-`@chip8nx/inspection` contains host-independent passive tools built on Core's public API.
-
-Its current responsibilities include:
-
-- CHIP-8 instruction formatting;
-- strict disassembly;
-- bounded instruction-trace history;
-- human-readable trace formatting;
-- CPU-state-change trace decoration.
-
-Inspection does not control execution and does not own host-specific output.
-
-### `apps/terminal`
-
-The Terminal application is a host composition case study.
-
-It uses Core for emulation and may compose Inspection formatters for optional line-oriented trace output.
-
-Terminal-specific rendering, keyboard adaptation, CLI options, and output policy remain application-owned.
-
-### `apps/web`
-
-The Web application hosts the CHIP-8 machine in a browser.
-
-It composes both reusable packages:
-
-```text
-@chip8nx/core
-    machine execution
-    runtime and scheduling
-    authoritative CPU observation
-
-@chip8nx/inspection
-    instruction formatting
-    nearby disassembly
-    bounded trace history
-    trace formatting
-```
-
-The application owns the browser-specific policy around those capabilities: machine-profile selection, profile-appropriate instruction formatting, Canvas rendering, audio presentation, keyboard adaptation, ROM loading, execution controls, inspection-window selection, responsive DOM presentation, appearance themes, and UI lifecycle.
-
-Reset reinitializes the current session using its retained profile. Selecting a different profile creates a fresh session from the retained ROM image and preserves the host's previous running or paused state.
-
-Passive inspection failures remain application-visible data rather than emulator failures. The Web inspector can therefore expose undecodable nearby bytes and failed CPU attempts without giving the Inspection package execution-control responsibility.
-
-### `apps/disassembler`
-
-The disassembler application is a command-line inspection tool.
-
-It combines:
-
-```text
-Core
-    Memory
-    Decoder
-    InvalidOpcodeError
-
-Inspection
-    Disassembler
-    ClassicInstructionFormatter
-```
-
-The reusable Inspection disassembler is strict. The application adds tolerant whole-ROM exploration policy by catching invalid opcodes per instruction-sized word and continuing.
-
-### `docs`
-
-Long-form architecture, guides, reference material, and Architecture Decision Records.
-
-Generated API documentation is written under:
-
-```text
-build/docs/api/
-```
-
-and is not committed to source control.
-
-## Documentation
-
-- [Documentation index](./docs/README.md)
-- [Architecture](./docs/architecture/README.md)
-- [Guides](./docs/guides/README.md)
-- [Reference](./docs/reference/README.md)
-- [Architecture Decision Records](./docs/decisions/README.md)
-
-Source-level API behavior belongs close to TypeScript implementation in JSDoc. Project documentation explains how larger pieces collaborate and why major decisions were made.
-
-## Milestone history
-
-### `v0.0.1` — IBM Logo POC ✓
-
-A real CHIP-8 ROM executes end-to-end and produces the expected framebuffer.
-
-### `v0.1.0` — corax89 Opcode Conformance ✓
-
-The original corax89 opcode test succeeds through the normal Chip8NX machine pipeline.
-
-### `v0.2.0` — Classic CHIP-8 Baseline ✓
-
-The Classic implementation passes the relevant Timendus Corax+, Flags, Quirks, and Keypad tests and has an explicit opcode-family coverage audit.
-
-See [Classic CHIP-8 opcode coverage audit](./docs/reference/classic-opcode-audit.md).
-
-### `v0.3.0` — Interactive Terminal Host ✓
-
-The first complete Chip8NX host provides terminal framebuffer presentation, interactive keyboard input, clean terminal lifecycle management, and runnable examples demonstrating Level-1, Level-2, and Level-3 composition.
-
-### `v0.4.0` — Interactive Web Host ✓
-
-The second complete Chip8NX host provides browser ROM loading, Canvas framebuffer presentation, physical and virtual keyboard input, execution lifecycle controls, and Web Audio sound presentation.
-
-The Web host also completes the second application-composition case study, validating the current Core host boundaries while keeping host-level composition application-specific.
-
-### `v0.5.0` — Disassembly and Inspection ✓
-
-Core gains a reusable read-only instruction-inspection path built on the existing typed decoder, together with a pluggable instruction-formatting boundary and a conventional Classic CHIP-8 formatter.
-
-The release also adds a small command-line disassembler for exploratory whole-ROM inspection. Unsupported words are rendered as `UNKNOWN` without changing the strict Core range-disassembly contract. The implementation and application are documented through dedicated architecture and usage guides and validated against real CHIP-8 ROMs containing mixed code and data.
-
-### `v0.6.0` — Tracing and Execution Observation ✓
-
-Core gains optional structured observation of real CPU instruction attempts, including successful and failed attempts, before/after CPU state, observer-failure isolation, and preservation of the original execution error.
-
-Trace formatting remains separate from observation, with conventional Classic trace formatting and composable CPU-state-change decoration. `InstructionTraceBuffer` adds bounded chronological history suitable for future inspection consumers.
-
-The Terminal `--trace` mode provides the first external proof of concept while keeping output and host presentation outside Core.
-
-Together with the `v0.5.0` disassembly boundary, this milestone establishes the reusable inspection foundation for future debugger and analysis tooling without prematurely adding breakpoints, execution control, event infrastructure, replay, or whole-machine tracing.
-
-### `v0.7.0` — Web Inspection Workbench ✓
-
-The Web host becomes Chip8NX's first interactive inspection workbench.
-
-It composes the Core CPU-observation boundary with the extracted `@chip8nx/inspection` package to provide live CPU state, bounded best-effort disassembly around the current program counter, and recent successful or failed CPU instruction attempts.
-
-The release also evolves the browser host into a responsive play-and-inspection workspace with unified Start/Pause control, compact ROM loading, explicit keyboard mapping, machine-state presentation, theme-aware command controls, and persistent Retro Green, Retro Amber, and Dark themes whose palettes also drive Canvas framebuffer presentation.
-
-Inspection remains deliberately read-only: breakpoints, watchpoints, pause conditions, step-over/step-out behavior, memory editing, and other debugger execution-control semantics remain deferred until concrete reusable requirements emerge.
-
-### `v0.8.0` — CHIP-8 Profiles / Variant Foundation ✓
-
-Chip8NX evolves from a single Classic CHIP-8 target into a demonstrated multi-profile emulator architecture with built-in `CLASSIC_CHIP8_PROFILE` and `CHIP48_PROFILE` machine definitions.
-
-`Chip8Profile` now describes the complete emulated machine, combining architectural characteristics with explicit compatibility-sensitive semantics for shift source, `Fx55` / `Fx65` index-register updates, `Bnnn` jump offsets, logic-operation `VF` behavior, sprite overflow, and sprite draw timing. CHIP-48 2.25 additionally demonstrates profile-specific font data and machine timing.
-
-The Web host provides interactive Classic CHIP-8 / CHIP-48 2.25 profile selection, profile-appropriate instruction formatting, profile-preserving Reset behavior, and fresh machine-session composition when the selected historical target changes.
-
-Compatibility is independently validated with Gulrak's Variant Detection Test v1.4, executing the same external ROM under both profiles and comparing each against its own stable framebuffer result.
-
-The milestone establishes the variant foundation without introducing a generic quirk engine, strategy hierarchy, profile registry, or universal machine-session abstraction: new variation continues to be modeled only when concrete historical targets demonstrate the need.
-
-### `v0.9.0` — SUPER-CHIP 1.1 ✓
-
-Chip8NX adds its first extended CHIP-8-family machine profile: historical SUPER-CHIP 1.1.
-
-The display model evolves from fixed geometry to an explicit display specification capable of representing SUPER-CHIP's 64×32 and 128×64 modes over one shared 128×64 backing framebuffer. Display mode remains machine state, while the Web Canvas adapter renders the resulting physical framebuffer without reproducing SUPER-CHIP semantics in the presentation layer.
-
-The release adds SUPER-CHIP scrolling and mode-control instructions, interpreter exit, extended `Dxy0` sprites, mode-specific draw timing and VF behavior, the historical ten-byte decimal font through `Fx30`, and persistent `V0`–`V7` RPL flags through `Fx75` / `Fx85`.
-
-SUPER-CHIP is composed through the same `Chip8Profile`, `ExecutionContext`, decoder, executor, runtime, initialization, and host boundaries already used by Classic CHIP-8 and CHIP-48. No parallel emulator hierarchy or generic quirk engine is introduced.
-
-The Web profile selector now exposes all three supported machines:
-
-```text
-Classic CHIP-8
-CHIP-48
-SUPER-CHIP 1.1
-```
-
-Changing profile rebuilds the current Web machine session around the selected profile while preserving host-owned persistent state such as the SUPER-CHIP RPL flags.
-
-## Future work
-
-Post-`v0.9.0` development can proceed across areas such as:
-
-- active debugger behavior built on the existing passive inspection foundation, when concrete needs such as breakpoints, watchpoints, or richer stepping semantics are demonstrated;
-- richer memory or static-analysis inspection when concrete workflows justify it;
-- additional CHIP-8-family profiles such as XO-CHIP when their architectural differences are ready to be modeled explicitly;
-- further public reusable-package API and composition refinement when additional consumers create demonstrated pressure for change;
-- desktop hosts;
-- broader SUPER-CHIP compatibility and conformance evidence where additional historical tests expose meaningful behavior not already represented.
-
-The current CPU-observation boundary deliberately remains observational. Breakpoints, execution-control policy, observer fan-out, timestamps, replay, whole-machine snapshots, persistent trace formats, and richer history-query APIs should be introduced only when concrete debugger or analysis consumers demonstrate the need.
-
-The current disassembler likewise remains a small inspection foundation rather than a full static-analysis system. Features such as control-flow analysis, code/data classification, labels, descriptions, and richer tolerant-disassembly models should be introduced only when concrete consumers justify them.
-
-## References
-
-The project is developed with reference to:
-
-- CHIP-8 Variant Database / CHIP-8-KB — Classic CHIP-8;
-- Matthew Mikolay's CHIP-8 technical reference;
-- Tobias V. Langhoff's CHIP-8 emulator guide;
-- corax89 CHIP-8 test ROM;
-- Timendus CHIP-8 test suite.
-- Gulrak / Cadmium Variant Detection Test.
-
-Historical behavior is resolved against evidence appropriate to the selected machine profile rather than assuming one compatibility interpretation for every CHIP-8-family target.
-
-## Versioning
-
-The project follows Semantic Versioning.
-
-During `0.x`:
-
-- PATCH releases contain fixes, refactors, documentation improvements, and other changes that do not represent a new emulator capability milestone;
-- MINOR releases represent meaningful capability or conformance milestones and may include breaking API changes;
-- `1.0.0` will mark the first stable Classic CHIP-8 public API and agreed conformance contract.
-
-See [CHANGELOG.md](./CHANGELOG.md) for release history.
-
-## License
-
-Chip8NX source code is licensed under the [MIT License](./LICENSE).
-
-Third-party conformance ROMs and other external materials remain subject to their respective upstream licenses and are not covered by the Chip8NX MIT license. See [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md).
+1. do not commit the third-party ROM unless its redistribution terms are explicitly understood and intentionally accepted;
+2. document the expected local filename and path here;
+3. pin a checksum for the exact fixture used by Chip8NX;
+4. record upstream provenance and licensing in [`THIRD_PARTY_NOTICES.md`](../../../../THIRD_PARTY_NOTICES.md).

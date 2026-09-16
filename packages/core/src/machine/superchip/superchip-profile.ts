@@ -13,7 +13,7 @@ import { SUPERCHIP_LARGE_FONT_IMAGE } from "../../font/superchip-large-font-imag
  * modeled by Chip8NX, including the large font, persistent RPL flags,
  * interpreter exit behavior, and display-mode-dependent drawing.
  */
-export const SUPERCHIP_PROFILE: Chip8Profile = {
+export const SUPERCHIP_PROFILE = {
   ...CHIP48_PROFILE,
 
   display: {
@@ -31,6 +31,8 @@ export const SUPERCHIP_PROFILE: Chip8Profile = {
     baseAddress: address(0x0a0),
   },
 
+  instructionSet: { kind: "superchip-1.1" },
+
   compatibility: {
     ...CHIP48_PROFILE.compatibility,
 
@@ -41,10 +43,6 @@ export const SUPERCHIP_PROFILE: Chip8Profile = {
       low: "vertical-blank",
       high: "immediate",
     },
-
-    interpreterExit: "exit",
-    rplFlags: "v0-v7",
     indexOverflow: "exit-interpreter",
-    zeroScrollDown: "exit-interpreter",
   },
-};
+} satisfies Chip8Profile;

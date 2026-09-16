@@ -45,25 +45,9 @@ export type LogicFlagBehavior = "reset" | "unchanged";
 export type SpriteDrawTiming = "vertical-blank" | "immediate";
 
 /**
- * Selects whether the machine implements the SUPER-CHIP interpreter-exit
- * instruction.
- */
-export type InterpreterExitBehavior = "unsupported" | "exit";
-
-/**
- * Selects whether Fx75 and Fx85 may access the SUPER-CHIP RPL user flags.
- */
-export type RplFlagBehavior = "unsupported" | "v0-v7";
-
-/**
  * Selects what happens when Fx1E moves I beyond the machine address space.
  */
 export type IndexOverflowBehavior = "continue" | "exit-interpreter";
-
-/**
- * Selects the historical meaning of SUPER-CHIP 00C0.
- */
-export type ZeroScrollDownBehavior = "scroll" | "exit-interpreter";
 
 /**
  * Describes how sprite drawing is synchronized with display refresh.
@@ -91,7 +75,7 @@ export type SpriteDrawTimingBehavior =
  * flags so their meaning does not depend on interpreting enabled/disabled
  * terminology.
  */
-export interface Chip8Compatibility {
+export interface Chip8Quirks {
   /**
    * Register whose value is shifted by 8xy6 and 8xyE.
    *
@@ -134,27 +118,25 @@ export interface Chip8Compatibility {
   readonly spriteDrawTiming: SpriteDrawTimingBehavior;
 
   /**
-   * Determines whether 00FD may exit the interpreter.
-   */
-  readonly interpreterExit: InterpreterExitBehavior;
-
-  /**
-   * Determines whether Fx75 and Fx85 may access RPL user flags.
-   */
-  readonly rplFlags: RplFlagBehavior;
-
-  /**
    * Determines whether Fx1E may continue when I leaves the address space or
    * exits the interpreter as on historical SUPER-CHIP.
    */
   readonly indexOverflow: IndexOverflowBehavior;
-
-  /**
-   * Determines whether 00C0 performs a zero-row scroll or exits the
-   * interpreter.
-   */
-  readonly zeroScrollDown: ZeroScrollDownBehavior;
 }
+
+/**
+ * Identifies the instruction semantics available to a machine profile.
+ *
+ * This describes instruction-set membership, not compatibility quirks of
+ * instructions shared between CHIP-8 variants.
+ */
+export type Chip8InstructionSet =
+  | {
+    readonly kind: "chip8";
+  }
+  | {
+    readonly kind: "superchip-1.1";
+  };
 
 /**
  * Describes the characteristics and compatibility behavior of a CHIP-8
@@ -229,8 +211,10 @@ export interface Chip8Profile {
     readonly baseAddress: Address;
   } | null;
 
+  readonly instructionSet: Chip8InstructionSet;
+
   /**
    * Compatibility-sensitive instruction behavior.
    */
-  readonly compatibility: Chip8Compatibility;
+  readonly compatibility: Chip8Quirks;
 }

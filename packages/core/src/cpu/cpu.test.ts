@@ -54,7 +54,10 @@ function createCpu(context: ExecutionContext, traceObserver?: InstructionTraceOb
   return new Cpu(
     context,
     new Decoder(),
-    new InstructionExecutor(CLASSIC_CHIP8_PROFILE.compatibility),
+    new InstructionExecutor(
+      CLASSIC_CHIP8_PROFILE.instructionSet,
+      CLASSIC_CHIP8_PROFILE.compatibility,
+    ),
     traceObserver,
   );
 }
@@ -411,7 +414,10 @@ Deno.test("CPU does not execute instructions after interpreter exit", () => {
   context.memory.write(address(0x201), byte(0x42));
 
   const decoder = new Decoder();
-  const executor = new InstructionExecutor(CLASSIC_CHIP8_PROFILE.compatibility);
+  const executor = new InstructionExecutor(
+    CLASSIC_CHIP8_PROFILE.instructionSet,
+    CLASSIC_CHIP8_PROFILE.compatibility,
+  );
   const cpu = new Cpu(context, decoder, executor);
 
   context.exitState.exit();
@@ -441,7 +447,10 @@ Deno.test("CPU stops executing after 00FD exits the interpreter", () => {
   context.memory.write(address(0x203), byte(0x42));
 
   const decoder = new Decoder();
-  const executor = new InstructionExecutor(SUPERCHIP_PROFILE.compatibility);
+  const executor = new InstructionExecutor(
+    SUPERCHIP_PROFILE.instructionSet,
+    SUPERCHIP_PROFILE.compatibility,
+  );
   const cpu = new Cpu(context, decoder, executor);
 
   cpu.step();

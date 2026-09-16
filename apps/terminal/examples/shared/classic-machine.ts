@@ -77,7 +77,11 @@ export async function createExampleMachine(romPath: string): Promise<ExampleMach
 
   initializer.initialize(context, profile, program);
 
-  const cpu = new Cpu(context, new Decoder(), new InstructionExecutor(profile.compatibility));
+  const cpu = new Cpu(
+    context,
+    new Decoder(),
+    new InstructionExecutor(profile.instructionSet, profile.compatibility),
+  );
 
   const scheduler = new Scheduler(new PerformanceClock());
 

@@ -9,7 +9,11 @@ function createDisplayBuffer(
   height: number,
   spriteOverflow: SpriteOverflowBehavior = "clip",
 ): DisplayBuffer {
-  const specification: FixedDisplaySpecification = { kind: "fixed", width, height };
+  const specification: FixedDisplaySpecification = {
+    kind: "fixed",
+    width,
+    height,
+  };
 
   return new DisplayBuffer(specification, spriteOverflow);
 }
@@ -251,7 +255,12 @@ Deno.test(
   "DisplayBuffer uses SUPER-CHIP backing geometry with initial low logical resolution",
   () => {
     const display = new DisplayBuffer(
-      { kind: "superchip", backingWidth: 128, backingHeight: 64, initialMode: "low" },
+      {
+        kind: "superchip",
+        backingWidth: 128,
+        backingHeight: 64,
+        initialMode: "low",
+      },
       "clip",
     );
 

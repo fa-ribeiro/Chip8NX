@@ -113,7 +113,11 @@ Deno.test(
 
     initializer.initialize(context, profile, program);
 
-    const cpu = new Cpu(context, new Decoder(), new InstructionExecutor(profile.compatibility));
+    const cpu = new Cpu(
+      context,
+      new Decoder(),
+      new InstructionExecutor(profile.instructionSet, profile.compatibility),
+    );
 
     const clock = new TestClock();
     const scheduler = new Scheduler(clock);

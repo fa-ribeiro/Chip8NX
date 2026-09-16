@@ -33,11 +33,14 @@ Deno.test("Classic CHIP-8 profile defines the classic machine characteristics", 
       kind: "uniform",
       timing: "vertical-blank",
     },
-    interpreterExit: "unsupported",
-    rplFlags: "unsupported",
     indexOverflow: "continue",
-    zeroScrollDown: "scroll",
   });
 
   assertEquals(CLASSIC_CHIP8_PROFILE.largeFont, null);
+});
+
+Deno.test("Classic CHIP-8 uses the CHIP-8 instruction set", () => {
+  assertEquals(CLASSIC_CHIP8_PROFILE.instructionSet, {
+    kind: "chip8",
+  });
 });

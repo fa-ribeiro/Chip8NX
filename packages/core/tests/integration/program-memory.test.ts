@@ -62,7 +62,11 @@ Deno.test("CPU executes a program loaded into memory from a MemoryImage", () => 
     exitState: new ExitState(),
   };
 
-  const cpu = new Cpu(context, new Decoder(), new InstructionExecutor(profile.compatibility));
+  const cpu = new Cpu(
+    context,
+    new Decoder(),
+    new InstructionExecutor(profile.instructionSet, profile.compatibility),
+  );
 
   cpu.step();
 

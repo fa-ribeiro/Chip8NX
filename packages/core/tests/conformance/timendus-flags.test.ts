@@ -149,7 +149,11 @@ Deno.test("Classic CHIP-8 passes the Timendus Flags test ROM", async () => {
 
   initializer.initialize(context, profile, program);
 
-  const cpu = new Cpu(context, new Decoder(), new InstructionExecutor(profile.compatibility));
+  const cpu = new Cpu(
+    context,
+    new Decoder(),
+    new InstructionExecutor(profile.instructionSet, profile.compatibility),
+  );
 
   const clock = new TestClock();
   const scheduler = new Scheduler(clock);

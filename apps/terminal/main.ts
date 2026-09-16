@@ -94,7 +94,7 @@ const traceObserver = traceEnabled ? createConsoleTraceObserver() : undefined;
 const cpu = new Cpu(
   context,
   new Decoder(),
-  new InstructionExecutor(profile.compatibility),
+  new InstructionExecutor(profile.instructionSet, profile.compatibility),
   traceObserver,
 );
 const scheduler = new Scheduler(new PerformanceClock());

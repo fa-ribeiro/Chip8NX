@@ -28,12 +28,16 @@ Deno.test("SUPER-CHIP profile defines its display and compatibility semantics", 
     high: "immediate",
   });
 
-  assertEquals(SUPERCHIP_PROFILE.compatibility.interpreterExit, "exit");
-  assertEquals(SUPERCHIP_PROFILE.compatibility.rplFlags, "v0-v7");
+  // assertEquals(SUPERCHIP_PROFILE.compatibility.interpreterExit, "exit");
   assertEquals(SUPERCHIP_PROFILE.compatibility.indexOverflow, "exit-interpreter");
-  assertEquals(SUPERCHIP_PROFILE.compatibility.zeroScrollDown, "exit-interpreter");
 
   assertEquals(SUPERCHIP_PROFILE.largeFont?.baseAddress, address(0x0a0));
 
   assertEquals(SUPERCHIP_PROFILE.largeFont?.image, SUPERCHIP_LARGE_FONT_IMAGE);
+});
+
+Deno.test("SUPER-CHIP uses the SUPER-CHIP 1.1 instruction set", () => {
+  assertEquals(SUPERCHIP_PROFILE.instructionSet, {
+    kind: "superchip-1.1",
+  });
 });

@@ -37,24 +37,35 @@ The Timendus CHIP-8 test suite is not included in this repository.
 
 - Upstream repository: <https://github.com/Timendus/chip8-test-suite>
 - Upstream license: GPL-3.0
+- Pinned upstream release: `v4.2`
+- Pinned upstream commit: `cb24d55`
+
 - Corax+ upstream ROM filename: `3-corax+.ch8`
   - Expected local filename: `packages/core/tests/conformance/roms/3-corax+.ch8`
   - Expected size: `761` bytes
   - Expected SHA-256: `1c7e14eae14d6d5e1e47693804110354cbc4081defe4e6e5d9167c25ffc7b4b0`
+
 - Flags upstream ROM filename: `4-flags.ch8`
   - Expected local filename: `packages/core/tests/conformance/roms/4-flags.ch8`
   - Flags expected size: `1041` bytes
   - Flags expected SHA-256: `f00ddadd37bc878473de0c8f16faecf9985dea39036a3a796d551bc9fec47cfa`
+
 - Quirks upstream ROM filename: `5-quirks.ch8`
   - Expected local filename: `packages/core/tests/conformance/roms/5-quirks.ch8`
   - Expected size: `3232` bytes
   - Expected SHA-256: `d839350268a3e73c7a16562b3d23c85aa1b92a567f5f61bd6727b1ea44635679`
+
 - Keypad upstream ROM filename: `6-keypad.ch8`
   - Expected local filename: `packages/core/tests/conformance/roms/6-keypad.ch8`
   - Expected size: `913` bytes
   - Expected SHA-256: `558902b0e406bb97dc808c16d55abf493706598246e3c77aea9d9401063169c9`
 
-Chip8NX uses relevant Classic CHIP-8 tests from this suite as external conformance fixtures. These ROMs remain subject to the upstream GPL-3.0 license and are not distributed as part of Chip8NX.
+- Scrolling upstream ROM filename: `8-scrolling.ch8`
+  - Expected local filename: `packages/core/tests/conformance/roms/8-scrolling.ch8`
+  - Expected size: `1330` bytes
+  - Expected SHA-256: `3f43507c45a949e5b014445853205dd1f36bb532cf25baa22209b7c300c596d7`
+
+Chip8NX uses selected tests from this pinned suite release as external conformance fixtures for Classic CHIP-8 and historical SUPER-CHIP behavior.
 
 ## Gulrak Variant Detection Test
 

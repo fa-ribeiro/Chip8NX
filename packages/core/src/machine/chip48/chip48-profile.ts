@@ -15,7 +15,7 @@ import type { Chip8Profile } from "../chip8-profile.ts";
  * It does not select concrete host implementations such as keyboards,
  * displays, memory, clocks, or schedulers.
  */
-export const CHIP48_PROFILE: Chip8Profile = {
+export const CHIP48_PROFILE = {
   memorySize: 0x1000,
 
   programStartAddress: address(0x200),
@@ -35,6 +35,8 @@ export const CHIP48_PROFILE: Chip8Profile = {
 
   largeFont: null,
 
+  instructionSet: { kind: "chip8" },
+
   compatibility: {
     shiftSource: "vx",
     memoryTransferIndex: "increment-by-x",
@@ -45,9 +47,6 @@ export const CHIP48_PROFILE: Chip8Profile = {
       kind: "uniform",
       timing: "vertical-blank",
     },
-    interpreterExit: "unsupported",
-    rplFlags: "unsupported",
     indexOverflow: "continue",
-    zeroScrollDown: "scroll",
   },
-};
+} satisfies Chip8Profile;

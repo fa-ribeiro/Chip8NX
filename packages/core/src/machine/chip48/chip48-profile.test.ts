@@ -33,11 +33,14 @@ Deno.test("CHIP-48 profile defines the CHIP-48 2.25 machine characteristics", ()
       kind: "uniform",
       timing: "vertical-blank",
     },
-    interpreterExit: "unsupported",
-    rplFlags: "unsupported",
     indexOverflow: "continue",
-    zeroScrollDown: "scroll",
   });
 
   assertEquals(CHIP48_PROFILE.largeFont, null);
+});
+
+Deno.test("CHIP-48 uses the CHIP-8 instruction set", () => {
+  assertEquals(CHIP48_PROFILE.instructionSet, {
+    kind: "chip8",
+  });
 });

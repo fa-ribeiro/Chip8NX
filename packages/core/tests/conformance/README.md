@@ -77,7 +77,24 @@ Chip8NX does not redistribute this ROM.
 
 The upstream corax89 project is MIT-licensed. See the repository-level [`THIRD_PARTY_NOTICES.md`](../../../../THIRD_PARTY_NOTICES.md) for provenance information.
 
-### Timendus Corax+ Opcode Test
+### Timendus CHIP-8 test suite
+
+The Timendus CHIP-8 test suite is a collection of ROM images designed to help developers create and test their own CHIP-8 interpreters or emulators. It includes various tests to validate the functionality and quirks of these systems, ensuring accurate implementation.
+
+#### Timendus test suite version
+
+Chip8NX pins Timendus CHIP-8 test-suite fixtures to:
+
+```text
+Release:  v4.2
+Commit:   cb24d55
+```
+
+Pinning the upstream version is part of the conformance contract. Test ROM behavior, automation hooks, and expected output must not silently change because a newer upstream release becomes available.
+
+The fixture checksums documented below identify the exact ROM images expected by the automated tests.
+
+#### Timendus Corax+ Opcode Test
 
 Expected path:
 
@@ -101,7 +118,7 @@ The Timendus CHIP-8 test suite is licensed under GPL-3.0. The external ROM remai
 
 The Corax+ test extends the original corax89 opcode test with additional coverage including call/return behavior, `8XY7`, `FX1E`, `FX65`, BCD edge cases, and 8-bit register width.
 
-### Timendus Flags Test
+#### Timendus Flags Test
 
 Expected path:
 
@@ -127,7 +144,7 @@ The Timendus CHIP-8 test suite is licensed under GPL-3.0. The external ROM remai
 
 The Flags test verifies arithmetic and logical result values, VF flag behavior, carry and borrow cases, shifted-out bits, use of VF as an instruction operand, and Fx1E with both a normal register and VF.
 
-### Timendus Quirks Test
+#### Timendus Quirks Test
 
 Expected path:
 
@@ -162,7 +179,7 @@ The test verifies these compatibility behaviors:
 - `8XY6` and `8XYE` shift-source behavior;
 - `BNNN` jump-offset behavior.
 
-### Timendus Keypad Test
+#### Timendus Keypad Test
 
 Expected path:
 
@@ -199,6 +216,32 @@ The ROM supports automated test selection by writing a value to address `0x1FF`:
 3. selects `FX0A`.
 
 The EX9E and EXA1 conformance tests drive `KeyboardState` directly. The FX0A test additionally verifies that execution remains blocked while waiting, CHIP-8 timers continue to advance, and execution resumes only after the selected key is released.
+
+#### Timendus Scrolling Test
+
+Expected path:
+
+```text
+packages/core/tests/conformance/roms/8-scrolling.ch8
+```
+
+Obtain the ROM from the pinned Timendus CHIP-8 test suite release:
+
+<https://github.com/Timendus/chip8-test-suite#scrolling-test>
+
+The expected fixture is:
+
+```text
+Filename: 8-scrolling.ch8
+Size:     1330 bytes
+SHA-256:  3f43507c45a949e5b014445853205dd1f36bb532cf25baa22209b7c300c596d7
+```
+
+Chip8NX does not redistribute this ROM.
+
+The Timendus CHIP-8 test suite is licensed under GPL-3.0. The external ROM remains subject to its upstream license and is not covered by the Chip8NX MIT license.
+
+The scrolling ROM provides automated selections at address `0x1FF`, including historical SUPER-CHIP low-resolution behavior and SUPER-CHIP high-resolution behavior. These modes will be used by the dedicated SUPER-CHIP conformance tests.
 
 ### Gulrak Variant Detection Test
 
@@ -252,6 +295,7 @@ sha256sum packages/core/tests/conformance/roms/3-corax+.ch8
 sha256sum packages/core/tests/conformance/roms/4-flags.ch8
 sha256sum packages/core/tests/conformance/roms/5-quirks.ch8
 sha256sum packages/core/tests/conformance/roms/6-keypad.ch8
+sha256sum packages/core/tests/conformance/roms/8-scrolling.ch8
 sha256sum packages/core/tests/conformance/roms/variant-detection-1.4.ch8
 ```
 
@@ -264,6 +308,7 @@ shasum -a 256 packages/core/tests/conformance/roms/3-corax+.ch8
 shasum -a 256 packages/core/tests/conformance/roms/4-flags.ch8
 shasum -a 256 packages/core/tests/conformance/roms/5-quirks.ch8
 shasum -a 256 packages/core/tests/conformance/roms/6-keypad.ch8
+shasum -a 256 packages/core/tests/conformance/roms/8-scrolling.ch8
 shasum -a 256 packages/core/tests/conformance/roms/variant-detection-1.4.ch8
 ```
 
@@ -276,6 +321,7 @@ Get-FileHash packages/core/tests/conformance/roms/3-corax+.ch8 -Algorithm SHA256
 Get-FileHash packages/core/tests/conformance/roms/4-flags.ch8 -Algorithm SHA256
 Get-FileHash packages/core/tests/conformance/roms/5-quirks.ch8 -Algorithm SHA256
 Get-FileHash packages/core/tests/conformance/roms/6-keypad.ch8 -Algorithm SHA256
+Get-FileHash packages/core/tests/conformance/roms/8-scrolling.ch8 -Algorithm SHA256
 Get-FileHash packages/core/tests/conformance/roms/variant-detection-1.4.ch8 -Algorithm SHA256
 ```
 

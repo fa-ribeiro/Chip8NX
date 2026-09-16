@@ -75,18 +75,15 @@ export { KeyboardState } from "./src/keyboard/keyboard-state.ts";
 
 // Machine
 export type {
-  Chip8Compatibility,
   Chip8Profile,
+  Chip8Quirks,
   IndexOverflowBehavior,
-  InterpreterExitBehavior,
   JumpOffsetSource,
   LogicFlagBehavior,
   MemoryTransferIndexBehavior,
-  RplFlagBehavior,
   ShiftSource,
   SpriteDrawTiming,
   SpriteDrawTimingBehavior,
-  ZeroScrollDownBehavior,
 } from "./src/machine/chip8-profile.ts";
 export { CLASSIC_CHIP8_PROFILE } from "./src/machine/classic/classic-chip8-profile.ts";
 export { CHIP48_PROFILE } from "./src/machine/chip48/chip48-profile.ts";

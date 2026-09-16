@@ -1,6 +1,6 @@
 import { address } from "../core/types/address.ts";
 import { type Byte, byte } from "../core/types/byte.ts";
-import type { Chip8Compatibility } from "../machine/chip8-profile.ts";
+import type { Chip8Quirks } from "../machine/chip8-profile.ts";
 import { key } from "../core/types/key.ts";
 import type { Instruction } from "../instruction/instruction.ts";
 import { add8, shiftLeft8, shiftRight8, subtract8 } from "./arithmetic/arithmetic.ts";
@@ -8,6 +8,7 @@ import type { ExecutionContext } from "./execution-context.ts";
 import { registerIndex } from "./registers/register-index.ts";
 import { INSTRUCTION_SIZE } from "./program-counter/program-counter.ts";
 import type { SpriteDrawTiming } from "../machine/chip8-profile.ts";
+import type { Chip8InstructionSet } from "../machine/chip8-profile.ts";
 
 /**
  * Index of the CHIP-8 VF flag register.
@@ -22,14 +23,17 @@ export const FLAG_REGISTER = registerIndex(0xf);
  * responsible only for applying instruction semantics to the machine state.
  */
 export class InstructionExecutor {
-  public constructor(private readonly compatibility: Chip8Compatibility) {}
-  /**
+  constructor(
+    private readonly instructionSet: Chip8InstructionSet,
+    private readonly compatibility: Chip8Quirks,
+  ) {} /**
    * Executes one decoded instruction.
    *
    * Normal instruction-pointer advancement is owned by the CPU cycle. This
    * method only performs program-counter changes that are explicit effects
    * of the instruction itself, such as jumps, calls, returns, and skips.
    */
+
   public execute(instruction: Instruction, context: ExecutionContext): void {
     switch (instruction.kind) {
       case "clear-screen":
@@ -37,14 +41,15 @@ export class InstructionExecutor {
         return;
 
       case "set-display-mode":
+        this.requireDisplayControl(instruction);
+
         context.displayBuffer.setMode(instruction.mode);
         return;
 
       case "scroll-display-down":
-        if (
-          instruction.rows === 0 &&
-          this.compatibility.zeroScrollDown === "exit-interpreter"
-        ) {
+        this.requireDisplayControl(instruction);
+
+        if (instruction.rows === 0 && this.instructionSet.kind === "superchip-1.1") {
           context.exitState.exit();
           return;
         }
@@ -53,6 +58,8 @@ export class InstructionExecutor {
         return;
 
       case "scroll-display-horizontal":
+        this.requireDisplayControl(instruction);
+
         switch (instruction.direction) {
           case "right":
             context.displayBuffer.scrollRight(instruction.columns);
@@ -67,7 +74,7 @@ export class InstructionExecutor {
         }
 
       case "exit-interpreter":
-        if (this.compatibility.interpreterExit === "unsupported") {
+        if (this.instructionSet.kind !== "superchip-1.1") {
           throw new UnsupportedInstructionError(instruction);
         }
 
@@ -205,6 +212,10 @@ export class InstructionExecutor {
       }
 
       case "set-index-to-large-sprite":
+        if (this.instructionSet.kind !== "superchip-1.1") {
+          throw new UnsupportedInstructionError(instruction);
+        }
+
         context.indexRegister.setValue(
           context.font.getSpriteAddress(context.registers.get(instruction.register), "large"),
         );
@@ -277,7 +288,7 @@ export class InstructionExecutor {
       }
 
       case "store-rpl-flags":
-        if (this.compatibility.rplFlags === "unsupported") {
+        if (this.instructionSet.kind !== "superchip-1.1") {
           throw new UnsupportedInstructionError(instruction);
         }
 
@@ -289,7 +300,7 @@ export class InstructionExecutor {
         return;
 
       case "load-rpl-flags":
-        if (this.compatibility.rplFlags === "unsupported") {
+        if (this.instructionSet.kind !== "superchip-1.1") {
           throw new UnsupportedInstructionError(instruction);
         }
 
@@ -331,7 +342,14 @@ export class InstructionExecutor {
 
         const displayMode = context.displayBuffer.mode;
 
-        const isSuperChipExtendedSprite = instruction.height === 0 && displayMode !== null;
+        const isSuperChipExtendedSprite = instruction.height === 0 &&
+          this.instructionSet.kind === "superchip-1.1";
+
+        if (isSuperChipExtendedSprite && displayMode === null) {
+          throw new Error(
+            "SUPER-CHIP extended sprite drawing requires a switchable display mode.",
+          );
+        }
 
         const isWideSprite = isSuperChipExtendedSprite && displayMode === "high";
 
@@ -349,7 +367,10 @@ export class InstructionExecutor {
           ? context.displayBuffer.drawWideSprite(x, y, sprite)
           : context.displayBuffer.drawSprite(x, y, sprite);
 
-        const collisionValue = context.displayBuffer.mode === "high"
+        const useAffectedRowCount = this.instructionSet.kind === "superchip-1.1" &&
+          context.displayBuffer.mode === "high";
+
+        const collisionValue = useAffectedRowCount
           ? drawResult.collisionRows + drawResult.clippedBottomRows
           : drawResult.collision
           ? 1
@@ -468,6 +489,12 @@ export class InstructionExecutor {
 
       default:
         return assertNever(behavior);
+    }
+  }
+
+  private requireDisplayControl(instruction: Instruction): void {
+    if (this.instructionSet.kind !== "superchip-1.1") {
+      throw new UnsupportedInstructionError(instruction);
     }
   }
 }

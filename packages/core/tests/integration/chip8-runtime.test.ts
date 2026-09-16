@@ -78,7 +78,11 @@ function createRuntime(cpuFrequency: Frequency = Frequency.fromInteger(500n)): R
     memory.write(address(profile.programStartAddress + offset + 1), byte(0x01));
   }
 
-  const cpu = new Cpu(context, new Decoder(), new InstructionExecutor(profile.compatibility));
+  const cpu = new Cpu(
+    context,
+    new Decoder(),
+    new InstructionExecutor(profile.instructionSet, profile.compatibility),
+  );
 
   const clock = new TestClock();
   const scheduler = new Scheduler(clock);

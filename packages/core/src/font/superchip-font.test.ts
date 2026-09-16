@@ -26,3 +26,9 @@ Deno.test("SuperChipFont resolves ten-byte large glyphs", () => {
 
   assertEquals(font.getSpriteAddress(byte(0x09), "large"), address(0x0fa));
 });
+
+Deno.test("SuperChipFont large font does not mask values above 9", () => {
+  const font = new SuperChipFont(SMALL_FONT_BASE_ADDRESS, LARGE_FONT_BASE_ADDRESS);
+
+  assertEquals(font.getSpriteAddress(byte(0x0a), "large"), address(0x104));
+});

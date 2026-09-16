@@ -75,7 +75,11 @@ function createMachine(profile: Chip8Profile): TestMachine {
 
   initializer.initialize(context, profile, program);
 
-  const cpu = new Cpu(context, new Decoder(), new InstructionExecutor(profile.compatibility));
+  const cpu = new Cpu(
+    context,
+    new Decoder(),
+    new InstructionExecutor(profile.instructionSet, profile.compatibility),
+  );
 
   return { cpu, context };
 }

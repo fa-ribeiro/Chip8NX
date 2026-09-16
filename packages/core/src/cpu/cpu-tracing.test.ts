@@ -52,7 +52,7 @@ function createCpu(context: ExecutionContext, observer?: InstructionTraceObserve
   return new Cpu(
     context,
     new Decoder(),
-    new InstructionExecutor(profile.compatibility),
+    new InstructionExecutor(profile.instructionSet, profile.compatibility),
     observer,
   );
 }

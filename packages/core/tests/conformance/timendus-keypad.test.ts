@@ -263,7 +263,11 @@ async function createKeypadHarness(selection: Byte): Promise<KeypadHarness> {
   // The initializer must run first because machine initialization clears RAM.
   context.memory.write(TIMENDUS_KEYPAD_SELECTION_ADDRESS, selection);
 
-  const cpu = new Cpu(context, new Decoder(), new InstructionExecutor(profile.compatibility));
+  const cpu = new Cpu(
+    context,
+    new Decoder(),
+    new InstructionExecutor(profile.instructionSet, profile.compatibility),
+  );
 
   const clock = new TestClock();
   const scheduler = new Scheduler(clock);
