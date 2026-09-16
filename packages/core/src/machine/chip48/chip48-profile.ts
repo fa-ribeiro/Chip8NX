@@ -37,7 +37,7 @@ export const CHIP48_PROFILE = {
 
   instructionSet: { kind: "chip8" },
 
-  compatibility: {
+  quirks: {
     shiftSource: "vx",
     memoryTransferIndex: "increment-by-x",
     jumpOffsetSource: "vx",

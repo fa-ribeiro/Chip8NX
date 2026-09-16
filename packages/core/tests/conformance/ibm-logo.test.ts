@@ -116,7 +116,7 @@ Deno.test(
     const cpu = new Cpu(
       context,
       new Decoder(),
-      new InstructionExecutor(profile.instructionSet, profile.compatibility),
+      new InstructionExecutor(profile.instructionSet, profile.quirks),
     );
 
     const clock = new TestClock();

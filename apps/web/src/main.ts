@@ -270,7 +270,7 @@ function createMachine(
   const verticalBlank = new VerticalBlank();
   const displayBuffer = new DisplayBuffer(
     profile.display.specification,
-    profile.compatibility.spriteOverflow,
+    profile.quirks.spriteOverflow,
   );
 
   const keyboard = new KeyboardState();
@@ -325,7 +325,7 @@ function createMachine(
   const cpu = new Cpu(
     context,
     new Decoder(),
-    new InstructionExecutor(profile.instructionSet, profile.compatibility),
+    new InstructionExecutor(profile.instructionSet, profile.quirks),
     traceHistory,
   );
 

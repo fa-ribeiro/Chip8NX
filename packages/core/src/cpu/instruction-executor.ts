@@ -25,7 +25,7 @@ export const FLAG_REGISTER = registerIndex(0xf);
 export class InstructionExecutor {
   constructor(
     private readonly instructionSet: Chip8InstructionSet,
-    private readonly compatibility: Chip8Quirks,
+    private readonly quirks: Chip8Quirks,
   ) {} /**
    * Executes one decoded instruction.
    *
@@ -99,7 +99,7 @@ export class InstructionExecutor {
         return;
 
       case "jump-with-offset": {
-        const offsetRegister = this.compatibility.jumpOffsetSource === "v0"
+        const offsetRegister = this.quirks.jumpOffsetSource === "v0"
           ? registerIndex(0)
           : instruction.register;
 
@@ -195,7 +195,7 @@ export class InstructionExecutor {
         context.indexRegister.setValue(address(nextIndex));
 
         if (
-          this.compatibility.indexOverflow === "exit-interpreter" &&
+          this.quirks.indexOverflow === "exit-interpreter" &&
           nextIndex >= context.memory.size
         ) {
           context.exitState.exit();
@@ -246,7 +246,7 @@ export class InstructionExecutor {
           );
         }
 
-        switch (this.compatibility.memoryTransferIndex) {
+        switch (this.quirks.memoryTransferIndex) {
           case "increment-by-count":
             context.indexRegister.setValue(address(startAddress + instruction.register + 1));
             break;
@@ -272,7 +272,7 @@ export class InstructionExecutor {
           );
         }
 
-        switch (this.compatibility.memoryTransferIndex) {
+        switch (this.quirks.memoryTransferIndex) {
           case "increment-by-count":
             context.indexRegister.setValue(address(startAddress + instruction.register + 1));
             break;
@@ -401,7 +401,7 @@ export class InstructionExecutor {
       case "or":
         context.registers.set(instruction.x, byte(x | y));
 
-        if (this.compatibility.logicFlag === "reset") {
+        if (this.quirks.logicFlag === "reset") {
           context.registers.set(FLAG_REGISTER, byte(0));
         }
 
@@ -410,7 +410,7 @@ export class InstructionExecutor {
       case "and":
         context.registers.set(instruction.x, byte(x & y));
 
-        if (this.compatibility.logicFlag === "reset") {
+        if (this.quirks.logicFlag === "reset") {
           context.registers.set(FLAG_REGISTER, byte(0));
         }
         return;
@@ -418,7 +418,7 @@ export class InstructionExecutor {
       case "xor":
         context.registers.set(instruction.x, byte(x ^ y));
 
-        if (this.compatibility.logicFlag === "reset") {
+        if (this.quirks.logicFlag === "reset") {
           context.registers.set(FLAG_REGISTER, byte(0));
         }
         return;
@@ -440,7 +440,7 @@ export class InstructionExecutor {
       }
 
       case "shift-right": {
-        const source = this.compatibility.shiftSource === "vx" ? x : y;
+        const source = this.quirks.shiftSource === "vx" ? x : y;
         const result = shiftRight8(source);
 
         context.registers.set(instruction.x, result.value);
@@ -457,7 +457,7 @@ export class InstructionExecutor {
       }
 
       case "shift-left": {
-        const source = this.compatibility.shiftSource === "vx" ? x : y;
+        const source = this.quirks.shiftSource === "vx" ? x : y;
         const result = shiftLeft8(source);
 
         context.registers.set(instruction.x, result.value);
@@ -474,7 +474,7 @@ export class InstructionExecutor {
    * requires a display that exposes a SUPER-CHIP low/high mode.
    */
   private resolveSpriteDrawTiming(displayMode: "low" | "high" | null): SpriteDrawTiming {
-    const behavior = this.compatibility.spriteDrawTiming;
+    const behavior = this.quirks.spriteDrawTiming;
 
     switch (behavior.kind) {
       case "uniform":

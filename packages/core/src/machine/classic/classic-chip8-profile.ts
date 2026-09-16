@@ -33,7 +33,7 @@ export const CLASSIC_CHIP8_PROFILE = {
 
   instructionSet: { kind: "chip8" },
 
-  compatibility: {
+  quirks: {
     shiftSource: "vy",
     memoryTransferIndex: "increment-by-count",
     jumpOffsetSource: "v0",

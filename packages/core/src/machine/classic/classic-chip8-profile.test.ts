@@ -23,7 +23,7 @@ Deno.test("Classic CHIP-8 profile defines the classic machine characteristics", 
 
   assertEquals(CLASSIC_CHIP8_PROFILE.fontBaseAddress, address(0x50));
 
-  assertEquals(CLASSIC_CHIP8_PROFILE.compatibility, {
+  assertEquals(CLASSIC_CHIP8_PROFILE.quirks, {
     shiftSource: "vy",
     memoryTransferIndex: "increment-by-count",
     jumpOffsetSource: "v0",

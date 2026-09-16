@@ -65,7 +65,7 @@ Deno.test("CPU executes a program loaded into memory from a MemoryImage", () => 
   const cpu = new Cpu(
     context,
     new Decoder(),
-    new InstructionExecutor(profile.instructionSet, profile.compatibility),
+    new InstructionExecutor(profile.instructionSet, profile.quirks),
   );
 
   cpu.step();

@@ -133,7 +133,7 @@ function runVariantDetection(profile: Chip8Profile): string {
     soundTimer,
     displayBuffer: new DisplayBuffer(
       profile.display.specification,
-      profile.compatibility.spriteOverflow,
+      profile.quirks.spriteOverflow,
     ),
     verticalBlank,
     keyboard: new KeyboardState(),
@@ -150,7 +150,7 @@ function runVariantDetection(profile: Chip8Profile): string {
   const cpu = new Cpu(
     context,
     new Decoder(),
-    new InstructionExecutor(profile.instructionSet, profile.compatibility),
+    new InstructionExecutor(profile.instructionSet, profile.quirks),
   );
 
   const clock = new TestClock();

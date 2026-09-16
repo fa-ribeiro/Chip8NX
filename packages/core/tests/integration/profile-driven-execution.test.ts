@@ -47,7 +47,7 @@ function createMachine(profile: Chip8Profile): TestMachine {
     delayTimer: new Timer(),
     displayBuffer: new DisplayBuffer(
       profile.display.specification,
-      profile.compatibility.spriteOverflow,
+      profile.quirks.spriteOverflow,
     ),
     verticalBlank: new VerticalBlank(),
     keyboard: new KeyboardState(),
@@ -78,7 +78,7 @@ function createMachine(profile: Chip8Profile): TestMachine {
   const cpu = new Cpu(
     context,
     new Decoder(),
-    new InstructionExecutor(profile.instructionSet, profile.compatibility),
+    new InstructionExecutor(profile.instructionSet, profile.quirks),
   );
 
   return { cpu, context };

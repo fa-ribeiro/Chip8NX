@@ -173,7 +173,7 @@ async function runTimendusScrolling(platformSelection: Byte): Promise<DisplayBuf
     soundTimer,
     displayBuffer: new DisplayBuffer(
       profile.display.specification,
-      profile.compatibility.spriteOverflow,
+      profile.quirks.spriteOverflow,
     ),
     verticalBlank,
     keyboard: new KeyboardState(),
@@ -196,7 +196,7 @@ async function runTimendusScrolling(platformSelection: Byte): Promise<DisplayBuf
   const cpu = new Cpu(
     context,
     new Decoder(),
-    new InstructionExecutor(profile.instructionSet, profile.compatibility),
+    new InstructionExecutor(profile.instructionSet, profile.quirks),
   );
 
   const clock = new TestClock();

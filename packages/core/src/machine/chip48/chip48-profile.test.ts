@@ -23,7 +23,7 @@ Deno.test("CHIP-48 profile defines the CHIP-48 2.25 machine characteristics", ()
 
   assertEquals(CHIP48_PROFILE.fontBaseAddress, address(0x000));
 
-  assertEquals(CHIP48_PROFILE.compatibility, {
+  assertEquals(CHIP48_PROFILE.quirks, {
     shiftSource: "vx",
     memoryTransferIndex: "increment-by-x",
     jumpOffsetSource: "vx",

@@ -65,7 +65,7 @@ const soundTimer = new Timer();
 const verticalBlank = new VerticalBlank();
 const displayBuffer = new DisplayBuffer(
   profile.display.specification,
-  profile.compatibility.spriteOverflow,
+  profile.quirks.spriteOverflow,
 );
 
 const keyboardState = new KeyboardState();
@@ -94,7 +94,7 @@ const traceObserver = traceEnabled ? createConsoleTraceObserver() : undefined;
 const cpu = new Cpu(
   context,
   new Decoder(),
-  new InstructionExecutor(profile.instructionSet, profile.compatibility),
+  new InstructionExecutor(profile.instructionSet, profile.quirks),
   traceObserver,
 );
 const scheduler = new Scheduler(new PerformanceClock());

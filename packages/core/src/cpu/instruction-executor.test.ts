@@ -58,7 +58,7 @@ function createContext(overrides: Partial<ExecutionContext> = {}): ExecutionCont
 }
 
 function createExecutor(
-  compatibility: Chip8Quirks = CLASSIC_CHIP8_PROFILE.compatibility,
+  compatibility: Chip8Quirks = CLASSIC_CHIP8_PROFILE.quirks,
   instructionSet: Chip8InstructionSet = CLASSIC_CHIP8_PROFILE.instructionSet,
 ): InstructionExecutor {
   return new InstructionExecutor(instructionSet, compatibility);
@@ -354,7 +354,7 @@ Deno.test("OR Vx, Vy leaves VF unchanged when configured", () => {
   });
 
   const executor = createExecutor({
-    ...CLASSIC_CHIP8_PROFILE.compatibility,
+    ...CLASSIC_CHIP8_PROFILE.quirks,
     logicFlag: "unchanged",
   });
 
@@ -395,7 +395,7 @@ Deno.test("AND Vx, Vy leaves VF unchanged when configured", () => {
   });
 
   const executor = createExecutor({
-    ...CLASSIC_CHIP8_PROFILE.compatibility,
+    ...CLASSIC_CHIP8_PROFILE.quirks,
     logicFlag: "unchanged",
   });
 
@@ -436,7 +436,7 @@ Deno.test("XOR Vx, Vy leaves VF unchanged when configured", () => {
   });
 
   const executor = createExecutor({
-    ...CLASSIC_CHIP8_PROFILE.compatibility,
+    ...CLASSIC_CHIP8_PROFILE.quirks,
     logicFlag: "unchanged",
   });
 
@@ -531,7 +531,7 @@ Deno.test("SHR uses Vx as the source when configured for vx shifts", () => {
   });
 
   const executor = createExecutor({
-    ...CLASSIC_CHIP8_PROFILE.compatibility,
+    ...CLASSIC_CHIP8_PROFILE.quirks,
     shiftSource: "vx",
   });
 
@@ -614,7 +614,7 @@ Deno.test("SHL uses Vx as the source when configured for vx shifts", () => {
   });
 
   const executor = createExecutor({
-    ...CLASSIC_CHIP8_PROFILE.compatibility,
+    ...CLASSIC_CHIP8_PROFILE.quirks,
     shiftSource: "vx",
   });
 
@@ -888,7 +888,7 @@ Deno.test("DRW draws without vertical blank when configured for immediate drawin
   });
 
   const executor = createExecutor({
-    ...CLASSIC_CHIP8_PROFILE.compatibility,
+    ...CLASSIC_CHIP8_PROFILE.quirks,
     spriteDrawTiming: {
       kind: "uniform",
       timing: "immediate",
@@ -943,7 +943,7 @@ Deno.test("DRW does not consume vertical blank when configured for immediate dra
   });
 
   const executor = createExecutor({
-    ...CLASSIC_CHIP8_PROFILE.compatibility,
+    ...CLASSIC_CHIP8_PROFILE.quirks,
     spriteDrawTiming: {
       kind: "uniform",
       timing: "immediate",
@@ -1192,7 +1192,7 @@ Deno.test("JP uses Vx as the offset when configured", () => {
   });
 
   const executor = createExecutor({
-    ...CLASSIC_CHIP8_PROFILE.compatibility,
+    ...CLASSIC_CHIP8_PROFILE.quirks,
     jumpOffsetSource: "vx",
   });
 
@@ -1848,7 +1848,7 @@ Deno.test("LD [I], Vx leaves I unchanged when configured", () => {
   context.registers.set(registerIndex(2), byte(0x33));
 
   const executor = createExecutor({
-    ...CLASSIC_CHIP8_PROFILE.compatibility,
+    ...CLASSIC_CHIP8_PROFILE.quirks,
     memoryTransferIndex: "unchanged",
   });
 
@@ -1880,7 +1880,7 @@ Deno.test("LD [I], Vx advances I by X when configured", () => {
   context.registers.set(registerIndex(2), byte(0x33));
 
   const executor = createExecutor({
-    ...CLASSIC_CHIP8_PROFILE.compatibility,
+    ...CLASSIC_CHIP8_PROFILE.quirks,
     memoryTransferIndex: "increment-by-x",
   });
 
@@ -2011,7 +2011,7 @@ Deno.test("LD Vx, [I] leaves I unchanged when configured", () => {
   context.memory.write(address(0x302), byte(0x33));
 
   const executor = createExecutor({
-    ...CLASSIC_CHIP8_PROFILE.compatibility,
+    ...CLASSIC_CHIP8_PROFILE.quirks,
     memoryTransferIndex: "unchanged",
   });
 
@@ -2043,7 +2043,7 @@ Deno.test("LD Vx, [I] advances I by X when configured", () => {
   context.memory.write(address(0x302), byte(0x33));
 
   const executor = createExecutor({
-    ...CLASSIC_CHIP8_PROFILE.compatibility,
+    ...CLASSIC_CHIP8_PROFILE.quirks,
     memoryTransferIndex: "increment-by-x",
   });
 
@@ -2176,10 +2176,7 @@ Deno.test("HIGH selects high-resolution mode without clearing the display", () =
   displayBuffer.setPixel(100, 50, true);
 
   const context = createContext({ displayBuffer });
-  const executor = createExecutor(
-    SUPERCHIP_PROFILE.compatibility,
-    SUPERCHIP_PROFILE.instructionSet,
-  );
+  const executor = createExecutor(SUPERCHIP_PROFILE.quirks, SUPERCHIP_PROFILE.instructionSet);
 
   executor.execute(
     {
@@ -2210,10 +2207,7 @@ Deno.test("LOW selects low-resolution mode without clearing the display", () => 
   displayBuffer.setPixel(100, 50, true);
 
   const context = createContext({ displayBuffer });
-  const executor = createExecutor(
-    SUPERCHIP_PROFILE.compatibility,
-    SUPERCHIP_PROFILE.instructionSet,
-  );
+  const executor = createExecutor(SUPERCHIP_PROFILE.quirks, SUPERCHIP_PROFILE.instructionSet);
 
   executor.execute(
     {
@@ -2243,10 +2237,7 @@ Deno.test("SCD scrolls the SUPER-CHIP backing framebuffer down", () => {
   displayBuffer.setPixel(10, 10, true);
 
   const context = createContext({ displayBuffer });
-  const executor = createExecutor(
-    SUPERCHIP_PROFILE.compatibility,
-    SUPERCHIP_PROFILE.instructionSet,
-  );
+  const executor = createExecutor(SUPERCHIP_PROFILE.quirks, SUPERCHIP_PROFILE.instructionSet);
 
   executor.execute(
     {
@@ -2279,10 +2270,7 @@ Deno.test("SCR scrolls the SUPER-CHIP backing framebuffer right", () => {
   displayBuffer.setPixel(10, 10, true);
 
   const context = createContext({ displayBuffer });
-  const executor = createExecutor(
-    SUPERCHIP_PROFILE.compatibility,
-    SUPERCHIP_PROFILE.instructionSet,
-  );
+  const executor = createExecutor(SUPERCHIP_PROFILE.quirks, SUPERCHIP_PROFILE.instructionSet);
 
   executor.execute(
     {
@@ -2312,10 +2300,7 @@ Deno.test("SCL scrolls the SUPER-CHIP backing framebuffer left", () => {
   displayBuffer.setPixel(10, 10, true);
 
   const context = createContext({ displayBuffer });
-  const executor = createExecutor(
-    SUPERCHIP_PROFILE.compatibility,
-    SUPERCHIP_PROFILE.instructionSet,
-  );
+  const executor = createExecutor(SUPERCHIP_PROFILE.quirks, SUPERCHIP_PROFILE.instructionSet);
 
   executor.execute(
     {
@@ -2373,10 +2358,7 @@ Deno.test(
       verticalBlank,
     });
 
-    const executor = createExecutor(
-      SUPERCHIP_PROFILE.compatibility,
-      SUPERCHIP_PROFILE.instructionSet,
-    );
+    const executor = createExecutor(SUPERCHIP_PROFILE.quirks, SUPERCHIP_PROFILE.instructionSet);
 
     executor.execute(
       {
@@ -2436,10 +2418,7 @@ Deno.test(
       verticalBlank,
     });
 
-    const executor = createExecutor(
-      SUPERCHIP_PROFILE.compatibility,
-      SUPERCHIP_PROFILE.instructionSet,
-    );
+    const executor = createExecutor(SUPERCHIP_PROFILE.quirks, SUPERCHIP_PROFILE.instructionSet);
 
     executor.execute(
       {
@@ -2496,10 +2475,7 @@ Deno.test("Dxy0 draws an 8x16 sprite in SUPER-CHIP low-resolution mode", () => {
     verticalBlank,
   });
 
-  const executor = createExecutor(
-    SUPERCHIP_PROFILE.compatibility,
-    SUPERCHIP_PROFILE.instructionSet,
-  );
+  const executor = createExecutor(SUPERCHIP_PROFILE.quirks, SUPERCHIP_PROFILE.instructionSet);
 
   executor.execute(
     {
@@ -2569,10 +2545,7 @@ Deno.test("Dxy0 draws a 16x16 sprite in SUPER-CHIP high-resolution mode", () => 
     verticalBlank,
   });
 
-  const executor = createExecutor(
-    SUPERCHIP_PROFILE.compatibility,
-    SUPERCHIP_PROFILE.instructionSet,
-  );
+  const executor = createExecutor(SUPERCHIP_PROFILE.quirks, SUPERCHIP_PROFILE.instructionSet);
 
   executor.execute(
     {
@@ -2626,7 +2599,7 @@ Deno.test("display-mode sprite timing uses vertical blank in low-resolution mode
   });
 
   const executor = createExecutor({
-    ...CLASSIC_CHIP8_PROFILE.compatibility,
+    ...CLASSIC_CHIP8_PROFILE.quirks,
     spriteDrawTiming: {
       kind: "display-mode",
       low: "vertical-blank",
@@ -2686,7 +2659,7 @@ Deno.test("display-mode sprite timing uses immediate drawing in high-resolution 
   });
 
   const executor = createExecutor({
-    ...CLASSIC_CHIP8_PROFILE.compatibility,
+    ...CLASSIC_CHIP8_PROFILE.quirks,
     spriteDrawTiming: {
       kind: "display-mode",
       low: "vertical-blank",
@@ -2719,10 +2692,7 @@ Deno.test("EXIT marks the interpreter as exited when supported", () => {
     exitState,
   });
 
-  const executor = createExecutor(
-    SUPERCHIP_PROFILE.compatibility,
-    SUPERCHIP_PROFILE.instructionSet,
-  );
+  const executor = createExecutor(SUPERCHIP_PROFILE.quirks, SUPERCHIP_PROFILE.instructionSet);
 
   assertEquals(exitState.isExited, false);
 
@@ -2739,7 +2709,7 @@ Deno.test("EXIT marks the interpreter as exited when supported", () => {
 
 Deno.test("EXIT is unsupported by Classic CHIP-8", () => {
   const context = createContext();
-  const executor = createExecutor(CLASSIC_CHIP8_PROFILE.compatibility);
+  const executor = createExecutor(CLASSIC_CHIP8_PROFILE.quirks);
 
   const instruction: Instruction = {
     kind: "exit-interpreter",
@@ -2753,15 +2723,12 @@ Deno.test("EXIT is unsupported by Classic CHIP-8", () => {
 Deno.test("SUPER-CHIP 00C0 exits instead of performing a zero-row scroll", () => {
   const displayBuffer = new DisplayBuffer(
     SUPERCHIP_PROFILE.display.specification,
-    SUPERCHIP_PROFILE.compatibility.spriteOverflow,
+    SUPERCHIP_PROFILE.quirks.spriteOverflow,
   );
   displayBuffer.setPixel(10, 10, true);
 
   const context = createContext({ displayBuffer });
-  const executor = createExecutor(
-    SUPERCHIP_PROFILE.compatibility,
-    SUPERCHIP_PROFILE.instructionSet,
-  );
+  const executor = createExecutor(SUPERCHIP_PROFILE.quirks, SUPERCHIP_PROFILE.instructionSet);
 
   executor.execute(
     {
@@ -2788,10 +2755,7 @@ Deno.test("SUPER-CHIP ADD I, Vx exits when I leaves memory", () => {
     indexRegister,
     exitState,
   });
-  const executor = createExecutor(
-    SUPERCHIP_PROFILE.compatibility,
-    SUPERCHIP_PROFILE.instructionSet,
-  );
+  const executor = createExecutor(SUPERCHIP_PROFILE.quirks, SUPERCHIP_PROFILE.instructionSet);
 
   executor.execute(
     {
@@ -2818,7 +2782,7 @@ Deno.test("Classic ADD I, Vx does not exit when I leaves memory", () => {
     indexRegister,
     exitState,
   });
-  const executor = createExecutor(CLASSIC_CHIP8_PROFILE.compatibility);
+  const executor = createExecutor(CLASSIC_CHIP8_PROFILE.quirks);
 
   executor.execute(
     {
@@ -2835,7 +2799,7 @@ Deno.test("Classic ADD I, Vx does not exit when I leaves memory", () => {
 
 Deno.test("RPL stores are unsupported by Classic CHIP-8", () => {
   const context = createContext();
-  const executor = createExecutor(CLASSIC_CHIP8_PROFILE.compatibility);
+  const executor = createExecutor(CLASSIC_CHIP8_PROFILE.quirks);
 
   const instruction: Instruction = {
     kind: "store-rpl-flags",
@@ -2848,7 +2812,7 @@ Deno.test("RPL stores are unsupported by Classic CHIP-8", () => {
 
 Deno.test("RPL loads are unsupported by CHIP-48", () => {
   const context = createContext();
-  const executor = createExecutor(CHIP48_PROFILE.compatibility);
+  const executor = createExecutor(CHIP48_PROFILE.quirks);
 
   const instruction: Instruction = {
     kind: "load-rpl-flags",
@@ -2862,13 +2826,13 @@ Deno.test("RPL loads are unsupported by CHIP-48", () => {
 Deno.test("Classic CHIP-8 rejects SUPER-CHIP LOW before display mutation", () => {
   const displayBuffer = new DisplayBuffer(
     CLASSIC_CHIP8_PROFILE.display.specification,
-    CLASSIC_CHIP8_PROFILE.compatibility.spriteOverflow,
+    CLASSIC_CHIP8_PROFILE.quirks.spriteOverflow,
   );
 
   displayBuffer.setPixel(0, 0, true);
 
   const context = createContext({ displayBuffer });
-  const executor = createExecutor(CLASSIC_CHIP8_PROFILE.compatibility);
+  const executor = createExecutor(CLASSIC_CHIP8_PROFILE.quirks);
 
   const widthBefore = displayBuffer.width;
   const heightBefore = displayBuffer.height;
@@ -2894,13 +2858,13 @@ Deno.test("Classic CHIP-8 rejects SUPER-CHIP LOW before display mutation", () =>
 Deno.test("Classic CHIP-8 rejects SUPER-CHIP HIGH before display mutation", () => {
   const displayBuffer = new DisplayBuffer(
     CLASSIC_CHIP8_PROFILE.display.specification,
-    CLASSIC_CHIP8_PROFILE.compatibility.spriteOverflow,
+    CLASSIC_CHIP8_PROFILE.quirks.spriteOverflow,
   );
 
   displayBuffer.setPixel(0, 0, true);
 
   const context = createContext({ displayBuffer });
-  const executor = createExecutor(CLASSIC_CHIP8_PROFILE.compatibility);
+  const executor = createExecutor(CLASSIC_CHIP8_PROFILE.quirks);
 
   const widthBefore = displayBuffer.width;
   const heightBefore = displayBuffer.height;
@@ -2926,13 +2890,13 @@ Deno.test("Classic CHIP-8 rejects SUPER-CHIP HIGH before display mutation", () =
 Deno.test("Classic CHIP-8 rejects SUPER-CHIP SCD 0 before display mutation", () => {
   const displayBuffer = new DisplayBuffer(
     CLASSIC_CHIP8_PROFILE.display.specification,
-    CLASSIC_CHIP8_PROFILE.compatibility.spriteOverflow,
+    CLASSIC_CHIP8_PROFILE.quirks.spriteOverflow,
   );
 
   displayBuffer.setPixel(0, 0, true);
 
   const context = createContext({ displayBuffer });
-  const executor = createExecutor(CLASSIC_CHIP8_PROFILE.compatibility);
+  const executor = createExecutor(CLASSIC_CHIP8_PROFILE.quirks);
 
   const widthBefore = displayBuffer.width;
   const heightBefore = displayBuffer.height;
@@ -2958,13 +2922,13 @@ Deno.test("Classic CHIP-8 rejects SUPER-CHIP SCD 0 before display mutation", () 
 Deno.test("Classic CHIP-8 rejects SUPER-CHIP SCD 1 before display mutation", () => {
   const displayBuffer = new DisplayBuffer(
     CLASSIC_CHIP8_PROFILE.display.specification,
-    CLASSIC_CHIP8_PROFILE.compatibility.spriteOverflow,
+    CLASSIC_CHIP8_PROFILE.quirks.spriteOverflow,
   );
 
   displayBuffer.setPixel(0, 0, true);
 
   const context = createContext({ displayBuffer });
-  const executor = createExecutor(CLASSIC_CHIP8_PROFILE.compatibility);
+  const executor = createExecutor(CLASSIC_CHIP8_PROFILE.quirks);
 
   const widthBefore = displayBuffer.width;
   const heightBefore = displayBuffer.height;
@@ -2990,13 +2954,13 @@ Deno.test("Classic CHIP-8 rejects SUPER-CHIP SCD 1 before display mutation", () 
 Deno.test("Classic CHIP-8 rejects SUPER-CHIP SCR before display mutation", () => {
   const displayBuffer = new DisplayBuffer(
     CLASSIC_CHIP8_PROFILE.display.specification,
-    CLASSIC_CHIP8_PROFILE.compatibility.spriteOverflow,
+    CLASSIC_CHIP8_PROFILE.quirks.spriteOverflow,
   );
 
   displayBuffer.setPixel(0, 0, true);
 
   const context = createContext({ displayBuffer });
-  const executor = createExecutor(CLASSIC_CHIP8_PROFILE.compatibility);
+  const executor = createExecutor(CLASSIC_CHIP8_PROFILE.quirks);
 
   const widthBefore = displayBuffer.width;
   const heightBefore = displayBuffer.height;
@@ -3023,13 +2987,13 @@ Deno.test("Classic CHIP-8 rejects SUPER-CHIP SCR before display mutation", () =>
 Deno.test("Classic CHIP-8 rejects SUPER-CHIP SCL before display mutation", () => {
   const displayBuffer = new DisplayBuffer(
     CLASSIC_CHIP8_PROFILE.display.specification,
-    CLASSIC_CHIP8_PROFILE.compatibility.spriteOverflow,
+    CLASSIC_CHIP8_PROFILE.quirks.spriteOverflow,
   );
 
   displayBuffer.setPixel(0, 0, true);
 
   const context = createContext({ displayBuffer });
-  const executor = createExecutor(CLASSIC_CHIP8_PROFILE.compatibility);
+  const executor = createExecutor(CLASSIC_CHIP8_PROFILE.quirks);
 
   const widthBefore = displayBuffer.width;
   const heightBefore = displayBuffer.height;
@@ -3056,13 +3020,13 @@ Deno.test("Classic CHIP-8 rejects SUPER-CHIP SCL before display mutation", () =>
 Deno.test("CHIP-48 rejects SUPER-CHIP LOW before display mutation", () => {
   const displayBuffer = new DisplayBuffer(
     CHIP48_PROFILE.display.specification,
-    CHIP48_PROFILE.compatibility.spriteOverflow,
+    CHIP48_PROFILE.quirks.spriteOverflow,
   );
 
   displayBuffer.setPixel(0, 0, true);
 
   const context = createContext({ displayBuffer });
-  const executor = createExecutor(CHIP48_PROFILE.compatibility);
+  const executor = createExecutor(CHIP48_PROFILE.quirks);
 
   const widthBefore = displayBuffer.width;
   const heightBefore = displayBuffer.height;
@@ -3088,13 +3052,13 @@ Deno.test("CHIP-48 rejects SUPER-CHIP LOW before display mutation", () => {
 Deno.test("CHIP-48 rejects SUPER-CHIP HIGH before display mutation", () => {
   const displayBuffer = new DisplayBuffer(
     CHIP48_PROFILE.display.specification,
-    CHIP48_PROFILE.compatibility.spriteOverflow,
+    CHIP48_PROFILE.quirks.spriteOverflow,
   );
 
   displayBuffer.setPixel(0, 0, true);
 
   const context = createContext({ displayBuffer });
-  const executor = createExecutor(CHIP48_PROFILE.compatibility);
+  const executor = createExecutor(CHIP48_PROFILE.quirks);
 
   const widthBefore = displayBuffer.width;
   const heightBefore = displayBuffer.height;
@@ -3120,13 +3084,13 @@ Deno.test("CHIP-48 rejects SUPER-CHIP HIGH before display mutation", () => {
 Deno.test("CHIP-48 rejects SUPER-CHIP SCD 0 before display mutation", () => {
   const displayBuffer = new DisplayBuffer(
     CHIP48_PROFILE.display.specification,
-    CHIP48_PROFILE.compatibility.spriteOverflow,
+    CHIP48_PROFILE.quirks.spriteOverflow,
   );
 
   displayBuffer.setPixel(0, 0, true);
 
   const context = createContext({ displayBuffer });
-  const executor = createExecutor(CHIP48_PROFILE.compatibility);
+  const executor = createExecutor(CHIP48_PROFILE.quirks);
 
   const widthBefore = displayBuffer.width;
   const heightBefore = displayBuffer.height;
@@ -3152,13 +3116,13 @@ Deno.test("CHIP-48 rejects SUPER-CHIP SCD 0 before display mutation", () => {
 Deno.test("CHIP-48 rejects SUPER-CHIP SCD 1 before display mutation", () => {
   const displayBuffer = new DisplayBuffer(
     CHIP48_PROFILE.display.specification,
-    CHIP48_PROFILE.compatibility.spriteOverflow,
+    CHIP48_PROFILE.quirks.spriteOverflow,
   );
 
   displayBuffer.setPixel(0, 0, true);
 
   const context = createContext({ displayBuffer });
-  const executor = createExecutor(CHIP48_PROFILE.compatibility);
+  const executor = createExecutor(CHIP48_PROFILE.quirks);
 
   const widthBefore = displayBuffer.width;
   const heightBefore = displayBuffer.height;
@@ -3184,13 +3148,13 @@ Deno.test("CHIP-48 rejects SUPER-CHIP SCD 1 before display mutation", () => {
 Deno.test("CHIP-48 rejects SUPER-CHIP SCR before display mutation", () => {
   const displayBuffer = new DisplayBuffer(
     CHIP48_PROFILE.display.specification,
-    CHIP48_PROFILE.compatibility.spriteOverflow,
+    CHIP48_PROFILE.quirks.spriteOverflow,
   );
 
   displayBuffer.setPixel(0, 0, true);
 
   const context = createContext({ displayBuffer });
-  const executor = createExecutor(CHIP48_PROFILE.compatibility);
+  const executor = createExecutor(CHIP48_PROFILE.quirks);
 
   const widthBefore = displayBuffer.width;
   const heightBefore = displayBuffer.height;
@@ -3217,13 +3181,13 @@ Deno.test("CHIP-48 rejects SUPER-CHIP SCR before display mutation", () => {
 Deno.test("CHIP-48 rejects SUPER-CHIP SCL before display mutation", () => {
   const displayBuffer = new DisplayBuffer(
     CHIP48_PROFILE.display.specification,
-    CHIP48_PROFILE.compatibility.spriteOverflow,
+    CHIP48_PROFILE.quirks.spriteOverflow,
   );
 
   displayBuffer.setPixel(0, 0, true);
 
   const context = createContext({ displayBuffer });
-  const executor = createExecutor(CHIP48_PROFILE.compatibility);
+  const executor = createExecutor(CHIP48_PROFILE.quirks);
 
   const widthBefore = displayBuffer.width;
   const heightBefore = displayBuffer.height;
@@ -3254,10 +3218,7 @@ Deno.test("sets I to the large-font sprite address for Vx", () => {
 
   context.registers.set(registerIndex(0x3), byte(0x04));
 
-  const executor = createExecutor(
-    SUPERCHIP_PROFILE.compatibility,
-    SUPERCHIP_PROFILE.instructionSet,
-  );
+  const executor = createExecutor(SUPERCHIP_PROFILE.quirks, SUPERCHIP_PROFILE.instructionSet);
   executor.execute(
     {
       kind: "set-index-to-large-sprite",
@@ -3279,10 +3240,7 @@ Deno.test("stores V0 through Vx in RPL flags", () => {
 
   context.rplFlags.set(registerIndex(3), byte(0xee));
 
-  const executor = createExecutor(
-    SUPERCHIP_PROFILE.compatibility,
-    SUPERCHIP_PROFILE.instructionSet,
-  );
+  const executor = createExecutor(SUPERCHIP_PROFILE.quirks, SUPERCHIP_PROFILE.instructionSet);
 
   executor.execute(
     {
@@ -3308,10 +3266,7 @@ Deno.test("loads V0 through Vx from RPL flags", () => {
 
   context.registers.set(registerIndex(3), byte(0xee));
 
-  const executor = createExecutor(
-    SUPERCHIP_PROFILE.compatibility,
-    SUPERCHIP_PROFILE.instructionSet,
-  );
+  const executor = createExecutor(SUPERCHIP_PROFILE.quirks, SUPERCHIP_PROFILE.instructionSet);
 
   executor.execute(
     {
@@ -3334,7 +3289,7 @@ Deno.test("Classic CHIP-8 rejects SUPER-CHIP Fx30 before changing I", () => {
   context.indexRegister.setValue(address(0x345));
   context.registers.set(registerIndex(0x3), byte(0x04));
 
-  const executor = createExecutor(CLASSIC_CHIP8_PROFILE.compatibility);
+  const executor = createExecutor(CLASSIC_CHIP8_PROFILE.quirks);
 
   const instruction: Instruction = {
     kind: "set-index-to-large-sprite",
@@ -3353,7 +3308,7 @@ Deno.test("CHIP-48 rejects SUPER-CHIP Fx30 before changing I", () => {
   context.indexRegister.setValue(address(0x345));
   context.registers.set(registerIndex(0x3), byte(0x04));
 
-  const executor = createExecutor(CHIP48_PROFILE.compatibility);
+  const executor = createExecutor(CHIP48_PROFILE.quirks);
 
   const instruction: Instruction = {
     kind: "set-index-to-large-sprite",
@@ -3383,7 +3338,7 @@ Deno.test("Classic CHIP-8 does not acquire SUPER-CHIP Dxy0 semantics from the di
 
   const displayBuffer = new DisplayBuffer(
     SUPERCHIP_PROFILE.display.specification,
-    SUPERCHIP_PROFILE.compatibility.spriteOverflow,
+    SUPERCHIP_PROFILE.quirks.spriteOverflow,
   );
 
   const verticalBlank = new VerticalBlank();
@@ -3397,7 +3352,7 @@ Deno.test("Classic CHIP-8 does not acquire SUPER-CHIP Dxy0 semantics from the di
     verticalBlank,
   });
 
-  const executor = createExecutor(CLASSIC_CHIP8_PROFILE.compatibility);
+  const executor = createExecutor(CLASSIC_CHIP8_PROFILE.quirks);
 
   executor.execute(
     {
@@ -3436,7 +3391,7 @@ Deno.test(
 
     const displayBuffer = new DisplayBuffer(
       SUPERCHIP_PROFILE.display.specification,
-      SUPERCHIP_PROFILE.compatibility.spriteOverflow,
+      SUPERCHIP_PROFILE.quirks.spriteOverflow,
     );
 
     displayBuffer.setMode("high");
@@ -3455,7 +3410,7 @@ Deno.test(
       verticalBlank,
     });
 
-    const executor = createExecutor(CLASSIC_CHIP8_PROFILE.compatibility);
+    const executor = createExecutor(CLASSIC_CHIP8_PROFILE.quirks);
 
     executor.execute(
       {
@@ -3485,7 +3440,7 @@ Deno.test("CHIP-48 does not acquire SUPER-CHIP Dxy0 semantics from the display",
 
   const displayBuffer = new DisplayBuffer(
     SUPERCHIP_PROFILE.display.specification,
-    SUPERCHIP_PROFILE.compatibility.spriteOverflow,
+    SUPERCHIP_PROFILE.quirks.spriteOverflow,
   );
 
   const verticalBlank = new VerticalBlank();
@@ -3499,7 +3454,7 @@ Deno.test("CHIP-48 does not acquire SUPER-CHIP Dxy0 semantics from the display",
     verticalBlank,
   });
 
-  const executor = createExecutor(CHIP48_PROFILE.compatibility);
+  const executor = createExecutor(CHIP48_PROFILE.quirks);
 
   executor.execute(
     {
@@ -3531,7 +3486,7 @@ Deno.test(
 
     const displayBuffer = new DisplayBuffer(
       SUPERCHIP_PROFILE.display.specification,
-      SUPERCHIP_PROFILE.compatibility.spriteOverflow,
+      SUPERCHIP_PROFILE.quirks.spriteOverflow,
     );
 
     displayBuffer.setMode("high");
@@ -3550,7 +3505,7 @@ Deno.test(
       verticalBlank,
     });
 
-    const executor = createExecutor(CHIP48_PROFILE.compatibility);
+    const executor = createExecutor(CHIP48_PROFILE.quirks);
 
     executor.execute(
       {

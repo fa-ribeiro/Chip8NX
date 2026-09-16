@@ -33,8 +33,8 @@ export const SUPERCHIP_PROFILE = {
 
   instructionSet: { kind: "superchip-1.1" },
 
-  compatibility: {
-    ...CHIP48_PROFILE.compatibility,
+  quirks: {
+    ...CHIP48_PROFILE.quirks,
 
     memoryTransferIndex: "unchanged",
 

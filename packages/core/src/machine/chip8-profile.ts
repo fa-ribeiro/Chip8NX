@@ -216,5 +216,5 @@ export interface Chip8Profile {
   /**
    * Compatibility-sensitive instruction behavior.
    */
-  readonly compatibility: Chip8Quirks;
+  readonly quirks: Chip8Quirks;
 }

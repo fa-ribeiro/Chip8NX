@@ -53,7 +53,7 @@ export async function createExampleMachine(romPath: string): Promise<ExampleMach
 
   const displayBuffer = new DisplayBuffer(
     profile.display.specification,
-    profile.compatibility.spriteOverflow,
+    profile.quirks.spriteOverflow,
   );
 
   const context: ExecutionContext = {
@@ -80,7 +80,7 @@ export async function createExampleMachine(romPath: string): Promise<ExampleMach
   const cpu = new Cpu(
     context,
     new Decoder(),
-    new InstructionExecutor(profile.instructionSet, profile.compatibility),
+    new InstructionExecutor(profile.instructionSet, profile.quirks),
   );
 
   const scheduler = new Scheduler(new PerformanceClock());

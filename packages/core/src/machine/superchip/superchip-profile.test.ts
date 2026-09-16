@@ -12,24 +12,24 @@ Deno.test("SUPER-CHIP profile defines its display and compatibility semantics", 
     initialMode: "low",
   });
 
-  assertEquals(SUPERCHIP_PROFILE.compatibility.shiftSource, "vx");
+  assertEquals(SUPERCHIP_PROFILE.quirks.shiftSource, "vx");
 
-  assertEquals(SUPERCHIP_PROFILE.compatibility.memoryTransferIndex, "unchanged");
+  assertEquals(SUPERCHIP_PROFILE.quirks.memoryTransferIndex, "unchanged");
 
-  assertEquals(SUPERCHIP_PROFILE.compatibility.jumpOffsetSource, "vx");
+  assertEquals(SUPERCHIP_PROFILE.quirks.jumpOffsetSource, "vx");
 
-  assertEquals(SUPERCHIP_PROFILE.compatibility.logicFlag, "unchanged");
+  assertEquals(SUPERCHIP_PROFILE.quirks.logicFlag, "unchanged");
 
-  assertEquals(SUPERCHIP_PROFILE.compatibility.spriteOverflow, "clip");
+  assertEquals(SUPERCHIP_PROFILE.quirks.spriteOverflow, "clip");
 
-  assertEquals(SUPERCHIP_PROFILE.compatibility.spriteDrawTiming, {
+  assertEquals(SUPERCHIP_PROFILE.quirks.spriteDrawTiming, {
     kind: "display-mode",
     low: "vertical-blank",
     high: "immediate",
   });
 
-  // assertEquals(SUPERCHIP_PROFILE.compatibility.interpreterExit, "exit");
-  assertEquals(SUPERCHIP_PROFILE.compatibility.indexOverflow, "exit-interpreter");
+  // assertEquals(SUPERCHIP_PROFILE.quirks.interpreterExit, "exit");
+  assertEquals(SUPERCHIP_PROFILE.quirks.indexOverflow, "exit-interpreter");
 
   assertEquals(SUPERCHIP_PROFILE.largeFont?.baseAddress, address(0x0a0));
 
