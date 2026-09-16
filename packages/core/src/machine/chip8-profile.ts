@@ -187,29 +187,39 @@ export interface Chip8Profile {
   /**
    * Font data provided by the machine.
    */
-  readonly fontImage: MemoryImage;
-
-  /**
-   * Address at which the font image is installed in memory.
-   */
-  readonly fontBaseAddress: Address;
-
-  /**
-   * Optional large-font data provided by the machine.
-   *
-   * Machines without a large font use `null`.
-   */
-  readonly largeFont: {
+  readonly fonts: {
     /**
-     * Large-font image installed in machine memory.
+     * Small CHIP-8 font.
      */
-    readonly image: MemoryImage;
+    readonly small: {
+      /**
+       * Font image installed in machine memory.
+       */
+      readonly image: MemoryImage;
+
+      /**
+       * Address at which the font image is installed.
+       */
+      readonly baseAddress: Address;
+    };
 
     /**
-     * Address at which the large-font image is installed.
+     * Optional large font provided by the machine.
+     *
+     * Machines without a large font use `null`.
      */
-    readonly baseAddress: Address;
-  } | null;
+    readonly large: {
+      /**
+       * Large-font image installed in machine memory.
+       */
+      readonly image: MemoryImage;
+
+      /**
+       * Address at which the large-font image is installed.
+       */
+      readonly baseAddress: Address;
+    } | null;
+  };
 
   readonly instructionSet: Chip8InstructionSet;
 

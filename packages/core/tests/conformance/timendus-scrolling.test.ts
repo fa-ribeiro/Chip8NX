@@ -157,7 +157,7 @@ async function runTimendusScrolling(platformSelection: Byte): Promise<DisplayBuf
   const soundTimer = new Timer();
   const verticalBlank = new VerticalBlank();
 
-  const largeFont = profile.largeFont;
+  const largeFont = profile.fonts.large;
 
   if (largeFont === null) {
     throw new Error("SUPER-CHIP profile must provide a large font.");
@@ -177,7 +177,7 @@ async function runTimendusScrolling(platformSelection: Byte): Promise<DisplayBuf
     ),
     verticalBlank,
     keyboard: new KeyboardState(),
-    font: new SuperChipFont(profile.fontBaseAddress, largeFont.baseAddress),
+    font: new SuperChipFont(profile.fonts.small.baseAddress, largeFont.baseAddress),
     randomNumberGenerator: new TestRandomNumberGenerator([byte(0)]),
     rplFlags: new RplFlags(),
     exitState: new ExitState(),

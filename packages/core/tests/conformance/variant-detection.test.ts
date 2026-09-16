@@ -137,7 +137,7 @@ function runVariantDetection(profile: Chip8Profile): string {
     ),
     verticalBlank,
     keyboard: new KeyboardState(),
-    font: new ClassicFont(profile.fontBaseAddress),
+    font: new ClassicFont(profile.fonts.small.baseAddress),
     randomNumberGenerator: new TestRandomNumberGenerator([byte(0)]),
     rplFlags: new RplFlags(),
     exitState: new ExitState(),

@@ -19,9 +19,9 @@ Deno.test("CHIP-48 profile defines the CHIP-48 2.25 machine characteristics", ()
 
   assertEquals(CHIP48_PROFILE.timerFrequency, Frequency.fromInteger(64n));
 
-  assertEquals(CHIP48_PROFILE.fontImage, CHIP48_FONT_IMAGE);
+  assertEquals(CHIP48_PROFILE.fonts.small.image, CHIP48_FONT_IMAGE);
 
-  assertEquals(CHIP48_PROFILE.fontBaseAddress, address(0x000));
+  assertEquals(CHIP48_PROFILE.fonts.small.baseAddress, address(0x000));
 
   assertEquals(CHIP48_PROFILE.quirks, {
     shiftSource: "vx",
@@ -36,7 +36,7 @@ Deno.test("CHIP-48 profile defines the CHIP-48 2.25 machine characteristics", ()
     indexOverflow: "continue",
   });
 
-  assertEquals(CHIP48_PROFILE.largeFont, null);
+  assertEquals(CHIP48_PROFILE.fonts.large, null);
 });
 
 Deno.test("CHIP-48 uses the CHIP-8 instruction set", () => {

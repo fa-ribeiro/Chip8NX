@@ -29,11 +29,14 @@ export const CHIP48_PROFILE = {
 
   timerFrequency: Frequency.fromInteger(64n),
 
-  fontImage: CHIP48_FONT_IMAGE,
+  fonts: {
+    small: {
+      image: CHIP48_FONT_IMAGE,
+      baseAddress: address(0x000),
+    },
 
-  fontBaseAddress: address(0x000),
-
-  largeFont: null,
+    large: null,
+  },
 
   instructionSet: { kind: "chip8" },
 

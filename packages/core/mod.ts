@@ -75,6 +75,7 @@ export { KeyboardState } from "./src/keyboard/keyboard-state.ts";
 
 // Machine
 export type {
+  Chip8InstructionSet,
   Chip8Profile,
   Chip8Quirks,
   IndexOverflowBehavior,

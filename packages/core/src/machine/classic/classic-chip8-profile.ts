@@ -25,11 +25,14 @@ export const CLASSIC_CHIP8_PROFILE = {
 
   timerFrequency: Frequency.fromInteger(60n),
 
-  fontImage: CLASSIC_FONT_IMAGE,
+  fonts: {
+    small: {
+      image: CLASSIC_FONT_IMAGE,
+      baseAddress: address(0x50),
+    },
 
-  fontBaseAddress: address(0x50),
-
-  largeFont: null,
+    large: null,
+  },
 
   instructionSet: { kind: "chip8" },
 

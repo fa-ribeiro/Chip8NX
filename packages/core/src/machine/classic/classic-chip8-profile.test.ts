@@ -19,9 +19,9 @@ Deno.test("Classic CHIP-8 profile defines the classic machine characteristics", 
 
   assertEquals(CLASSIC_CHIP8_PROFILE.timerFrequency, Frequency.fromInteger(60n));
 
-  assertEquals(CLASSIC_CHIP8_PROFILE.fontImage, CLASSIC_FONT_IMAGE);
+  assertEquals(CLASSIC_CHIP8_PROFILE.fonts.small.image, CLASSIC_FONT_IMAGE);
 
-  assertEquals(CLASSIC_CHIP8_PROFILE.fontBaseAddress, address(0x50));
+  assertEquals(CLASSIC_CHIP8_PROFILE.fonts.small.baseAddress, address(0x50));
 
   assertEquals(CLASSIC_CHIP8_PROFILE.quirks, {
     shiftSource: "vy",
@@ -36,7 +36,7 @@ Deno.test("Classic CHIP-8 profile defines the classic machine characteristics", 
     indexOverflow: "continue",
   });
 
-  assertEquals(CLASSIC_CHIP8_PROFILE.largeFont, null);
+  assertEquals(CLASSIC_CHIP8_PROFILE.fonts.large, null);
 });
 
 Deno.test("Classic CHIP-8 uses the CHIP-8 instruction set", () => {

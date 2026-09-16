@@ -26,9 +26,13 @@ export const SUPERCHIP_PROFILE = {
     refreshFrequency: CHIP48_PROFILE.display.refreshFrequency,
   },
 
-  largeFont: {
-    image: SUPERCHIP_LARGE_FONT_IMAGE,
-    baseAddress: address(0x0a0),
+  fonts: {
+    ...CHIP48_PROFILE.fonts,
+
+    large: {
+      image: SUPERCHIP_LARGE_FONT_IMAGE,
+      baseAddress: address(0x0a0),
+    },
   },
 
   instructionSet: { kind: "superchip-1.1" },

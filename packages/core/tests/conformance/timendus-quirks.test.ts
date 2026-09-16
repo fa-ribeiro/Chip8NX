@@ -121,9 +121,9 @@ async function runTimendusQuirks(
     ),
     verticalBlank,
     keyboard: new KeyboardState(),
-    font: profile.largeFont === null
-      ? new ClassicFont(profile.fontBaseAddress)
-      : new SuperChipFont(profile.fontBaseAddress, profile.largeFont.baseAddress),
+    font: profile.fonts.large === null
+      ? new ClassicFont(profile.fonts.small.baseAddress)
+      : new SuperChipFont(profile.fonts.small.baseAddress, profile.fonts.large.baseAddress),
     randomNumberGenerator: new TestRandomNumberGenerator([byte(0)]),
     rplFlags: new RplFlags(),
     exitState: new ExitState(),

@@ -59,14 +59,13 @@ export class MachineInitializer {
 
     context.exitState.reset();
 
-    this.memoryImageLoader.load(context.memory, profile.fontBaseAddress, profile.fontImage);
+    const smallFont = profile.fonts.small;
+    const largeFont = profile.fonts.large;
 
-    if (profile.largeFont !== null) {
-      this.memoryImageLoader.load(
-        context.memory,
-        profile.largeFont.baseAddress,
-        profile.largeFont.image,
-      );
+    this.memoryImageLoader.load(context.memory, smallFont.baseAddress, smallFont.image);
+
+    if (largeFont !== null) {
+      this.memoryImageLoader.load(context.memory, largeFont.baseAddress, largeFont.image);
     }
 
     this.memoryImageLoader.load(context.memory, profile.programStartAddress, program);
@@ -81,7 +80,10 @@ export class MachineInitializer {
     profile: Chip8Profile,
     program: MemoryImage,
   ): void {
-    if (profile.fontImage.bytes.length === 0) {
+    const smallFont = profile.fonts.small;
+    const largeFont = profile.fonts.large;
+
+    if (smallFont.image.bytes.length === 0) {
       throw new RangeError("Font image must not be empty.");
     }
 
@@ -96,24 +98,24 @@ export class MachineInitializer {
       );
     }
 
-    if (profile.largeFont !== null) {
-      if (profile.largeFont.image.bytes.length === 0) {
+    if (largeFont !== null) {
+      if (largeFont.image.bytes.length === 0) {
         throw new RangeError("Large font image must not be empty.");
       }
 
       this.validateImageFitsMemory(
         "Large font",
-        profile.largeFont.baseAddress,
-        profile.largeFont.image,
+        largeFont.baseAddress,
+        largeFont.image,
         profile.memorySize,
       );
 
       if (
         this.rangesOverlap(
-          profile.fontBaseAddress,
-          profile.fontImage.bytes.length,
-          profile.largeFont.baseAddress,
-          profile.largeFont.image.bytes.length,
+          smallFont.baseAddress,
+          smallFont.image.bytes.length,
+          largeFont.baseAddress,
+          largeFont.image.bytes.length,
         )
       ) {
         throw new RangeError("Large font image overlaps the font image.");
@@ -121,8 +123,8 @@ export class MachineInitializer {
 
       if (
         this.rangesOverlap(
-          profile.largeFont.baseAddress,
-          profile.largeFont.image.bytes.length,
+          largeFont.baseAddress,
+          largeFont.image.bytes.length,
           profile.programStartAddress,
           program.bytes.length,
         )
@@ -133,8 +135,8 @@ export class MachineInitializer {
 
     this.validateImageFitsMemory(
       "Font",
-      profile.fontBaseAddress,
-      profile.fontImage,
+      smallFont.baseAddress,
+      smallFont.image,
       profile.memorySize,
     );
 
@@ -147,8 +149,8 @@ export class MachineInitializer {
 
     if (
       this.rangesOverlap(
-        profile.fontBaseAddress,
-        profile.fontImage.bytes.length,
+        smallFont.baseAddress,
+        smallFont.image.bytes.length,
         profile.programStartAddress,
         program.bytes.length,
       )

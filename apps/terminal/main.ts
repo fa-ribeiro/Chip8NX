@@ -81,7 +81,7 @@ const context: ExecutionContext = {
   displayBuffer,
   verticalBlank,
   keyboard: keyboardState,
-  font: new ClassicFont(profile.fontBaseAddress),
+  font: new ClassicFont(profile.fonts.small.baseAddress),
   randomNumberGenerator: new DefaultRandomNumberGenerator(),
   rplFlags: new RplFlags(),
   exitState: new ExitState(),

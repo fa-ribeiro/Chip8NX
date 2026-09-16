@@ -42,7 +42,7 @@ function createContext(overrides: Partial<ExecutionContext> = {}): ExecutionCont
     displayBuffer: new DisplayBuffer(profile.display.specification, "clip"),
     verticalBlank: new VerticalBlank(),
     keyboard: new KeyboardState(),
-    font: new ClassicFont(profile.fontBaseAddress),
+    font: new ClassicFont(profile.fonts.small.baseAddress),
     randomNumberGenerator: new TestRandomNumberGenerator([byte(0)]),
     ...overrides,
     exitState: overrides.exitState ?? new ExitState(),

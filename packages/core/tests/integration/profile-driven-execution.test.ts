@@ -51,9 +51,9 @@ function createMachine(profile: Chip8Profile): TestMachine {
     ),
     verticalBlank: new VerticalBlank(),
     keyboard: new KeyboardState(),
-    font: profile.largeFont === null
-      ? new ClassicFont(profile.fontBaseAddress)
-      : new SuperChipFont(profile.fontBaseAddress, profile.largeFont.baseAddress),
+    font: profile.fonts.large === null
+      ? new ClassicFont(profile.fonts.small.baseAddress)
+      : new SuperChipFont(profile.fonts.small.baseAddress, profile.fonts.large.baseAddress),
     randomNumberGenerator: new DefaultRandomNumberGenerator(),
     rplFlags: new RplFlags(),
     exitState: new ExitState(),
@@ -124,7 +124,7 @@ Deno.test("public API composes SUPER-CHIP display, large font, and exit semantic
   assertEquals(machine.context.displayBuffer.mode, "high");
   assertEquals(machine.context.displayBuffer.width, 128);
   assertEquals(machine.context.displayBuffer.height, 64);
-  const largeFont = SUPERCHIP_PROFILE.largeFont;
+  const largeFont = SUPERCHIP_PROFILE.fonts.large;
 
   if (largeFont === null) {
     throw new Error("SUPER-CHIP profile must provide a large font.");

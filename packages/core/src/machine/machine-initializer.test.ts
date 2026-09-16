@@ -46,7 +46,7 @@ function createMachine(profile: Chip8Profile = CLASSIC_CHIP8_PROFILE): TestMachi
     displayBuffer: new DisplayBuffer(profile.display.specification, "clip"),
     verticalBlank: new VerticalBlank(),
     keyboard,
-    font: new ClassicFont(profile.fontBaseAddress),
+    font: new ClassicFont(profile.fonts.small.baseAddress),
     randomNumberGenerator,
     rplFlags: new RplFlags(),
     exitState: new ExitState(),
@@ -105,8 +105,11 @@ Deno.test(
      */
     assertEquals(randomNumberGenerator.nextByte(), byte(0x34));
 
-    for (const [offset, value] of profile.fontImage.bytes.entries()) {
-      assertEquals(context.memory.read(address(profile.fontBaseAddress + offset)), value);
+    for (const [offset, value] of profile.fonts.small.image.bytes.entries()) {
+      assertEquals(
+        context.memory.read(address(profile.fonts.small.baseAddress + offset)),
+        value,
+      );
     }
 
     for (const [offset, value] of program.bytes.entries()) {
@@ -164,10 +167,17 @@ Deno.test(
   () => {
     const profile: Chip8Profile = {
       ...CLASSIC_CHIP8_PROFILE,
-
-      fontBaseAddress: address(
-        CLASSIC_CHIP8_PROFILE.memorySize - CLASSIC_CHIP8_PROFILE.fontImage.bytes.length + 1,
-      ),
+      fonts: {
+        ...CLASSIC_CHIP8_PROFILE.fonts,
+        small: {
+          ...CLASSIC_CHIP8_PROFILE.fonts.small,
+          baseAddress: address(
+            CLASSIC_CHIP8_PROFILE.memorySize -
+              CLASSIC_CHIP8_PROFILE.fonts.small.image.bytes.length +
+              1,
+          ),
+        },
+      },
     };
 
     const { context } = createMachine(profile);
@@ -191,7 +201,13 @@ Deno.test(
   () => {
     const profile: Chip8Profile = {
       ...CLASSIC_CHIP8_PROFILE,
-      fontBaseAddress: address(0x1f0),
+      fonts: {
+        small: {
+          baseAddress: address(0x1f0),
+          image: CLASSIC_CHIP8_PROFILE.fonts.small.image,
+        },
+        large: null,
+      },
     };
 
     const { context } = createMachine(profile);
@@ -235,7 +251,13 @@ Deno.test(
 Deno.test("MachineInitializer rejects an empty font image before mutating the machine", () => {
   const profile: Chip8Profile = {
     ...CLASSIC_CHIP8_PROFILE,
-    fontImage: new MemoryImage([]),
+    fonts: {
+      ...CLASSIC_CHIP8_PROFILE.fonts,
+      small: {
+        ...CLASSIC_CHIP8_PROFILE.fonts.small,
+        image: new MemoryImage([]),
+      },
+    },
   };
 
   const { context } = createMachine(profile);
@@ -347,7 +369,7 @@ Deno.test("MachineInitializer installs the optional large font image", () => {
 
   initializer.initialize(context, profile, program);
 
-  const largeFont = profile.largeFont;
+  const largeFont = profile.fonts.large;
 
   if (largeFont === null) {
     throw new Error("SUPER-CHIP profile must provide a large font.");
@@ -361,7 +383,7 @@ Deno.test("MachineInitializer installs the optional large font image", () => {
 Deno.test(
   "MachineInitializer rejects overlapping small and large font images before mutation",
   () => {
-    const largeFont = SUPERCHIP_PROFILE.largeFont;
+    const largeFont = SUPERCHIP_PROFILE.fonts.large;
 
     if (largeFont === null) {
       throw new Error("SUPER-CHIP profile must provide a large font.");
@@ -369,10 +391,12 @@ Deno.test(
 
     const profile: Chip8Profile = {
       ...SUPERCHIP_PROFILE,
-
-      largeFont: {
-        ...largeFont,
-        baseAddress: SUPERCHIP_PROFILE.fontBaseAddress,
+      fonts: {
+        ...SUPERCHIP_PROFILE.fonts,
+        large: {
+          ...largeFont,
+          baseAddress: SUPERCHIP_PROFILE.fonts.small.baseAddress,
+        },
       },
     };
 
