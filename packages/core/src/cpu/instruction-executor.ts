@@ -9,6 +9,7 @@ import { registerIndex } from "./registers/register-index.ts";
 import { INSTRUCTION_SIZE } from "./program-counter/program-counter.ts";
 import type { SpriteDrawTiming } from "../machine/chip8-profile.ts";
 import type { Chip8InstructionSet } from "../machine/chip8-profile.ts";
+import { SpriteDrawResult } from "../display/display-buffer.ts";
 
 /**
  * Index of the CHIP-8 VF flag register.
@@ -417,31 +418,6 @@ export class InstructionExecutor {
     }
   }
 
-  /**
-   * Resolves the sprite-draw timing for the current display state.
-   *
-   * Uniform timing applies regardless of display mode. Mode-dependent timing
-   * requires a display that exposes a SUPER-CHIP low/high mode.
-   */
-  private resolveSpriteDrawTiming(displayMode: "low" | "high" | null): SpriteDrawTiming {
-    const behavior = this.quirks.spriteDrawTiming;
-
-    switch (behavior.kind) {
-      case "uniform":
-        return behavior.timing;
-
-      case "display-mode":
-        if (displayMode === null) {
-          throw new Error("Display-mode sprite timing requires a switchable display mode.");
-        }
-
-        return behavior[displayMode];
-
-      default:
-        return assertNever(behavior);
-    }
-  }
-
   private executeDrawSprite(
     instruction: Extract<Instruction, { kind: "draw-sprite" }>,
     context: ExecutionContext,
@@ -471,16 +447,34 @@ export class InstructionExecutor {
       ? context.displayBuffer.drawWideSprite(x, y, sprite)
       : context.displayBuffer.drawSprite(x, y, sprite);
 
-    const useAffectedRowCount = this.instructionSet.kind === "superchip-1.1" &&
-      context.displayBuffer.mode === "high";
-
-    const collisionValue = useAffectedRowCount
-      ? drawResult.collisionRows + drawResult.clippedBottomRows
-      : drawResult.collision
-      ? 1
-      : 0;
+    const collisionValue = this.resolveSpriteDrawFlag(drawResult, context.displayBuffer.mode);
 
     context.registers.set(FLAG_REGISTER, byte(collisionValue));
+  }
+
+  /**
+   * Resolves the sprite-draw timing for the current display state.
+   *
+   * Uniform timing applies regardless of display mode. Mode-dependent timing
+   * requires a display that exposes a SUPER-CHIP low/high mode.
+   */
+  private resolveSpriteDrawTiming(displayMode: "low" | "high" | null): SpriteDrawTiming {
+    const behavior = this.quirks.spriteDrawTiming;
+
+    switch (behavior.kind) {
+      case "uniform":
+        return behavior.timing;
+
+      case "display-mode":
+        if (displayMode === null) {
+          throw new Error("Display-mode sprite timing requires a switchable display mode.");
+        }
+
+        return behavior[displayMode];
+
+      default:
+        return assertNever(behavior);
+    }
   }
 
   private resolveSpriteDrawForm(
@@ -504,6 +498,20 @@ export class InstructionExecutor {
 
       wide,
     };
+  }
+
+  private resolveSpriteDrawFlag(
+    drawResult: SpriteDrawResult,
+    displayMode: "low" | "high" | null,
+  ): number {
+    const useAffectedRowCount = this.instructionSet.kind === "superchip-1.1" &&
+      displayMode === "high";
+
+    return useAffectedRowCount
+      ? drawResult.collisionRows + drawResult.clippedBottomRows
+      : drawResult.collision
+      ? 1
+      : 0;
   }
 
   private requireDisplayControl(instruction: Instruction): void {
