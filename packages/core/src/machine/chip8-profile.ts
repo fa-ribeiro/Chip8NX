@@ -68,11 +68,16 @@ export type SpriteDrawTimingBehavior =
   };
 
 /**
- * Describes compatibility-sensitive CHIP-8 instruction behavior.
+ * Describes behavioral variations of instructions shared by supported CHIP-8
+ * variants.
  *
  * @remarks
- * Properties use explicit semantic choices rather than boolean "quirk"
- * flags so their meaning does not depend on interpreting enabled/disabled
+ * Quirks answer how shared instructions behave. They do not describe whether
+ * an instruction exists; instruction-set membership belongs to
+ * {@link Chip8InstructionSet}.
+ *
+ * Properties use explicit semantic choices rather than boolean "quirk" flags
+ * so their meaning does not depend on interpreting enabled/disabled
  * terminology.
  */
 export interface Chip8Quirks {
@@ -127,8 +132,10 @@ export interface Chip8Quirks {
 /**
  * Identifies the instruction semantics available to a machine profile.
  *
- * This describes instruction-set membership, not compatibility quirks of
- * instructions shared between CHIP-8 variants.
+ * @remarks
+ * This describes instruction-set membership and extension-specific semantics.
+ * Behavioral variations of instructions shared between supported variants
+ * belong to {@link Chip8Quirks}.
  */
 export type Chip8InstructionSet =
   | {
@@ -139,14 +146,14 @@ export type Chip8InstructionSet =
   };
 
 /**
- * Describes the characteristics and compatibility behavior of a CHIP-8
- * machine.
+ * Describes a supported CHIP-8 machine profile.
  *
  * @remarks
- * A profile defines what machine is being emulated. It contains the
- * architectural characteristics needed to construct that machine, while
- * concrete component implementations and host/runtime behavior remain
- * outside the profile.
+ * A profile combines the machine characteristics needed for composition with
+ * its instruction-set identity and shared-instruction quirks.
+ *
+ * Concrete component implementations and host/runtime policy remain outside
+ * the profile.
  */
 export interface Chip8Profile {
   /**
@@ -221,10 +228,13 @@ export interface Chip8Profile {
     } | null;
   };
 
+  /**
+   * Instruction semantics available to the machine.
+   */
   readonly instructionSet: Chip8InstructionSet;
 
   /**
-   * Compatibility-sensitive instruction behavior.
+   * Behavioral variations of instructions shared with other supported variants.
    */
   readonly quirks: Chip8Quirks;
 }

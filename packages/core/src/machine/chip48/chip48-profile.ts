@@ -9,8 +9,8 @@ import type { Chip8Profile } from "../chip8-profile.ts";
  * @remarks
  * CHIP-48 was Andreas Gustafsson's CHIP-8 interpreter for the HP48SX.
  *
- * This object describes the CHIP-48 machine characteristics and the
- * compatibility-sensitive behavior currently supported by Chip8NX.
+ * This object describes the CHIP-48 machine characteristics, instruction set,
+ * and shared-instruction quirks currently modeled by Chip8NX.
  *
  * It does not select concrete host implementations such as keyboards,
  * displays, memory, clocks, or schedulers.

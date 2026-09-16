@@ -7,9 +7,12 @@ import type { Chip8Profile } from "../chip8-profile.ts";
  * Profile for the Classic CHIP-8 machine.
  *
  * @remarks
- * This object provides the complete declarative machine definition used when
- * assembling a Classic CHIP-8 interpreter. It does not select concrete host
- * implementations such as keyboards, displays, memory, clocks, or schedulers.
+ * This object provides the declarative machine characteristics, instruction
+ * set, and shared-instruction quirks used when assembling a Classic CHIP-8
+ * interpreter.
+ *
+ * It does not select concrete host implementations such as keyboards,
+ * displays, memory, clocks, or schedulers.
  */
 export const CLASSIC_CHIP8_PROFILE = {
   memorySize: 0x1000,
