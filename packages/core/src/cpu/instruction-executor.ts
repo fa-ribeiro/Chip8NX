@@ -42,13 +42,13 @@ export class InstructionExecutor {
         return;
 
       case "set-display-mode":
-        this.requireDisplayControl(instruction);
+        this.requireSuperChipInstruction(instruction);
 
         context.displayBuffer.setMode(instruction.mode);
         return;
 
       case "scroll-display-down":
-        this.requireDisplayControl(instruction);
+        this.requireSuperChipInstruction(instruction);
 
         if (instruction.rows === 0 && this.instructionSet.kind === "superchip-1.1") {
           context.exitState.exit();
@@ -59,7 +59,7 @@ export class InstructionExecutor {
         return;
 
       case "scroll-display-horizontal":
-        this.requireDisplayControl(instruction);
+        this.requireSuperChipInstruction(instruction);
 
         switch (instruction.direction) {
           case "right":
@@ -75,9 +75,7 @@ export class InstructionExecutor {
         }
 
       case "exit-interpreter":
-        if (this.instructionSet.kind !== "superchip-1.1") {
-          throw new UnsupportedInstructionError(instruction);
-        }
+        this.requireSuperChipInstruction(instruction);
 
         context.exitState.exit();
         return;
@@ -213,9 +211,7 @@ export class InstructionExecutor {
       }
 
       case "set-index-to-large-sprite":
-        if (this.instructionSet.kind !== "superchip-1.1") {
-          throw new UnsupportedInstructionError(instruction);
-        }
+        this.requireSuperChipInstruction(instruction);
 
         context.indexRegister.setValue(
           context.font.getSpriteAddress(context.registers.get(instruction.register), "large"),
@@ -289,9 +285,7 @@ export class InstructionExecutor {
       }
 
       case "store-rpl-flags":
-        if (this.instructionSet.kind !== "superchip-1.1") {
-          throw new UnsupportedInstructionError(instruction);
-        }
+        this.requireSuperChipInstruction(instruction);
 
         for (let index = 0; index <= instruction.register; index++) {
           const register = registerIndex(index);
@@ -301,9 +295,7 @@ export class InstructionExecutor {
         return;
 
       case "load-rpl-flags":
-        if (this.instructionSet.kind !== "superchip-1.1") {
-          throw new UnsupportedInstructionError(instruction);
-        }
+        this.requireSuperChipInstruction(instruction);
 
         for (let index = 0; index <= instruction.register; index++) {
           const register = registerIndex(index);
@@ -514,7 +506,7 @@ export class InstructionExecutor {
       : 0;
   }
 
-  private requireDisplayControl(instruction: Instruction): void {
+  private requireSuperChipInstruction(instruction: Instruction): void {
     if (this.instructionSet.kind !== "superchip-1.1") {
       throw new UnsupportedInstructionError(instruction);
     }
