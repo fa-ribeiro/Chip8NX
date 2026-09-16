@@ -336,60 +336,6 @@ export class InstructionExecutor {
     }
   }
 
-  private executeDrawSprite(
-    instruction: Extract<Instruction, { kind: "draw-sprite" }>,
-    context: ExecutionContext,
-  ): void {
-    const spriteDrawTiming = this.resolveSpriteDrawTiming(context.displayBuffer.mode);
-
-    if (spriteDrawTiming === "vertical-blank" && !context.verticalBlank.consume()) {
-      context.programCounter.setValue(
-        address(context.programCounter.getValue() - INSTRUCTION_SIZE),
-      );
-      return;
-    }
-
-    const x = context.registers.get(instruction.x);
-    const y = context.registers.get(instruction.y);
-    const startAddress = context.indexRegister.getValue();
-
-    const displayMode = context.displayBuffer.mode;
-
-    const isSuperChipExtendedSprite = instruction.height === 0 &&
-      this.instructionSet.kind === "superchip-1.1";
-
-    if (isSuperChipExtendedSprite && displayMode === null) {
-      throw new Error("SUPER-CHIP extended sprite drawing requires a switchable display mode.");
-    }
-
-    const isWideSprite = isSuperChipExtendedSprite && displayMode === "high";
-
-    const spriteByteCount = isSuperChipExtendedSprite
-      ? isWideSprite ? 32 : 16
-      : instruction.height;
-
-    const sprite: Byte[] = [];
-
-    for (let offset = 0; offset < spriteByteCount; offset++) {
-      sprite.push(context.memory.read(address(startAddress + offset)));
-    }
-
-    const drawResult = isWideSprite
-      ? context.displayBuffer.drawWideSprite(x, y, sprite)
-      : context.displayBuffer.drawSprite(x, y, sprite);
-
-    const useAffectedRowCount = this.instructionSet.kind === "superchip-1.1" &&
-      context.displayBuffer.mode === "high";
-
-    const collisionValue = useAffectedRowCount
-      ? drawResult.collisionRows + drawResult.clippedBottomRows
-      : drawResult.collision
-      ? 1
-      : 0;
-
-    context.registers.set(FLAG_REGISTER, byte(collisionValue));
-  }
-
   private executeRegisterOperation(
     instruction: Extract<Instruction, { kind: "register-operation" }>,
     context: ExecutionContext,
@@ -494,6 +440,70 @@ export class InstructionExecutor {
       default:
         return assertNever(behavior);
     }
+  }
+
+  private executeDrawSprite(
+    instruction: Extract<Instruction, { kind: "draw-sprite" }>,
+    context: ExecutionContext,
+  ): void {
+    const spriteDrawTiming = this.resolveSpriteDrawTiming(context.displayBuffer.mode);
+
+    if (spriteDrawTiming === "vertical-blank" && !context.verticalBlank.consume()) {
+      context.programCounter.setValue(
+        address(context.programCounter.getValue() - INSTRUCTION_SIZE),
+      );
+      return;
+    }
+
+    const x = context.registers.get(instruction.x);
+    const y = context.registers.get(instruction.y);
+    const startAddress = context.indexRegister.getValue();
+
+    const spriteForm = this.resolveSpriteDrawForm(instruction, context.displayBuffer.mode);
+
+    const sprite: Byte[] = [];
+
+    for (let offset = 0; offset < spriteForm.byteCount; offset++) {
+      sprite.push(context.memory.read(address(startAddress + offset)));
+    }
+
+    const drawResult = spriteForm.wide
+      ? context.displayBuffer.drawWideSprite(x, y, sprite)
+      : context.displayBuffer.drawSprite(x, y, sprite);
+
+    const useAffectedRowCount = this.instructionSet.kind === "superchip-1.1" &&
+      context.displayBuffer.mode === "high";
+
+    const collisionValue = useAffectedRowCount
+      ? drawResult.collisionRows + drawResult.clippedBottomRows
+      : drawResult.collision
+      ? 1
+      : 0;
+
+    context.registers.set(FLAG_REGISTER, byte(collisionValue));
+  }
+
+  private resolveSpriteDrawForm(
+    instruction: Extract<Instruction, { kind: "draw-sprite" }>,
+    displayMode: "low" | "high" | null,
+  ): {
+    readonly byteCount: number;
+    readonly wide: boolean;
+  } {
+    const isSuperChipExtendedSprite = instruction.height === 0 &&
+      this.instructionSet.kind === "superchip-1.1";
+
+    if (isSuperChipExtendedSprite && displayMode === null) {
+      throw new Error("SUPER-CHIP extended sprite drawing requires a switchable display mode.");
+    }
+
+    const wide = isSuperChipExtendedSprite && displayMode === "high";
+
+    return {
+      byteCount: isSuperChipExtendedSprite ? (wide ? 32 : 16) : instruction.height,
+
+      wide,
+    };
   }
 
   private requireDisplayControl(instruction: Instruction): void {
