@@ -45,34 +45,51 @@ export class InstructionExecutor {
         this.requireSuperChipInstruction(instruction);
 
         context.displayBuffer.setMode(instruction.mode);
+
+        if (this.instructionSet.kind === "superchip-modern") {
+          context.displayBuffer.clear();
+        }
+
         return;
 
-      case "scroll-display-down":
+      case "scroll-display-down": {
         this.requireSuperChipInstruction(instruction);
 
-        if (instruction.rows === 0) {
+        if (this.instructionSet.kind === "superchip-1.1" && instruction.rows === 0) {
           context.exitState.exit();
           return;
         }
 
-        context.displayBuffer.scrollDown(instruction.rows);
-        return;
+        const rows = this.instructionSet.kind === "superchip-modern"
+          ? instruction.rows *
+            (context.displayBuffer.backingHeight / context.displayBuffer.height)
+          : instruction.rows;
 
-      case "scroll-display-horizontal":
+        context.displayBuffer.scrollDown(rows);
+        return;
+      }
+
+      case "scroll-display-horizontal": {
         this.requireSuperChipInstruction(instruction);
+
+        const columns = this.instructionSet.kind === "superchip-modern"
+          ? instruction.columns *
+            (context.displayBuffer.backingWidth / context.displayBuffer.width)
+          : instruction.columns;
 
         switch (instruction.direction) {
           case "right":
-            context.displayBuffer.scrollRight(instruction.columns);
+            context.displayBuffer.scrollRight(columns);
             return;
 
           case "left":
-            context.displayBuffer.scrollLeft(instruction.columns);
+            context.displayBuffer.scrollLeft(columns);
             return;
 
           default:
             return assertNever(instruction.direction);
         }
+      }
 
       case "exit-interpreter":
         this.requireSuperChipInstruction(instruction);
@@ -476,20 +493,52 @@ export class InstructionExecutor {
     readonly byteCount: number;
     readonly wide: boolean;
   } {
-    const isSuperChipExtendedSprite = instruction.height === 0 &&
-      this.instructionSet.kind === "superchip-1.1";
-
-    if (isSuperChipExtendedSprite && displayMode === null) {
-      throw new Error("SUPER-CHIP extended sprite drawing requires a switchable display mode.");
+    if (instruction.height !== 0) {
+      return {
+        byteCount: instruction.height,
+        wide: false,
+      };
     }
 
-    const wide = isSuperChipExtendedSprite && displayMode === "high";
+    switch (this.instructionSet.kind) {
+      case "chip8":
+        return {
+          byteCount: 0,
+          wide: false,
+        };
 
-    return {
-      byteCount: isSuperChipExtendedSprite ? (wide ? 32 : 16) : instruction.height,
+      case "superchip-1.1":
+        if (displayMode === null) {
+          throw new Error(
+            "SUPER-CHIP extended sprite drawing requires a switchable display mode.",
+          );
+        }
 
-      wide,
-    };
+        return displayMode === "high"
+          ? {
+            byteCount: 32,
+            wide: true,
+          }
+          : {
+            byteCount: 16,
+            wide: false,
+          };
+
+      case "superchip-modern":
+        if (displayMode === null) {
+          throw new Error(
+            "SUPER-CHIP extended sprite drawing requires a switchable display mode.",
+          );
+        }
+
+        return {
+          byteCount: 32,
+          wide: true,
+        };
+
+      default:
+        return assertNever(this.instructionSet);
+    }
   }
 
   private resolveSpriteDrawFlag(
@@ -507,8 +556,16 @@ export class InstructionExecutor {
   }
 
   private requireSuperChipInstruction(instruction: Instruction): void {
-    if (this.instructionSet.kind !== "superchip-1.1") {
-      throw new UnsupportedInstructionError(instruction);
+    switch (this.instructionSet.kind) {
+      case "superchip-1.1":
+      case "superchip-modern":
+        return;
+
+      case "chip8":
+        throw new UnsupportedInstructionError(instruction);
+
+      default:
+        return assertNever(this.instructionSet);
     }
   }
 }

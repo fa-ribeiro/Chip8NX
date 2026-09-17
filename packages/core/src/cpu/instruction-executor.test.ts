@@ -32,6 +32,7 @@ import { ExitState } from "../machine/exit-state.ts";
 import { CLASSIC_CHIP8_PROFILE } from "../machine/classic/classic-chip8-profile.ts";
 import { CHIP48_PROFILE } from "../machine/chip48/chip48-profile.ts";
 import { SUPERCHIP_PROFILE } from "../machine/superchip/superchip-profile.ts";
+import { SUPERCHIP_MODERN_PROFILE } from "../machine/superchip-modern/superchip-modern-profile.ts";
 import type { Chip8InstructionSet } from "../machine/chip8-profile.ts";
 
 function createContext(overrides: Partial<ExecutionContext> = {}): ExecutionContext {
@@ -2192,6 +2193,39 @@ Deno.test("HIGH selects high-resolution mode without clearing the display", () =
   assertEquals(displayBuffer.getPixel(100, 50), true);
 });
 
+Deno.test("Modern SUPER-CHIP HIGH selects high-resolution mode and clears the display", () => {
+  const displayBuffer = new DisplayBuffer(
+    {
+      kind: "superchip",
+      backingWidth: 128,
+      backingHeight: 64,
+      initialMode: "low",
+    },
+    "clip",
+  );
+
+  displayBuffer.setPixel(100, 50, true);
+
+  const context = createContext({ displayBuffer });
+  const executor = createExecutor(
+    SUPERCHIP_MODERN_PROFILE.quirks,
+    SUPERCHIP_MODERN_PROFILE.instructionSet,
+  );
+
+  executor.execute(
+    {
+      kind: "set-display-mode",
+      opcode: opcode(0x00ff),
+      mode: "high",
+    },
+    context,
+  );
+
+  assertEquals(displayBuffer.width, 128);
+  assertEquals(displayBuffer.height, 64);
+  assertEquals(displayBuffer.getPixel(100, 50), false);
+});
+
 Deno.test("LOW selects low-resolution mode without clearing the display", () => {
   const displayBuffer = new DisplayBuffer(
     {
@@ -2221,6 +2255,40 @@ Deno.test("LOW selects low-resolution mode without clearing the display", () => 
   assertEquals(displayBuffer.width, 64);
   assertEquals(displayBuffer.height, 32);
   assertEquals(displayBuffer.getPixel(100, 50), true);
+});
+
+Deno.test("Modern SUPER-CHIP LOW selects low-resolution mode and clears the display", () => {
+  const displayBuffer = new DisplayBuffer(
+    {
+      kind: "superchip",
+      backingWidth: 128,
+      backingHeight: 64,
+      initialMode: "low",
+    },
+    "clip",
+  );
+
+  displayBuffer.setMode("high");
+  displayBuffer.setPixel(100, 50, true);
+
+  const context = createContext({ displayBuffer });
+  const executor = createExecutor(
+    SUPERCHIP_MODERN_PROFILE.quirks,
+    SUPERCHIP_MODERN_PROFILE.instructionSet,
+  );
+
+  executor.execute(
+    {
+      kind: "set-display-mode",
+      opcode: opcode(0x00fe),
+      mode: "low",
+    },
+    context,
+  );
+
+  assertEquals(displayBuffer.width, 64);
+  assertEquals(displayBuffer.height, 32);
+  assertEquals(displayBuffer.getPixel(100, 50), false);
 });
 
 Deno.test("SCD scrolls the SUPER-CHIP backing framebuffer down", () => {
@@ -2256,6 +2324,94 @@ Deno.test("SCD scrolls the SUPER-CHIP backing framebuffer down", () => {
   assertEquals(displayBuffer.height, 32);
 });
 
+Deno.test("Modern SUPER-CHIP SCD scrolls by logical rows in low-resolution mode", () => {
+  const displayBuffer = new DisplayBuffer(
+    SUPERCHIP_MODERN_PROFILE.display.specification,
+    SUPERCHIP_MODERN_PROFILE.quirks.spriteOverflow,
+  );
+
+  displayBuffer.setPixel(10, 10, true);
+
+  const context = createContext({ displayBuffer });
+  const executor = createExecutor(
+    SUPERCHIP_MODERN_PROFILE.quirks,
+    SUPERCHIP_MODERN_PROFILE.instructionSet,
+  );
+
+  executor.execute(
+    {
+      kind: "scroll-display-down",
+      opcode: opcode(0x00c3),
+      rows: 3,
+    },
+    context,
+  );
+
+  assertEquals(displayBuffer.getPixel(10, 10), false);
+  assertEquals(displayBuffer.getPixel(10, 16), true);
+
+  assertEquals(displayBuffer.width, 64);
+  assertEquals(displayBuffer.height, 32);
+});
+
+Deno.test("Modern SUPER-CHIP SCD scrolls by logical rows in high-resolution mode", () => {
+  const displayBuffer = new DisplayBuffer(
+    SUPERCHIP_MODERN_PROFILE.display.specification,
+    SUPERCHIP_MODERN_PROFILE.quirks.spriteOverflow,
+  );
+
+  displayBuffer.setMode("high");
+  displayBuffer.setPixel(10, 10, true);
+
+  const context = createContext({ displayBuffer });
+  const executor = createExecutor(
+    SUPERCHIP_MODERN_PROFILE.quirks,
+    SUPERCHIP_MODERN_PROFILE.instructionSet,
+  );
+
+  executor.execute(
+    {
+      kind: "scroll-display-down",
+      opcode: opcode(0x00c3),
+      rows: 3,
+    },
+    context,
+  );
+
+  assertEquals(displayBuffer.getPixel(10, 10), false);
+  assertEquals(displayBuffer.getPixel(10, 13), true);
+
+  assertEquals(displayBuffer.width, 128);
+  assertEquals(displayBuffer.height, 64);
+});
+
+Deno.test("Modern SUPER-CHIP 00C0 performs a zero-row scroll without exiting", () => {
+  const displayBuffer = new DisplayBuffer(
+    SUPERCHIP_MODERN_PROFILE.display.specification,
+    SUPERCHIP_MODERN_PROFILE.quirks.spriteOverflow,
+  );
+
+  displayBuffer.setPixel(10, 10, true);
+
+  const context = createContext({ displayBuffer });
+  const executor = createExecutor(
+    SUPERCHIP_MODERN_PROFILE.quirks,
+    SUPERCHIP_MODERN_PROFILE.instructionSet,
+  );
+
+  executor.execute(
+    {
+      kind: "scroll-display-down",
+      opcode: opcode(0x00c0),
+      rows: 0,
+    },
+    context,
+  );
+
+  assertEquals(context.exitState.isExited, false);
+  assertEquals(displayBuffer.getPixel(10, 10), true);
+});
+
 Deno.test("SCR scrolls the SUPER-CHIP backing framebuffer right", () => {
   const displayBuffer = new DisplayBuffer(
     {
@@ -2286,6 +2442,66 @@ Deno.test("SCR scrolls the SUPER-CHIP backing framebuffer right", () => {
   assertEquals(displayBuffer.getPixel(14, 10), true);
 });
 
+Deno.test("Modern SUPER-CHIP SCR scrolls by four logical pixels in low-resolution mode", () => {
+  const displayBuffer = new DisplayBuffer(
+    SUPERCHIP_MODERN_PROFILE.display.specification,
+    SUPERCHIP_MODERN_PROFILE.quirks.spriteOverflow,
+  );
+
+  displayBuffer.setPixel(10, 10, true);
+
+  const context = createContext({ displayBuffer });
+  const executor = createExecutor(
+    SUPERCHIP_MODERN_PROFILE.quirks,
+    SUPERCHIP_MODERN_PROFILE.instructionSet,
+  );
+
+  executor.execute(
+    {
+      kind: "scroll-display-horizontal",
+      opcode: opcode(0x00fb),
+      direction: "right",
+      columns: 4,
+    },
+    context,
+  );
+
+  assertEquals(displayBuffer.getPixel(10, 10), false);
+  assertEquals(displayBuffer.getPixel(18, 10), true);
+});
+
+Deno.test(
+  "Modern SUPER-CHIP SCR scrolls by four logical pixels in high-resolution mode",
+  () => {
+    const displayBuffer = new DisplayBuffer(
+      SUPERCHIP_MODERN_PROFILE.display.specification,
+      SUPERCHIP_MODERN_PROFILE.quirks.spriteOverflow,
+    );
+
+    displayBuffer.setMode("high");
+    displayBuffer.setPixel(10, 10, true);
+
+    const context = createContext({ displayBuffer });
+    const executor = createExecutor(
+      SUPERCHIP_MODERN_PROFILE.quirks,
+      SUPERCHIP_MODERN_PROFILE.instructionSet,
+    );
+
+    executor.execute(
+      {
+        kind: "scroll-display-horizontal",
+        opcode: opcode(0x00fb),
+        direction: "right",
+        columns: 4,
+      },
+      context,
+    );
+
+    assertEquals(displayBuffer.getPixel(10, 10), false);
+    assertEquals(displayBuffer.getPixel(14, 10), true);
+  },
+);
+
 Deno.test("SCL scrolls the SUPER-CHIP backing framebuffer left", () => {
   const displayBuffer = new DisplayBuffer(
     {
@@ -2315,6 +2531,66 @@ Deno.test("SCL scrolls the SUPER-CHIP backing framebuffer left", () => {
   assertEquals(displayBuffer.getPixel(10, 10), false);
   assertEquals(displayBuffer.getPixel(6, 10), true);
 });
+
+Deno.test("Modern SUPER-CHIP SCL scrolls by four logical pixels in low-resolution mode", () => {
+  const displayBuffer = new DisplayBuffer(
+    SUPERCHIP_MODERN_PROFILE.display.specification,
+    SUPERCHIP_MODERN_PROFILE.quirks.spriteOverflow,
+  );
+
+  displayBuffer.setPixel(18, 10, true);
+
+  const context = createContext({ displayBuffer });
+  const executor = createExecutor(
+    SUPERCHIP_MODERN_PROFILE.quirks,
+    SUPERCHIP_MODERN_PROFILE.instructionSet,
+  );
+
+  executor.execute(
+    {
+      kind: "scroll-display-horizontal",
+      opcode: opcode(0x00fc),
+      direction: "left",
+      columns: 4,
+    },
+    context,
+  );
+
+  assertEquals(displayBuffer.getPixel(18, 10), false);
+  assertEquals(displayBuffer.getPixel(10, 10), true);
+});
+
+Deno.test(
+  "Modern SUPER-CHIP SCL scrolls by four logical pixels in high-resolution mode",
+  () => {
+    const displayBuffer = new DisplayBuffer(
+      SUPERCHIP_MODERN_PROFILE.display.specification,
+      SUPERCHIP_MODERN_PROFILE.quirks.spriteOverflow,
+    );
+
+    displayBuffer.setMode("high");
+    displayBuffer.setPixel(14, 10, true);
+
+    const context = createContext({ displayBuffer });
+    const executor = createExecutor(
+      SUPERCHIP_MODERN_PROFILE.quirks,
+      SUPERCHIP_MODERN_PROFILE.instructionSet,
+    );
+
+    executor.execute(
+      {
+        kind: "scroll-display-horizontal",
+        opcode: opcode(0x00fc),
+        direction: "left",
+        columns: 4,
+      },
+      context,
+    );
+
+    assertEquals(displayBuffer.getPixel(14, 10), false);
+    assertEquals(displayBuffer.getPixel(10, 10), true);
+  },
+);
 
 Deno.test(
   "DRW in SUPER-CHIP high-resolution mode sets VF to the number of colliding rows",
@@ -2438,6 +2714,109 @@ Deno.test(
     assertEquals(registers.get(FLAG_REGISTER), byte(2));
   },
 );
+Deno.test("Modern SUPER-CHIP high-resolution Dxy0 reports collision as boolean VF", () => {
+  const registers = new Registers();
+
+  registers.set(registerIndex(0xa), byte(0x00));
+  registers.set(registerIndex(0xb), byte(0x00));
+
+  const memory = new Ram(0x1000);
+
+  // Two populated sprite rows, so drawing twice produces collisions
+  // on two distinct rows.
+  memory.write(address(0x300), byte(0b1000_0000));
+  memory.write(address(0x301), byte(0x00));
+  memory.write(address(0x302), byte(0b1000_0000));
+  memory.write(address(0x303), byte(0x00));
+
+  const indexRegister = new IndexRegister(address(0x300));
+
+  const displayBuffer = new DisplayBuffer(
+    SUPERCHIP_MODERN_PROFILE.display.specification,
+    SUPERCHIP_MODERN_PROFILE.quirks.spriteOverflow,
+  );
+
+  displayBuffer.setMode("high");
+
+  const context = createContext({
+    registers,
+    memory,
+    indexRegister,
+    displayBuffer,
+  });
+
+  const executor = createExecutor(
+    SUPERCHIP_MODERN_PROFILE.quirks,
+    SUPERCHIP_MODERN_PROFILE.instructionSet,
+  );
+
+  const instruction = {
+    kind: "draw-sprite" as const,
+    opcode: opcode(0xdab0),
+    x: registerIndex(0xa),
+    y: registerIndex(0xb),
+    height: 0,
+  };
+
+  executor.execute(instruction, context);
+
+  assertEquals(registers.get(FLAG_REGISTER), byte(0));
+
+  executor.execute(instruction, context);
+
+  assertEquals(registers.get(FLAG_REGISTER), byte(1));
+});
+
+Deno.test(
+  "Modern SUPER-CHIP high-resolution Dxy0 does not count clipped bottom rows in VF",
+  () => {
+    const registers = new Registers();
+
+    registers.set(registerIndex(0xa), byte(0x00));
+    registers.set(registerIndex(0xb), byte(63));
+
+    const memory = new Ram(0x1000);
+
+    // Only the first sprite row is visible at y = 63.
+    memory.write(address(0x300), byte(0b1000_0000));
+    memory.write(address(0x301), byte(0x00));
+
+    const indexRegister = new IndexRegister(address(0x300));
+
+    const displayBuffer = new DisplayBuffer(
+      SUPERCHIP_MODERN_PROFILE.display.specification,
+      SUPERCHIP_MODERN_PROFILE.quirks.spriteOverflow,
+    );
+
+    displayBuffer.setMode("high");
+
+    const context = createContext({
+      registers,
+      memory,
+      indexRegister,
+      displayBuffer,
+    });
+
+    const executor = createExecutor(
+      SUPERCHIP_MODERN_PROFILE.quirks,
+      SUPERCHIP_MODERN_PROFILE.instructionSet,
+    );
+
+    executor.execute(
+      {
+        kind: "draw-sprite",
+        opcode: opcode(0xdab0),
+        x: registerIndex(0xa),
+        y: registerIndex(0xb),
+        height: 0,
+      },
+      context,
+    );
+
+    assertEquals(displayBuffer.getPixel(0, 63), true);
+    assertEquals(registers.get(FLAG_REGISTER), byte(0));
+  },
+);
 
 Deno.test("Dxy0 draws an 8x16 sprite in SUPER-CHIP low-resolution mode", () => {
   const registers = new Registers();
@@ -2499,6 +2878,130 @@ Deno.test("Dxy0 draws an 8x16 sprite in SUPER-CHIP low-resolution mode", () => {
   assertEquals(displayBuffer.getPixel(15, 30), true);
   assertEquals(displayBuffer.getPixel(14, 31), true);
   assertEquals(displayBuffer.getPixel(15, 31), true);
+
+  assertEquals(registers.get(FLAG_REGISTER), byte(0));
+});
+
+Deno.test("Dxy0 draws a 16x16 sprite in Modern SUPER-CHIP low-resolution mode", () => {
+  const registers = new Registers();
+
+  registers.set(registerIndex(0xa), byte(0x00));
+  registers.set(registerIndex(0xb), byte(0x00));
+
+  const memory = new Ram(0x1000);
+
+  // Row 0:
+  // 10000000 00000001
+  memory.write(address(0x300), byte(0b1000_0000));
+  memory.write(address(0x301), byte(0b0000_0001));
+
+  // Row 15:
+  // 10000000 00000001
+  memory.write(address(0x31e), byte(0b1000_0000));
+  memory.write(address(0x31f), byte(0b0000_0001));
+
+  const indexRegister = new IndexRegister(address(0x300));
+
+  const displayBuffer = new DisplayBuffer(
+    SUPERCHIP_MODERN_PROFILE.display.specification,
+    SUPERCHIP_MODERN_PROFILE.quirks.spriteOverflow,
+  );
+
+  const context = createContext({
+    registers,
+    memory,
+    indexRegister,
+    displayBuffer,
+  });
+
+  const executor = createExecutor(
+    SUPERCHIP_MODERN_PROFILE.quirks,
+    SUPERCHIP_MODERN_PROFILE.instructionSet,
+  );
+
+  executor.execute(
+    {
+      kind: "draw-sprite",
+      opcode: opcode(0xdab0),
+      x: registerIndex(0xa),
+      y: registerIndex(0xb),
+      height: 0,
+    },
+    context,
+  );
+
+  // Logical (0, 0) occupies backing coordinates (0..1, 0..1).
+  assertEquals(displayBuffer.getPixel(0, 0), true);
+  assertEquals(displayBuffer.getPixel(1, 0), true);
+  assertEquals(displayBuffer.getPixel(0, 1), true);
+  assertEquals(displayBuffer.getPixel(1, 1), true);
+
+  // Logical (15, 0) occupies backing coordinates (30..31, 0..1).
+  assertEquals(displayBuffer.getPixel(30, 0), true);
+  assertEquals(displayBuffer.getPixel(31, 0), true);
+
+  // Logical (0, 15) occupies backing coordinates (0..1, 30..31).
+  assertEquals(displayBuffer.getPixel(0, 30), true);
+  assertEquals(displayBuffer.getPixel(0, 31), true);
+
+  // Logical (15, 15) occupies backing coordinates (30..31, 30..31).
+  assertEquals(displayBuffer.getPixel(30, 30), true);
+  assertEquals(displayBuffer.getPixel(31, 31), true);
+
+  assertEquals(registers.get(FLAG_REGISTER), byte(0));
+});
+
+Deno.test("Dxy0 draws a 16x16 sprite in Modern SUPER-CHIP high-resolution mode", () => {
+  const registers = new Registers();
+
+  registers.set(registerIndex(0xa), byte(0x00));
+  registers.set(registerIndex(0xb), byte(0x00));
+
+  const memory = new Ram(0x1000);
+
+  memory.write(address(0x300), byte(0b1000_0000));
+  memory.write(address(0x301), byte(0b0000_0001));
+
+  memory.write(address(0x31e), byte(0b1000_0000));
+  memory.write(address(0x31f), byte(0b0000_0001));
+
+  const indexRegister = new IndexRegister(address(0x300));
+
+  const displayBuffer = new DisplayBuffer(
+    SUPERCHIP_MODERN_PROFILE.display.specification,
+    SUPERCHIP_MODERN_PROFILE.quirks.spriteOverflow,
+  );
+
+  displayBuffer.setMode("high");
+
+  const context = createContext({
+    registers,
+    memory,
+    indexRegister,
+    displayBuffer,
+  });
+
+  const executor = createExecutor(
+    SUPERCHIP_MODERN_PROFILE.quirks,
+    SUPERCHIP_MODERN_PROFILE.instructionSet,
+  );
+
+  executor.execute(
+    {
+      kind: "draw-sprite",
+      opcode: opcode(0xdab0),
+      x: registerIndex(0xa),
+      y: registerIndex(0xb),
+      height: 0,
+    },
+    context,
+  );
+
+  assertEquals(displayBuffer.getPixel(0, 0), true);
+  assertEquals(displayBuffer.getPixel(15, 0), true);
+
+  assertEquals(displayBuffer.getPixel(0, 15), true);
+  assertEquals(displayBuffer.getPixel(15, 15), true);
 
   assertEquals(registers.get(FLAG_REGISTER), byte(0));
 });
@@ -2625,6 +3128,105 @@ Deno.test("display-mode sprite timing uses vertical blank in low-resolution mode
   assertEquals(verticalBlank.consume(), false);
 });
 
+Deno.test(
+  "Modern SUPER-CHIP draws immediately in low-resolution mode without vertical blank",
+  () => {
+    const registers = new Registers();
+
+    registers.set(registerIndex(0xa), byte(0x02));
+    registers.set(registerIndex(0xb), byte(0x03));
+
+    const memory = new Ram(0x1000);
+    memory.write(address(0x300), byte(0b1000_0000));
+
+    const indexRegister = new IndexRegister(address(0x300));
+
+    const displayBuffer = new DisplayBuffer(
+      SUPERCHIP_MODERN_PROFILE.display.specification,
+      SUPERCHIP_MODERN_PROFILE.quirks.spriteOverflow,
+    );
+
+    const programCounter = new ProgramCounter(address(0x202));
+    const verticalBlank = new VerticalBlank();
+
+    const context = createContext({
+      registers,
+      memory,
+      indexRegister,
+      displayBuffer,
+      programCounter,
+      verticalBlank,
+    });
+
+    const executor = createExecutor(
+      SUPERCHIP_MODERN_PROFILE.quirks,
+      SUPERCHIP_MODERN_PROFILE.instructionSet,
+    );
+
+    executor.execute(
+      {
+        kind: "draw-sprite",
+        opcode: opcode(0xdab1),
+        x: registerIndex(0xa),
+        y: registerIndex(0xb),
+        height: 1,
+      },
+      context,
+    );
+
+    assertEquals(programCounter.getValue(), address(0x202));
+    assertEquals(displayBuffer.getPixel(4, 6), true);
+    assertEquals(verticalBlank.consume(), false);
+  },
+);
+
+Deno.test("Modern SUPER-CHIP low-resolution drawing does not consume vertical blank", () => {
+  const registers = new Registers();
+
+  registers.set(registerIndex(0xa), byte(0x00));
+  registers.set(registerIndex(0xb), byte(0x00));
+
+  const memory = new Ram(0x1000);
+  memory.write(address(0x300), byte(0b1000_0000));
+
+  const indexRegister = new IndexRegister(address(0x300));
+
+  const displayBuffer = new DisplayBuffer(
+    SUPERCHIP_MODERN_PROFILE.display.specification,
+    SUPERCHIP_MODERN_PROFILE.quirks.spriteOverflow,
+  );
+
+  const verticalBlank = new VerticalBlank();
+  verticalBlank.signal();
+
+  const context = createContext({
+    registers,
+    memory,
+    indexRegister,
+    displayBuffer,
+    verticalBlank,
+  });
+
+  const executor = createExecutor(
+    SUPERCHIP_MODERN_PROFILE.quirks,
+    SUPERCHIP_MODERN_PROFILE.instructionSet,
+  );
+
+  executor.execute(
+    {
+      kind: "draw-sprite",
+      opcode: opcode(0xdab1),
+      x: registerIndex(0xa),
+      y: registerIndex(0xb),
+      height: 1,
+    },
+    context,
+  );
+
+  assertEquals(displayBuffer.getPixel(0, 0), true);
+  assertEquals(verticalBlank.consume(), true);
+});
+
 Deno.test("display-mode sprite timing uses immediate drawing in high-resolution mode", () => {
   const registers = new Registers();
   registers.set(registerIndex(0xa), byte(0x00));
@@ -2707,6 +3309,31 @@ Deno.test("EXIT marks the interpreter as exited when supported", () => {
   assertEquals(exitState.isExited, true);
 });
 
+Deno.test("EXIT marks the interpreter as exited for Modern SUPER-CHIP", () => {
+  const exitState = new ExitState();
+
+  const context = createContext({
+    exitState,
+  });
+
+  const executor = createExecutor(
+    SUPERCHIP_MODERN_PROFILE.quirks,
+    SUPERCHIP_MODERN_PROFILE.instructionSet,
+  );
+
+  assertEquals(exitState.isExited, false);
+
+  executor.execute(
+    {
+      kind: "exit-interpreter",
+      opcode: opcode(0x00fd),
+    },
+    context,
+  );
+
+  assertEquals(exitState.isExited, true);
+});
+
 Deno.test("EXIT is unsupported by Classic CHIP-8", () => {
   const context = createContext();
   const executor = createExecutor(CLASSIC_CHIP8_PROFILE.quirks);
@@ -2768,6 +3395,37 @@ Deno.test("SUPER-CHIP ADD I, Vx exits when I leaves memory", () => {
 
   assertEquals(indexRegister.getValue(), address(0x1020));
   assertEquals(exitState.isExited, true);
+});
+
+Deno.test("Modern SUPER-CHIP ADD I, Vx does not exit when I leaves memory", () => {
+  const registers = new Registers();
+  const indexRegister = new IndexRegister(address(0xfe0));
+  const exitState = new ExitState();
+
+  registers.set(registerIndex(0x2), byte(0x40));
+
+  const context = createContext({
+    registers,
+    indexRegister,
+    exitState,
+  });
+
+  const executor = createExecutor(
+    SUPERCHIP_MODERN_PROFILE.quirks,
+    SUPERCHIP_MODERN_PROFILE.instructionSet,
+  );
+
+  executor.execute(
+    {
+      kind: "add-to-index",
+      opcode: opcode(0xf21e),
+      register: registerIndex(0x2),
+    },
+    context,
+  );
+
+  assertEquals(indexRegister.getValue(), address(0x1020));
+  assertEquals(exitState.isExited, false);
 });
 
 Deno.test("Classic ADD I, Vx does not exit when I leaves memory", () => {
@@ -3229,6 +3887,30 @@ Deno.test("sets I to the large-font sprite address for Vx", () => {
   );
 
   assertEquals(context.indexRegister.getValue(), address(0x0c8));
+});
+
+Deno.test("Modern SUPER-CHIP Fx30 does not provide large-font glyphs above 9", () => {
+  const context = createContext({
+    font: new SuperChipFont(address(0x050), address(0x0a0)),
+  });
+
+  context.registers.set(registerIndex(0x3), byte(0x0a));
+
+  const executor = createExecutor(
+    SUPERCHIP_MODERN_PROFILE.quirks,
+    SUPERCHIP_MODERN_PROFILE.instructionSet,
+  );
+
+  executor.execute(
+    {
+      kind: "set-index-to-large-sprite",
+      opcode: opcode(0xf330),
+      register: registerIndex(0x3),
+    },
+    context,
+  );
+
+  assertEquals(context.indexRegister.getValue(), address(0x104));
 });
 
 Deno.test("stores V0 through Vx in RPL flags", () => {

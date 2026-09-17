@@ -28,6 +28,7 @@ import {
   RplFlags,
   Scheduler,
   Stack,
+  SUPERCHIP_MODERN_PROFILE,
   SUPERCHIP_PROFILE,
   SuperChipFont,
   Timer,
@@ -63,6 +64,7 @@ const TIMENDUS_PLATFORM_SELECTION_ADDRESS = address(0x1ff);
 
 const TIMENDUS_PLATFORM_CHIP8 = byte(1);
 const TIMENDUS_PLATFORM_SUPERCHIP_LEGACY = byte(4);
+const TIMENDUS_PLATFORM_SUPERCHIP_MODERN = byte(2);
 
 /**
  * Timendus' three-row success glyph, cropped to its three significant columns.
@@ -88,6 +90,17 @@ Deno.test("SUPER-CHIP 1.1 passes the Timendus Quirks test ROM in legacy mode", a
   const displayBuffer = await runTimendusQuirks(
     SUPERCHIP_PROFILE,
     TIMENDUS_PLATFORM_SUPERCHIP_LEGACY,
+  );
+
+  assertEquals(displayBuffer.mode, "low");
+
+  assertQuirksPassed(displayBuffer);
+});
+
+Deno.test("Modern SUPER-CHIP passes the Timendus Quirks test ROM", async () => {
+  const displayBuffer = await runTimendusQuirks(
+    SUPERCHIP_MODERN_PROFILE,
+    TIMENDUS_PLATFORM_SUPERCHIP_MODERN,
   );
 
   assertEquals(displayBuffer.mode, "low");

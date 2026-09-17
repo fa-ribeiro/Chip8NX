@@ -89,6 +89,7 @@ export type {
 export { CLASSIC_CHIP8_PROFILE } from "./src/machine/classic/classic-chip8-profile.ts";
 export { CHIP48_PROFILE } from "./src/machine/chip48/chip48-profile.ts";
 export { SUPERCHIP_PROFILE } from "./src/machine/superchip/superchip-profile.ts";
+export { SUPERCHIP_MODERN_PROFILE } from "./src/machine/superchip-modern/superchip-modern-profile.ts";
 export { MachineInitializer } from "./src/machine/machine-initializer.ts";
 export { RplFlags } from "./src/machine/rpl-flags.ts";
 export { ExitState } from "./src/machine/exit-state.ts";

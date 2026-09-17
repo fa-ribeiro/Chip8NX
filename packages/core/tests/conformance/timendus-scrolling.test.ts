@@ -4,6 +4,7 @@ import {
   address,
   Byte,
   byte,
+  Chip8Profile,
   Chip8Runtime,
   Cpu,
   Decoder,
@@ -25,6 +26,7 @@ import {
   RplFlags,
   Scheduler,
   Stack,
+  SUPERCHIP_MODERN_PROFILE,
   SUPERCHIP_PROFILE,
   SuperChipFont,
   Timer,
@@ -44,6 +46,13 @@ const TIMENDUS_SCROLLING_EXECUTION_TIME = duration(3_000_000_000n as Duration);
 const TIMENDUS_SCROLLING_CPU_FREQUENCY = Frequency.fromInteger(2_000n);
 
 const TIMENDUS_PLATFORM_SELECTION_ADDRESS = address(0x1ff);
+
+/**
+ * Timendus automation selection:
+ *
+ * 1 = SUPER-CHIP low-resolution mode with modern scrolling behavior.
+ */
+const TIMENDUS_SUPERCHIP_MODERN_LORES = byte(1);
 
 /**
  * Timendus automation selection:
@@ -95,7 +104,10 @@ const EXPECTED_ARROW_DOWN = [
 Deno.test(
   "SUPER-CHIP 1.1 passes the Timendus Scrolling test in legacy low-resolution mode",
   async () => {
-    const displayBuffer = await runTimendusScrolling(TIMENDUS_SUPERCHIP_LEGACY_LORES);
+    const displayBuffer = await runTimendusScrolling(
+      SUPERCHIP_PROFILE,
+      TIMENDUS_SUPERCHIP_LEGACY_LORES,
+    );
 
     assertEquals(displayBuffer.mode, "low");
 
@@ -117,9 +129,30 @@ Deno.test(
 );
 
 Deno.test(
+  "Modern SUPER-CHIP passes the Timendus Scrolling test in modern low-resolution mode",
+  async () => {
+    const displayBuffer = await runTimendusScrolling(
+      SUPERCHIP_MODERN_PROFILE,
+      TIMENDUS_SUPERCHIP_MODERN_LORES,
+    );
+
+    assertEquals(displayBuffer.mode, "low");
+
+    assertEquals(snapshotLogicalRegion(displayBuffer, 34, 17, 8, 8), EXPECTED_ARROW_LEFT);
+
+    assertEquals(snapshotLogicalRegion(displayBuffer, 22, 17, 8, 8), EXPECTED_ARROW_RIGHT);
+
+    assertEquals(snapshotLogicalRegion(displayBuffer, 28, 6, 8, 8), EXPECTED_ARROW_DOWN);
+  },
+);
+
+Deno.test(
   "SUPER-CHIP 1.1 passes the Timendus Scrolling test in high-resolution mode",
   async () => {
-    const displayBuffer = await runTimendusScrolling(TIMENDUS_SUPERCHIP_HIRES);
+    const displayBuffer = await runTimendusScrolling(
+      SUPERCHIP_PROFILE,
+      TIMENDUS_SUPERCHIP_HIRES,
+    );
 
     assertEquals(displayBuffer.mode, "high");
 
@@ -131,9 +164,10 @@ Deno.test(
   },
 );
 
-async function runTimendusScrolling(platformSelection: Byte): Promise<DisplayBuffer> {
-  const profile = SUPERCHIP_PROFILE;
-
+async function runTimendusScrolling(
+  profile: Chip8Profile,
+  platformSelection: Byte,
+): Promise<DisplayBuffer> {
   const romBytes = await Deno.readFile(new URL("./roms/8-scrolling.ch8", import.meta.url));
 
   const program = new MemoryImage(romBytes);

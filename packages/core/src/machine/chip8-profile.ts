@@ -143,6 +143,9 @@ export type Chip8InstructionSet =
   }
   | {
     readonly kind: "superchip-1.1";
+  }
+  | {
+    readonly kind: "superchip-modern";
   };
 
 /**

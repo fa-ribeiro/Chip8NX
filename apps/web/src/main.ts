@@ -28,6 +28,7 @@ import {
   RplFlags,
   Scheduler,
   Stack,
+  SUPERCHIP_MODERN_PROFILE,
   SUPERCHIP_PROFILE,
   SuperChipFont,
   Timer,
@@ -621,6 +622,10 @@ function describeProfile(profile: Chip8Profile): string {
     return "SUPER-CHIP 1.1";
   }
 
+  if (profile === SUPERCHIP_MODERN_PROFILE) {
+    return "SUPER-CHIP Modern";
+  }
+
   return "Custom";
 }
 
@@ -782,6 +787,9 @@ function readSelectedProfile(): Chip8Profile {
     case "superchip":
       return SUPERCHIP_PROFILE;
 
+    case "superchip-modern":
+      return SUPERCHIP_MODERN_PROFILE;
+
     default:
       throw new Error(`Unsupported CHIP-8 profile: ${profileSelect.value}`);
   }
@@ -792,7 +800,11 @@ function createInstructionFormatter(profile: Chip8Profile): InstructionFormatter
     return new ClassicInstructionFormatter();
   }
 
-  if (profile === CHIP48_PROFILE || profile === SUPERCHIP_PROFILE) {
+  if (
+    profile === CHIP48_PROFILE ||
+    profile === SUPERCHIP_PROFILE ||
+    profile === SUPERCHIP_MODERN_PROFILE
+  ) {
     return new Chip48InstructionFormatter();
   }
 
@@ -852,6 +864,8 @@ function recomposeMachineForSelectedProfile(): void {
       profileSelect.value = "chip48";
     } else if (previousMachine.profile === SUPERCHIP_PROFILE) {
       profileSelect.value = "superchip";
+    } else if (previousMachine.profile === SUPERCHIP_MODERN_PROFILE) {
+      profileSelect.value = "superchip-modern";
     } else {
       profileSelect.value = "classic";
     }
