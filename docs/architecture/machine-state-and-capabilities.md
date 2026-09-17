@@ -1,6 +1,6 @@
 # Machine State and Capabilities Architecture
 
-Chip8NX separates the mutable state of the emulated machine from the capabilities it depends on and from the configuration used to assemble and drive that machine.
+Chip8NX separates the mutable state of the emulated machine from the capabilities it depends on. Machine definitions and runtime-driving configuration remain separate inputs to composition rather than becoming live execution state.
 
 At a high level:
 
@@ -23,7 +23,7 @@ scheduled progression
 
 The central rule is:
 
-> State describes what the emulated machine currently contains; capabilities describe roles the machine can ask to perform; configuration describes characteristics or policies used to assemble or drive it.
+> State describes what the emulated machine currently contains; capabilities describe roles the machine can ask to perform. Definitions and runtime policy configure those objects without becoming mutable machine state themselves.
 
 These are architectural categories, not TypeScript declaration categories. An interface can represent mutable state, and a capability implementation can maintain internal state of its own.
 
@@ -31,9 +31,26 @@ See also:
 
 - [Architecture overview](./overview.md)
 - [Instruction execution architecture](./instruction-execution.md)
+- [Machine profiles and variation](./machine-profiles-and-variation.md)
 - [Runtime and timing architecture](./runtime-and-timing.md)
 - [Machine lifecycle](./machine-lifecycle.md)
 - [ADR 0012 — Application-owned composition](../decisions/0012-application-owned-composition.md)
+
+## In this document
+
+- [Responsibility Model](#responsibility-model)
+- [Architectural Categories Are Not TypeScript Categories](#architectural-categories-are-not-typescript-categories)
+- [Persistent Machine State](#persistent-machine-state)
+- [Focused Invariant Ownership](#focused-invariant-ownership)
+- [State Observation Without Leaking Ownership](#state-observation-without-leaking-ownership)
+- [Capabilities and Services](#capabilities-and-services)
+- [Keyboard: Host Adaptation vs CHIP-8 Semantics](#keyboard-host-adaptation-vs-chip-8-semantics)
+- [Randomness: A Reproducible Capability](#randomness-a-reproducible-capability)
+- [Font: Layout Without Memory Ownership](#font-layout-without-memory-ownership)
+- [Why These Roles Are Interfaces](#why-these-roles-are-interfaces)
+- [Configuration Boundary](#configuration-boundary)
+- [Lifecycle Boundaries](#lifecycle-boundaries)
+- [Design Summary](#design-summary)
 
 ## Responsibility Model
 
@@ -115,78 +132,27 @@ Font
 
 These roles can vary independently of instruction semantics, which makes them useful substitution seams.
 
-### Configuration
+### Configuration boundary
 
-Configuration describes stable machine characteristics or execution policy rather than current state.
+Configuration is not part of `ExecutionContext`. It describes how the application composes and drives the state/capability graph.
 
 The current split is:
 
 ```text
 Chip8Profile
     → what machine is being emulated
+    → machine characteristics + instructionSet + quirks
 
 Chip8RuntimeConfiguration
-    → how the composed machine is driven
+    → host/runtime execution policy
+    → currently CPU frequency
 ```
 
-`Chip8Profile` includes the complete declarative definition of the emulated machine:
+Those inputs affect construction, initialization, instruction execution, and runtime scheduling, but they are not current machine values.
 
-```text
-machine characteristics
-    memory size
-    program start address
-    stack capacity
-    display specification
-    display refresh frequency
-    timer frequency
-    small-font image and base address
-    optional large-font image and base address
+For example, `profile.quirks.spriteOverflow` helps configure `DisplayBuffer`; it is not framebuffer state. `profile.instructionSet` configures `InstructionExecutor`; it is not stored inside `ExecutionContext`.
 
-compatibility-sensitive semantics
-    shift source
-    memory-transfer index behavior
-    jump-offset source
-    logic-operation flag behavior
-    sprite overflow behavior
-    sprite draw timing behavior
-```
-
-Compatibility is therefore configuration, not mutable execution state and not an execution capability.
-
-For example:
-
-```text
-shiftSource: "vx"
-```
-
-describes how a machine interprets `8xy6` and `8xyE`. It does not change while that machine executes.
-
-Likewise:
-
-```text
-spriteOverflow: "clip"
-```
-
-configures `DisplayBuffer` behavior when the machine is composed. It is not framebuffer state.
-
-`Chip8RuntimeConfiguration` currently contains:
-
-```text
-CPU frequency
-```
-
-The distinction is:
-
-```text
-machine definition
-    → profile
-
-runtime execution policy
-    → runtime configuration
-
-current execution values
-    → state components
-```
+The complete profile model and the distinction between instruction-set membership and shared-instruction quirks are documented in [Machine profiles and variation](./machine-profiles-and-variation.md).
 
 ## Architectural Categories Are Not TypeScript Categories
 
@@ -611,7 +577,7 @@ The executor still owns the larger drawing collaboration:
 ```text
 read Vx / Vy
 read sprite bytes from Memory
-resolve draw timing from compatibility + display mode
+resolve draw timing from quirks + display mode
 call DisplayBuffer drawing operation
 write the required VF result
 ```
@@ -649,13 +615,13 @@ See [Runtime and timing architecture](./runtime-and-timing.md) for how opportuni
 
 ### Interpreter exit state
 
-`ExitState` owns whether a SUPER-CHIP interpreter-exit condition has occurred. The state can be set by explicit `00FD` as well as the historical invalid-`00C0` and `Fx1E` index-overflow conditions.
+`ExitState` owns whether a SUPER-CHIP interpreter-exit condition has occurred. The state can be set by explicit `00FD` as well as the historical SUPER-CHIP `00C0` interpretation and the configured historical `Fx1E` index-overflow condition.
 
 It is ordinary resettable machine state:
 
 ```text
 running
-    ↓ 00FD / invalid 00C0 / Fx1E overflow
+    ↓ 00FD / historical 00C0 / configured Fx1E overflow
 exited
     ↓ machine initialization/reset
 running
@@ -1244,11 +1210,13 @@ memory
 In the current design:
 
 ```text
-Chip8Profile.fontImage
+Chip8Profile.fonts.small
     → small-font static definition
+    → image + base address
 
-Chip8Profile.largeFont
+Chip8Profile.fonts.large
     → optional large-font static definition
+    → image + base address
 
 MachineInitializer
     → installs configured font images in Memory
@@ -1314,895 +1282,100 @@ abstract role injected
 
 Chip8NX uses both patterns according to whether substitution is justified.
 
-## Configuration and Machine Profiles
+## Configuration Boundary
 
-Configuration is descriptive. It does not own mutable execution state or application composition.
+Machine definitions configure this state/capability graph without becoming part of it.
 
-### `Chip8Profile` describes the complete machine target
-
-A profile combines architectural machine characteristics with compatibility-sensitive semantics.
-
-The current shape conceptually describes:
-
-```text
-memorySize
-programStartAddress
-stackCapacity
-
-display.specification
-display.refreshFrequency
-
-timerFrequency
-
-fontImage
-fontBaseAddress
-largeFont | null
-
-compatibility.shiftSource
-compatibility.memoryTransferIndex
-compatibility.jumpOffsetSource
-compatibility.logicFlag
-compatibility.spriteOverflow
-compatibility.spriteDrawTiming
-compatibility.interpreterExit
-compatibility.rplFlags
-compatibility.indexOverflow
-compatibility.zeroScrollDown
-```
-
-The display specification captures structural geometry rather than mutable display state:
-
-```text
-fixed
-    → one width / height
-
-superchip
-    → backing width / height
-    → initial display mode
-```
-
-Likewise, `largeFont` describes an optional image/base-address pair; the current display mode and current font bytes in RAM remain state.
-
-These values influence different parts of composition.
-
-For example:
+`Chip8Profile` supplies machine characteristics, instruction-set identity, and shared-instruction quirks to the application composition root. Different profile fields are consumed by the collaborators that own the corresponding responsibility:
 
 ```text
 profile.memorySize
-    → Ram capacity
-
-profile.stackCapacity
-    → Stack capacity
-
-profile.programStartAddress
-    → initial PC
-    → program loading address
+    → Ram
 
 profile.display.specification
-    → DisplayBuffer structure / initial mode
+profile.quirks.spriteOverflow
+    → DisplayBuffer
 
-profile.display.refreshFrequency
-    → emulated display timing
+profile.fonts
+    → Font composition + MachineInitializer
+
+profile.instructionSet
+profile.quirks
+    → InstructionExecutor
 
 profile.timerFrequency
-    → delay/sound timer timing
-
-profile.fontImage
-profile.fontBaseAddress
-profile.largeFont
-    → initialization and Font composition
-
-profile.compatibility
-    → compatibility-sensitive instruction semantics
-
-profile.compatibility.spriteOverflow
-    → DisplayBuffer sprite behavior
+profile.display.refreshFrequency
+    → Chip8Runtime
 ```
 
-The profile centralizes facts about the emulated machine that would otherwise become scattered literals and conditionals.
+`ExecutionContext` deliberately contains neither `Chip8Profile`, `Chip8InstructionSet`, nor `Chip8Quirks`. By the time instruction execution receives the context, composition has already selected and configured the machine.
 
-Chip8NX currently provides three built-in historical profiles:
+Runtime-driving policy is a different axis. `Chip8RuntimeConfiguration` currently carries CPU frequency because CPU throughput is chosen by the host rather than being a fixed characteristic of the emulated historical machine.
+
+The full profile model—including `instructionSet` vs `quirks`, built-in historical profiles, composition examples, and extension rules—now has one canonical home: [Machine profiles and variation](./machine-profiles-and-variation.md).
+
+## Lifecycle Boundaries
+
+State ownership and state lifetime are related, but they are not identical. Different components can legitimately participate in different reset/lifetime rules.
+
+The important state-level distinctions are:
 
 ```text
-CLASSIC_CHIP8_PROFILE
-CHIP48_PROFILE
-SUPERCHIP_PROFILE
+ordinary resettable machine state
+    Registers
+    ProgramCounter
+    IndexRegister
+    Stack
+    Memory
+    Timers
+    DisplayBuffer
+    VerticalBlank
+    interpreter keyboard-wait state
+    ExitState
+
+longer-lived machine state
+    RplFlags
+
+provider-owned capability state
+    RandomNumberGenerator internals
+
+externally driven host/input state
+    currently pressed keyboard keys
 ```
 
-They are independent values implementing the same `Chip8Profile` contract. No profile requires an object-oriented subtype hierarchy.
+`MachineInitializer` establishes the defined starting state of the already-composed machine. It resets ordinary machine/interpreter state, rebuilds memory from the configured font/program definitions, and resets the display to its profile-defined initial mode. It deliberately preserves `RplFlags`.
 
-### Profiles are data, not factories
+That RPL exception is part of the modeled SUPER-CHIP resource semantics, not evidence for a generic persistent-state registry. The application owns the concrete `RplFlags` instance and therefore decides the outer lifetime across session replacement; initialization only defines that ordinary machine reset must not clear it.
 
-A historical profile contains machine facts and semantic choices.
+Keyboard and randomness demonstrate two different boundaries. Keyboard reset clears interpreter-side `Fx0A` wait state without fabricating physical key releases, while RNG lifecycle remains provider/application-owned because the `RandomNumberGenerator` capability does not define reset or reseed semantics.
 
-For example, Classic, CHIP-48, and SUPER-CHIP differ in characteristics such as font resources, display structure, and timing, and in compatibility behavior such as shift source, `Fx55` / `Fx65` index updates, logic-flag handling, `Bnnn` interpretation, and draw timing.
-
-A profile still does not construct:
-
-```text
-Ram
-Registers
-Stack
-DisplayBuffer
-Keyboard
-Clock
-Scheduler
-Cpu
-Chip8Runtime
-```
-
-That is deliberate.
-
-The profile answers:
-
-> What machine should these components emulate?
-
-The application answers:
-
-> Which concrete objects will implement that machine here?
-
-The direction remains:
-
-```text
-Chip8Profile
-      ↓
-application composition
-      ↓
-concrete components
-```
-
-rather than turning the profile into a whole-application factory.
-
-This preserves [application-owned composition](../decisions/0012-application-owned-composition.md).
-
-### Profiles constrain composition without owning it
-
-Applications use profile values when constructing compatible components:
-
-```ts
-const memory = new Ram(profile.memorySize);
-
-const stack = new Stack(profile.stackCapacity);
-
-const displayBuffer = new DisplayBuffer(
-  profile.display.specification,
-  profile.compatibility.spriteOverflow,
-);
-
-const font = profile.largeFont === null
-  ? new ClassicFont(profile.fontBaseAddress)
-  : new SuperChipFont(profile.fontBaseAddress, profile.largeFont.baseAddress);
-
-const executor = new InstructionExecutor(profile.compatibility);
-```
-
-The profile supplies required characteristics; the application chooses concrete implementations.
-
-Different consumers receive profile information according to the responsibility they own.
-
-For example:
-
-```text
-DisplayBuffer
-    → display specification
-    → spriteOverflow
-
-Font implementation
-    → small/large font address layout
-
-InstructionExecutor
-    → compatibility-sensitive instruction semantics
-
-MachineInitializer
-    → memory/font/program initialization characteristics
-
-Chip8Runtime
-    → timer and display frequencies
-```
-
-`ExecutionContext` does not contain `Chip8Compatibility`.
-
-Compatibility is neither mutable machine state nor an execution capability. It configures the semantics of components when the machine is composed.
-
-That distinction leaves room for future alternative implementations without changing machine definition.
-
-### Profiles also drive initialization
-
-`MachineInitializer` receives:
-
-```text
-ExecutionContext
-Chip8Profile
-MemoryImage program
-```
-
-and uses the profile to validate and establish the initial state of the already-constructed machine.
-
-The profile supplies constraints such as:
-
-```text
-expected memory size
-program start
-small-font image and base address
-optional large-font image and base address
-```
-
-while the initializer owns the operation:
-
-```text
-validate
-    ↓
-clear/reset
-    ↓
-install font
-    ↓
-install program
-```
-
-The profile remains declarative.
-
-### Static definition vs current state
-
-Profile values are reset/definition sources, not live state.
-
-For example:
-
-```text
-profile.programStartAddress = 0x200
-```
-
-may initialize the PC, but after:
-
-```text
-JP 0x300
-```
-
-the current PC becomes `0x300` while the profile remains unchanged.
-
-Likewise, program execution may modify memory, while:
-
-```text
-profile.fontImage
-profile.largeFont
-```
-
-remain static definitions used during reset.
-
-```text
-profile
-    → definition
-
-state component
-    → current execution value
-```
-
-## Runtime Configuration Is a Different Axis
-
-`Chip8RuntimeConfiguration` currently contains:
-
-```text
-cpuFrequency
-```
-
-This is kept outside `Chip8Profile`.
-
-The current architectural distinction is:
-
-```text
-display refresh frequency
-timer frequency
-    → machine-visible timing semantics
-    → profile
-
-CPU frequency
-    → execution-driving policy
-    → runtime configuration
-```
-
-The display boundary affects when vertical-blank opportunities exist, and timer frequency affects when `DT`/`ST` decrement.
-
-CPU frequency controls how quickly the runtime attempts instructions and is currently considered tunable execution policy.
-
-This is the present boundary, not a claim that future machine variants can never influence CPU timing.
-
-## Profiles Should Not Become General Settings Bags
-
-Not every configurable value belongs in the machine profile.
-
-Examples that remain host/application concerns include:
-
-```text
-terminal colors
-canvas scale
-keyboard mappings
-audio volume
-ROM path
-window size
-debugger preferences
-```
-
-A useful question is:
-
-> If two different hosts correctly emulate the same machine, should this value normally be the same?
-
-If yes, it may be a machine characteristic.
-
-If no, it is probably host or runtime policy.
-
-This is a design guideline rather than a mechanical rule.
-
-## CHIP-8-Family Variation
-
-Variant support follows demonstrated historical differences rather than a predeclared collection of generic quirk flags.
-
-CHIP-48 2.25 first exercised compatibility-sensitive profile variation in `v0.8.0`.
-
-SUPER-CHIP 1.1 then demonstrated in `v0.9.0` that a historical profile can also require additional architecture: display modes, backing geometry, instructions, large-font resources, interpreter exit state, and persistent RPL storage.
-
-### Semantic choices rather than boolean quirk flags
-
-Compatibility-sensitive behavior uses explicit semantic values.
-
-For example:
-
-```ts
-shiftSource: "vx";
-
-memoryTransferIndex: "increment-by-x";
-
-jumpOffsetSource: "vx";
-
-logicFlag: "unchanged";
-
-spriteOverflow: "clip";
-
-spriteDrawTiming: {
-  kind: "uniform";
-  timing: "vertical-blank";
-}
-```
-
-This is preferred to flags such as:
-
-```ts
-shiftQuirk: true;
-memoryQuirk: false;
-```
-
-because the semantic form states the behavior directly.
-
-It also scales when a historical difference has more than two outcomes.
-
-For example, `Fx55` and `Fx65` currently demonstrate three real index-register behaviors:
-
-```text
-increment-by-count
-    → I += X + 1
-
-increment-by-x
-    → I += X
-
-unchanged
-    → I is unchanged
-```
-
-The `"increment-by-x"` form was added only after CHIP-48 demonstrated that the original two-way model was insufficient.
-
-SUPER-CHIP demonstrated the same kind of pressure for sprite timing. A single timing value was no longer sufficient because low-resolution drawing waits for vertical blank while high-resolution drawing is immediate.
-
-The model therefore grew from one timing value into an explicit timing behavior:
-
-```text
-uniform
-    → one timing for every display mode
-
-display-mode
-    → low-mode timing
-    → high-mode timing
-```
-
-Again, the abstraction was extended only after a real historical target required the third semantic shape.
-
-### A profile is larger than a compatibility choice
-
-A compatibility choice represents one varying behavior.
-
-A profile represents the complete machine target.
-
-For example:
-
-```text
-SUPERCHIP_PROFILE
-    ├── memory characteristics
-    ├── stack capacity
-    ├── SUPER-CHIP display specification and timing
-    ├── timer timing
-    ├── small and large font definitions
-    └── SUPER-CHIP compatibility semantics
-```
-
-Therefore:
-
-```text
-SUPER-CHIP
-    ≠ a quirk
-```
-
-Instead, SUPER-CHIP is a historical machine profile that selects compatibility behaviors while also declaring architectural characteristics consumed by other Core components.
-
-### Named historical profiles remain coherent presets
-
-Built-in named profiles should describe evidence-based historical targets.
-
-For example:
-
-```text
-CLASSIC_CHIP8_PROFILE
-CHIP48_PROFILE
-SUPERCHIP_PROFILE
-```
-
-should not silently change individual behaviors merely because a particular ROM happens to prefer another interpretation.
-
-The `Chip8Profile` type itself remains composable, however. Tests or hosts may deliberately construct custom combinations when doing so is useful.
-
-This distinction allows:
-
-```text
-historical preset
-    → coherent documented machine
-
-custom profile
-    → deliberate experimental combination
-```
-
-without requiring separate configuration systems.
-
-### Variation still belongs at the responsible boundary
-
-Not every difference between CHIP-8-family interpreters belongs in `Chip8Compatibility`.
-
-Different variations may belong in:
-
-```text
-profile characteristics
-    → memory / display specification / timing / font resources
-
-compatibility
-    → differing semantics of otherwise comparable operations
-
-instruction model / decoder
-    → additional recognized instruction forms
-
-DisplayBuffer
-    → display modes, backing geometry, drawing, scrolling
-
-machine state
-    → ExitState / RplFlags and future concrete state resources
-
-capabilities
-    → font-address behavior and other demonstrated roles
-
-runtime
-    → timing behavior not already represented by profile frequencies
-```
-
-SUPER-CHIP 1.1 is the concrete example that established this distinction.
-
-Its support did **not** become a `supportsSuperChip` flag. Instead, each demonstrated difference was placed at the boundary that owns it:
-
-```text
-profile
-    → declares SUPER-CHIP display/font/compatibility characteristics
-
-Decoder
-    → recognizes SUPER-CHIP instruction syntax
-
-DisplayBuffer
-    → owns mode/backing/scroll/drawing state transitions
-
-Font
-    → owns small/large glyph address lookup
-
-ExitState
-    → owns interpreter-exit state
-
-RplFlags
-    → owns persistent user flags
-```
-
-XO-CHIP or another future target should extend these boundaries only where its concrete semantics create new pressure.
-
-### Profiles do not require a plugin framework
-
-Supporting additional profiles can remain simple:
-
-```text
-CLASSIC_CHIP8_PROFILE
-CHIP48_PROFILE
-SUPERCHIP_PROFILE
-future XO_CHIP_PROFILE
-```
-
-if and when Core supports the machine characteristics and instruction sets those profiles require.
-
-A profile remains declarative data rather than a registry of callbacks, strategy objects, component factories, or host implementations.
-
-The project rule remains:
-
-> Abstract demonstrated variation and demonstrated composition pressure, not hypothetical future needs.
-
-## Lifecycle, Reset, and Ownership
-
-Machine state has a lifecycle, but no one monolithic object owns every stage.
-
-Chip8NX separates:
-
-```text
-construction
-    → choose and create objects
-
-initialization
-    → establish valid initial state
-
-runtime execution
-    → advance state over time
-
-reset
-    → re-establish initial state in the existing graph
-```
-
-### Construction chooses implementations
-
-Construction belongs to the application.
-
-It decides which concrete objects participate:
-
-```text
-Ram
-Registers
-Stack
-ProgramCounter
-IndexRegister
-Timers
-DisplayBuffer
-VerticalBlank
-Keyboard
-Font
-RandomNumberGenerator
-RplFlags
-ExitState
-Clock
-Scheduler
-```
-
-Construction answers:
-
-> Which objects make up this emulator instance?
-
-It does not yet guarantee that memory contains the font/program or that every component is in the defined starting state.
-
-### Initialization establishes semantic state
-
-`MachineInitializer.initialize()` operates on the already-constructed graph.
-
-It establishes:
-
-```text
-Memory             cleared
-Registers          cleared
-Stack              cleared
-I                   0
-PC                  profile program start
-Delay timer         0
-Sound timer         0
-DisplayBuffer       reset to initial mode and cleared
-VerticalBlank       reset
-Keyboard wait state reset
-ExitState           reset
-RplFlags            preserved
-Small font image    installed
-Large font image    installed when configured
-Program image       installed
-```
-
-Initialization therefore means:
-
-> Establish the defined starting state of this already-composed machine.
-
-### Validate before mutate
-
-Initialization validates its known layout relationships before changing state.
-
-It checks conditions such as:
-
-```text
-small-font image non-empty
-large-font image non-empty when configured
-program image non-empty
-memory size matches profile
-small font fits in memory
-large font fits in memory when configured
-program fits in memory
-small font / large font / program ranges do not overlap
-```
-
-Only after successful validation does mutation begin.
-
-This differs from ordinary instruction execution, which is not transactional.
-
-Initialization controls the entire setup operation and can validate its complete known structure up front.
-
-### Reset reuses component identities
-
-Reset is reinitialization of the existing object graph.
-
-A typical host flow is:
-
-```text
-runtime.pause()
-      ↓
-MachineInitializer.initialize(
-  existing context,
-  profile,
-  program
-)
-      ↓
-runtime remains paused
-```
-
-Objects such as:
-
-```text
-Registers
-Ram
-DisplayBuffer
-Keyboard
-RandomNumberGenerator
-RplFlags
-ExitState
-```
-
-remain the same instances.
-
-Their state is re-established only where initialization semantics require it.
-
-This lets hosts retain references to those components across reset.
-
-### Memory is rebuilt from definition sources
-
-Memory is writable state, so reset cannot assume that font/program bytes survived execution unchanged.
-
-Initialization clears memory and reinstalls:
-
-```text
-profile.fontImage
-profile.largeFont.image when configured
-program MemoryImage
-```
-
-The relationship is:
-
-```text
-static definitions
-    ↓
-MachineInitializer
-    ↓
-current Memory state
-```
-
-This reinforces the distinction between definition/configuration and current state.
-
-### Keyboard reset is semantic, not physical
-
-Keyboard reset clears interpreter-side state such as:
-
-```text
-pending Fx0A wait
-latched key
-completed release
-```
-
-but preserves currently pressed keys.
-
-```text
-key held
-Fx0A wait active
-    ↓
-machine reset
-    ↓
-wait cleared
-key still held
-```
-
-The host remains authoritative for physical/UI press/release state.
-
-### RNG lifecycle remains provider-owned
-
-`MachineInitializer` does not reset `RandomNumberGenerator`.
-
-The capability contract requires only:
-
-```ts
-nextByte(): Byte;
-```
-
-There is no universal CHIP-8 semantic for:
-
-```text
-reset RNG
-reseed RNG
-restore sequence
-```
-
-Applications may use system randomness, deterministic sequences, or future seeded generators.
-
-The provider/application therefore owns RNG lifecycle.
-
-This gives a useful rule:
-
-> Add lifecycle operations to a capability only when that lifecycle is part of the machine semantics the consumer genuinely requires.
-
-Generic symmetry is not a reason to add `reset()`, `start()`, or `dispose()` to every interface.
-
-### RPL lifetime is intentionally longer than ordinary reset state
-
-`RplFlags` has an explicit lifecycle exception because SUPER-CHIP provides concrete semantics for it.
-
-A fresh `RplFlags` instance starts deterministically at zero, but `MachineInitializer.initialize()` preserves its current contents.
-
-The owner that composes the machine therefore decides how long that storage instance lives.
-
-For example, the Web host owns one RPL store above individual machine sessions:
-
-```text
-Web application lifetime
-    ↓
-RplFlags
-    ├── ROM/session A
-    ├── reset A
-    ├── profile recomposition
-    └── ROM/session B
-```
-
-This preserves the flags across reset and session replacement within the current application lifetime.
-
-It does **not** imply persistence across browser reloads, process restarts, or some future host's storage boundary. Those would be separate host-persistence policies.
-
-The architectural lesson is:
-
-> Reset semantics belong to the historical resource being modeled; not every piece of machine state must share one universal lifetime.
-
-### Pause is not reset
-
-Runtime pause suspends scheduled progression while preserving machine state.
+Pause is different again:
 
 ```text
 pause
-    → preserve state
-    → stop scheduled progression
+    → preserve machine state
+    → suspend scheduled progression
 
-reset
-    → re-establish initial state
+reset / initialize
+    → re-establish resettable machine state
+    → preserve explicitly longer-lived state
 ```
 
-A debugger can therefore pause and inspect the exact current machine without destroying the state it wants to inspect.
+The exact initialization order, validate-before-mutate guarantees, memory rebuild, and reset scope are documented in [Machine initialization](./machine-initialization.md). Construction, pause/resume, single stepping, reset sequencing, ROM replacement, and profile replacement are documented in [Machine lifecycle](./machine-lifecycle.md). Runtime scheduling behavior belongs in [Runtime and timing](./runtime-and-timing.md).
 
-`Chip8Runtime` also owns runtime state of its own:
+The state/capability rule retained here is:
 
-```text
-paused/running
-scheduled deadlines
-```
-
-That runtime state is separate from `ExecutionContext`.
-
-A host can:
-
-```text
-pause runtime
-initialize machine
-resume runtime
-```
-
-without rebuilding the runtime or scheduler.
-
-### Host lifecycle remains outside Core
-
-Machine reset does not imply resetting:
-
-```text
-terminal parser state
-browser focus
-canvas scale
-audio volume
-selected ROM path
-window state
-debugger UI state
-```
-
-A host may choose to update those, but that is application policy.
-
-The Core reset boundary ends with machine state and the semantic capability state it explicitly owns.
-
-For persistent resources such as `RplFlags`, Core defines what initialization must preserve while the application still owns the lifetime of the concrete instance.
-
-## Ownership Through the Lifecycle
-
-```mermaid
-flowchart TD
-    App["Application composition"]
-    Profile["Chip8Profile"]
-    Program["MemoryImage"]
-
-    State["Machine state components"]
-    Caps["Capabilities"]
-    Context["ExecutionContext"]
-
-    Initializer["MachineInitializer"]
-    Executor["InstructionExecutor"]
-    Runtime["Chip8Runtime"]
-
-    Profile --> App
-
-    App --> State
-    App --> Caps
-
-    State --> Context
-    Caps --> Context
-
-    Profile --> Initializer
-    Program --> Initializer
-    Context --> Initializer
-
-    Profile -->|"compatibility"| Executor
-    Context --> Executor
-
-    Profile -->|"timer / display frequencies"| Runtime
-    Context --> Runtime
-
-    Initializer -->|"initialize / reset"| State
-    Initializer -->|"reset semantic state where required"| Caps
-
-    Executor -->|"instruction semantics"| State
-    Executor -->|"consume roles"| Caps
-
-    Runtime -->|"scheduled progression"| State
-```
-
-Ownership remains distributed by responsibility:
-
-```text
-Application
-    → construction and host lifecycle
-
-MachineInitializer
-    → initial/reset machine state
-
-InstructionExecutor
-    → instruction-level transitions
-
-Chip8Runtime
-    → scheduled progression
-
-State components
-    → local persistent state and invariants
-
-Capabilities
-    → provider behavior and provider-owned state
-```
-
-No single machine façade needs to own every stage.
+> A component owns its local state and invariants; lifecycle coordinators decide when the component is reset, preserved, replaced, or merely paused according to the semantics of that resource.
 
 ## Design Summary
 
-The machine-state architecture follows a few stable rules:
+The machine-state and capability architecture follows a few stable rules:
 
 1. **Persistent machine state lives in focused components.**\
    State survives because those components are mutated, not because the executor or runtime stores hidden execution history.
 
 2. **State belongs with its invariants.**\
-   Stack capacity, memory bounds, sprite transitions, timer countdown, and similar rules stay with the components that own the required information.
+   Stack capacity, memory bounds, display geometry, timer countdown, RPL storage, and similar rules stay with the components that own the required information.
 
 3. **Domain values and state objects solve different problems.**\
    `Byte`, `Address`, and `RegisterIndex` validate values; state components own persistence and transitions.
@@ -2211,30 +1384,21 @@ The machine-state architecture follows a few stable rules:
    Snapshots and read APIs expose state without handing consumers live backing storage.
 
 5. **Capabilities describe roles whose implementations genuinely vary.**\
-   Keyboard input, randomness, font layout, and memory storage use abstraction boundaries for concrete reasons.
+   Keyboard input, randomness, font layout, and memory storage use abstraction boundaries for concrete reasons rather than symmetry.
 
 6. **Capabilities may still be stateful.**\
-   `KeyboardState` and deterministic RNG implementations own the internal state required to provide their roles.
+   `KeyboardState` and deterministic RNG implementations can own internal state required to provide their roles.
 
 7. **Configuration is not live state.**\
-   Profiles describe the complete emulated machine, including display specifications, font resources, frequencies, and compatibility-sensitive semantics; runtime configuration describes execution-driving policy.
+   `Chip8Profile` and runtime configuration shape composition while remaining outside `ExecutionContext`; profile semantics are documented in [Machine profiles and variation](./machine-profiles-and-variation.md).
 
-8. **Profiles are descriptions, not factories.**\
-   Applications remain responsible for selecting profiles and constructing concrete implementations from their values.
+8. **Different state can have different lifetimes.**\
+   Most machine/interpreter state is restored by initialization, while historically longer-lived resources such as `RplFlags` are deliberately preserved.
 
-9. **Variant abstractions follow demonstrated historical variation.**\
-   CHIP-48 expanded compatibility choices; SUPER-CHIP additionally demonstrated display architecture, large-font capability, exit state, and persistent RPL storage.
+9. **Lifecycle operations do not collapse into one reset concept.**\
+   Construction, initialization, pause, reset, ROM replacement, and profile replacement have different owners and semantics; their sequencing is documented in the dedicated initialization/lifecycle documents.
 
-10. **Construction, initialization, pause, and reset remain separate.**\
-    Each lifecycle operation has different ownership and semantics.
+10. **Application composition remains explicit.**\
+    Core defines state components and capability roles without collapsing them into one universal `Chip8Machine` object or a generic state registry.
 
-11. **Reset scope follows semantic ownership.**\
-    Most machine/interpreter state is restored by initialization, but historically persistent resources such as `RplFlags` are deliberately preserved.
-
-12. **Different state can have different lifetimes.**\
-    Being machine state does not require every component to reset together; the modeled historical semantics determine reset behavior.
-
-13. **Application composition remains explicit.**\
-    Core defines state components, capability roles, configuration, and lifecycle operations without collapsing them into one `Chip8Machine` object.
-
-Together these rules keep the machine model modular and inspectable while preserving clear ownership of state, behavior, configuration, and lifecycle.
+Together these rules keep the machine model modular and inspectable while giving each piece of state, behavior, and lifetime an explicit owner.

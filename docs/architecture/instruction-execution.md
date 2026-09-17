@@ -15,7 +15,7 @@ ProgramCounter + Memory
         ↓
   typed Instruction
         ↓
-InstructionExecutor ← Chip8Compatibility
+InstructionExecutor ← Chip8InstructionSet + Chip8Quirks
         ↓
  ExecutionContext
         ↓
@@ -24,17 +24,33 @@ machine-state changes
 
 The central architectural boundary is the typed `Instruction`.
 
-Compatibility-sensitive execution is configured separately from the decoded instruction.
-
 The decoder answers:
 
 > What instruction and operands does this opcode encode?
 
-The active compatibility configuration answers:
+The active `Chip8InstructionSet` answers:
 
-> Which historical semantics should execution apply to those operands?
+> Which instruction semantics belong to this machine?
 
-Before that boundary, the implementation deals with encoded instruction bytes and opcode validation. After that boundary, execution works with semantic instruction data and no longer needs to interpret opcode bit fields.
+The active `Chip8Quirks` answers:
+
+> How do instructions shared by supported variants behave on this machine?
+
+Before the decoder boundary, the implementation deals with encoded instruction bytes and opcode validation. After that boundary, execution works with semantic instruction data and no longer needs to interpret opcode bit fields.
+
+Instruction-set membership and shared-instruction quirks are deliberately separate. A SUPER-CHIP-only instruction is not modeled as a base instruction plus an `"unsupported"` quirk value; its semantics come from the selected instruction set. Quirks are reserved for demonstrated behavioral variation in instructions shared by the supported machine families.
+
+## In this document
+
+- [Responsibilities](#responsibilities)
+- [Fetch, Decode, and Execute Cycle](#fetch-decode-and-execute-cycle)
+- [Typed Instructions and the Decoder Boundary](#typed-instructions-and-the-decoder-boundary)
+- [Instruction Executor](#instruction-executor)
+- [Execution Context](#execution-context)
+- [Execution Errors and Invariant Ownership](#execution-errors-and-invariant-ownership)
+- [Testing and Verification](#testing-and-verification)
+- [Related Documentation](#related-documentation)
+- [Design Summary](#design-summary)
 
 ## Responsibilities
 
@@ -168,12 +184,14 @@ Those instruction-specific changes include jumps, calls, returns, taken skips, a
 
 SUPER-CHIP interpreter exit does not throw an exception and does not pause `Chip8Runtime`.
 
-The explicit `00FD` instruction and historical exit conditions such as invalid `00C0` and `Fx1E` index overflow all converge on the same explicit machine state:
+The explicit `00FD` instruction, historical SUPER-CHIP `00C0` behavior, and the historical `Fx1E` index-overflow quirk all converge on the same explicit machine state:
 
 ```text
-00FD / invalid 00C0 / Fx1E overflow
+00FD / historical 00C0 / configured Fx1E overflow
   → ExitState.exit()
 ```
+
+`00FD` and `00C0` are SUPER-CHIP 1.1 instruction semantics. `Fx1E` is different: the instruction is shared, while its overflow behavior varies and therefore remains a quirk.
 
 The next `Cpu.step()` observes that state before fetch:
 
@@ -205,9 +223,9 @@ Fx0A cannot complete
 PC restored to 0x200
 ```
 
-Sprite drawing uses the same retry pattern when the active profile requires vertical-blank-gated drawing and no vertical-blank opportunity is available.
+Sprite drawing uses the same retry pattern when the resolved draw-timing quirk requires vertical-blank-gated drawing and no vertical-blank opportunity is available.
 
-Profiles configured for immediate drawing do not wait or rewind for vertical blank.
+Quirks configured for immediate drawing do not wait or rewind for vertical blank.
 
 This is normal emulated control flow, not a scheduler pause and not an exception. The CPU step completes, but the program counter again points at the waiting instruction.
 
@@ -387,19 +405,24 @@ Classic `0mmm` is one example. `Decoder` recognizes it as a `system-call` instru
 
 SUPER-CHIP extends the same principle. `Decoder` recognizes SUPER-CHIP instruction syntax such as `00Cn`, `00FB`, `00FC`, `00FD`, `00FE`, `00FF`, `Fx30`, `Fx75`, and `Fx85` without consulting the active profile.
 
-Whether execution is meaningful is decided later by the configured machine components and capabilities. For example, display-mode and scroll instructions require a SUPER-CHIP display specification, while `Fx30` requires a font capability that provides a large font.
+Instruction-set membership is checked later by `InstructionExecutor`:
 
 ```text
 Decoder
   asks: what instruction does this opcode represent?
 
-InstructionExecutor + capabilities
-  ask: what does this composed machine do with it?
+Chip8InstructionSet
+  answers: does this machine define these instruction semantics?
+
+InstructionExecutor
+  applies those semantics to the composed machine state/capabilities
 ```
 
-This keeps opcode recognition profile-agnostic and avoids variant-specific decoder branches for instruction encodings that are structurally well-defined.
+The current executor centralizes the repeated SUPER-CHIP membership check through `requireSuperChipInstruction()`. Classic CHIP-8 and CHIP-48 can therefore share the same decoder while rejecting SUPER-CHIP-only operations before they mutate machine state.
 
-It also lets inspection tools identify both Classic and SUPER-CHIP instructions correctly without making the decoder responsible for machine configuration.
+Concrete capabilities still matter after membership has been established. For example, SUPER-CHIP display-control instructions require a switchable display composition, and `Fx30` delegates large-font lookup to the configured `Font` capability. Those capability requirements do not replace the instruction-set check; they are the resources used to carry out semantics that the instruction set has already admitted.
+
+This keeps opcode recognition profile-agnostic and avoids variant-specific decoder branches for instruction encodings that are structurally well-defined. It also lets inspection tools identify supported Classic and SUPER-CHIP instruction forms without making the decoder responsible for machine configuration.
 
 ### The typed instruction is shared infrastructure
 
@@ -433,10 +456,10 @@ execute(
 ): void;
 ```
 
-`InstructionExecutor` receives immutable compatibility configuration at construction:
+`InstructionExecutor` receives immutable instruction semantics at construction:
 
 ```ts
-new InstructionExecutor(profile.compatibility);
+new InstructionExecutor(profile.instructionSet, profile.quirks);
 ```
 
 It retains that configuration but no mutable per-execution machine state.
@@ -446,14 +469,29 @@ Persistent emulator state remains in the components referenced by `ExecutionCont
 This distinction is intentional:
 
 ```text
-Chip8Compatibility
-    → configures instruction semantics
+Chip8InstructionSet
+    → selects instruction-set membership and extension semantics
+
+Chip8Quirks
+    → selects behavioral variation of shared instructions
 
 ExecutionContext
     → exposes mutable machine state and execution capabilities
 ```
 
-Compatibility therefore does not belong inside `ExecutionContext`.
+Neither the profile nor its instruction-set/quirk configuration belongs inside `ExecutionContext`.
+
+The main `execute()` method is primarily a semantic dispatcher. Two instruction families have enough internal coordination to justify focused private methods:
+
+```text
+register-operation
+    → executeRegisterOperation()
+
+draw-sprite
+    → executeDrawSprite()
+```
+
+The draw path further names its three policy decisions through `resolveSpriteDrawTiming()`, `resolveSpriteDrawForm()`, and `resolveSpriteDrawFlag()` rather than embedding all timing, geometry, and `VF` interpretation directly in the dispatch switch.
 
 ### Semantic dispatch
 
@@ -477,7 +515,7 @@ Because `Instruction` is a discriminated union, each branch receives exactly the
 "set-display-mode"
   → instruction.mode
 
-"scroll-down"
+"scroll-display-down"
   → instruction.rows
 
 "store-rpl-flags" / "load-rpl-flags"
@@ -548,13 +586,11 @@ VF = flag
 
 `VF` is represented through a single `FLAG_REGISTER = registerIndex(0xf)` domain value rather than a scattered numeric literal.
 
-### Compatibility-sensitive semantics live in execution
+### Instruction-set semantics and quirks live in execution
 
-Variant-sensitive behavior belongs to instruction semantics rather than opcode decoding.
+Variant-sensitive behavior belongs to instruction semantics rather than opcode decoding, but not every kind of variation is modeled the same way.
 
-The same decoded instruction may therefore execute differently depending on the compatibility supplied to `InstructionExecutor`.
-
-Current compatibility-sensitive dimensions include:
+`Chip8Quirks` contains only behavioral choices for instructions shared by the supported machine families. Current quirk dimensions include:
 
 ```text
 8xy6 / 8xyE
@@ -572,56 +608,43 @@ Bnnn
     → offset from V0
     → offset from encoded Vx
 
-Dxyn
+Dxyn timing
     → uniform vertical-blank timing
     → uniform immediate timing
     → display-mode-dependent timing
 
-00FD
-    → unsupported
-    → exit interpreter
-
-Fx75 / Fx85
-    → unsupported
-    → persistent V0–V7 RPL storage
-
 Fx1E beyond memory
     → continue with the wider I value
     → exit interpreter
-
-00C0
-    → ordinary zero-row scroll semantics
-    → exit interpreter
 ```
 
-For the SUPER-CHIP 1.1 profile, draw timing is mode-sensitive:
+Sprite overflow is also a quirk, but that choice is supplied to `DisplayBuffer` because the buffer owns sprite-pixel placement.
+
+SUPER-CHIP-only instructions and extension-specific interpretations are different. They are selected by `Chip8InstructionSet`, not represented by `"unsupported"` values inside `Chip8Quirks`:
 
 ```text
-low-resolution mode
-    → vertical-blank gated
-
-high-resolution mode
-    → immediate
+superchip-1.1
+    → 00Cn / 00FB / 00FC scrolling
+    → 00FE / 00FF display modes
+    → 00FD interpreter exit
+    → Fx30 large-font addressing
+    → Fx75 / Fx85 RPL transfer
+    → historical 00C0 interpreter exit
+    → extended Dxy0 sprite forms
+    → high-resolution affected-row VF semantics
 ```
 
-Sprite overflow is also compatibility-sensitive, but that behavior belongs to `DisplayBuffer` because the buffer owns sprite-pixel placement.
-
-This gives a responsibility split:
+The executor therefore combines two independent axes:
 
 ```text
-Decoder
-    → identify instruction and operands
+Chip8InstructionSet
+    → what semantics exist
 
-InstructionExecutor
-    → apply compatibility-sensitive instruction semantics
-
-DisplayBuffer
-    → apply compatibility-sensitive sprite-overflow semantics
+Chip8Quirks
+    → how shared semantics vary
 ```
 
-For example, Classic CHIP-8, CHIP-48, and SUPER-CHIP all decode `8xy6` into the same semantic instruction shape containing X and Y operands.
-
-Their profiles then select execution behavior:
+For example, Classic CHIP-8, CHIP-48, and SUPER-CHIP all decode `8xy6` into the same semantic instruction shape containing X and Y operands. Their profiles then select the shared shift quirk:
 
 ```text
 Classic CHIP-8
@@ -634,18 +657,22 @@ SUPER-CHIP 1.1
     shiftSource = "vx"
 ```
 
-Likewise, SUPER-CHIP reuses the same `Fx55` / `Fx65` instruction model while selecting the historically appropriate `I` behavior:
+Likewise, SUPER-CHIP reuses the same `Fx55` / `Fx65` instruction model while selecting the historically appropriate shared quirk:
 
 ```text
 SUPER-CHIP 1.1
     memoryTransferIndex = "unchanged"
 ```
 
-This avoids creating variant-specific decoders for instructions whose encoding is unchanged.
+By contrast, Classic CHIP-8 does not need a setting such as `interpreterExit = "unsupported"` or `rplFlags = "unsupported"`. Those instructions simply are not part of its selected instruction set.
+
+This avoids both variant-specific decoders for unchanged encodings and profile objects padded with configuration for instructions that do not exist on that machine.
 
 ### SUPER-CHIP display instructions preserve display ownership
 
-SUPER-CHIP mode and scrolling instructions are executed through `DisplayBuffer` rather than by manipulating framebuffer storage directly in `InstructionExecutor`.
+SUPER-CHIP mode and scrolling instructions are admitted by the `superchip-1.1` instruction set and executed through `DisplayBuffer` rather than by manipulating framebuffer storage directly in `InstructionExecutor`.
+
+The executor first enforces SUPER-CHIP instruction membership through `requireSuperChipInstruction()`. After that guard succeeds, the display capability owns the actual mode or scrolling mutation.
 
 The mode instructions are:
 
@@ -662,7 +689,7 @@ Changing mode preserves the shared backing framebuffer. It changes how the backi
 SUPER-CHIP scrolling operates in physical backing-buffer units:
 
 ```text
-00Cn
+00Cn, n > 0
     → scroll down N backing rows
 
 00FB
@@ -672,15 +699,27 @@ SUPER-CHIP scrolling operates in physical backing-buffer units:
     → scroll left 4 backing pixels
 ```
 
-That rule is mode-independent. Low-resolution logical pixels may occupy 2 × 2 backing pixels, but scrolling still moves the shared physical framebuffer directly.
+For the targeted historical SUPER-CHIP 1.1 semantics, `00C0` does not perform a zero-row no-op. Once SUPER-CHIP membership has been established, `rows === 0` means interpreter exit:
 
-Fixed Classic/CHIP-48 display specifications do not acquire hidden SUPER-CHIP behavior. Mode changes and SUPER-CHIP scrolling require a display buffer configured with the SUPER-CHIP display specification.
+```text
+00C0
+    → ExitState.exit()
+```
+
+That historical interpretation belongs to the `superchip-1.1` instruction set rather than to a configurable zero-scroll quirk.
+
+Scrolling itself is mode-independent. Low-resolution logical pixels may occupy 2 × 2 backing pixels, but the scrolling operation still moves the shared physical framebuffer directly.
+
+A fixed Classic/CHIP-48 display cannot grant these semantics to a `chip8` instruction set, and a SUPER-CHIP-capable display cannot grant SUPER-CHIP instruction membership by itself. Instruction semantics and display capability are separate composition concerns.
 
 This keeps responsibilities aligned:
 
 ```text
+Chip8InstructionSet
+    → whether SUPER-CHIP display instructions exist
+
 InstructionExecutor
-    → instruction-level intent
+    → instruction-level intent and historical 00C0 meaning
 
 DisplayBuffer
     → display mode, backing storage, scrolling, pixel placement
@@ -688,7 +727,7 @@ DisplayBuffer
 
 ### Waiting and draw timing remain instruction semantics
 
-`Fx0A` and profile-controlled sprite drawing demonstrate that the executor can coordinate temporal machine state without owning the scheduler.
+`Fx0A` and quirk-controlled sprite drawing demonstrate that the executor can coordinate temporal machine state without owning the scheduler.
 
 `Fx0A` always uses retry-style execution:
 
@@ -700,7 +739,7 @@ Fx0A
       no  → rewind PC
 ```
 
-Sprite draw timing is represented by `SpriteDrawTimingBehavior`.
+Sprite draw timing is represented by `SpriteDrawTimingBehavior`, which remains a shared-instruction quirk.
 
 A profile can require one timing rule for every display mode:
 
@@ -719,12 +758,14 @@ or different timing according to the current display mode:
 }
 ```
 
+`executeDrawSprite()` delegates this decision to `resolveSpriteDrawTiming()`.
+
 When the resolved timing is vertical-blank-gated:
 
 ```text
 Dxyn
   → VerticalBlank.consume()
-      yes → read sprite and draw
+      yes → continue draw attempt
       no  → rewind PC
 ```
 
@@ -733,84 +774,126 @@ When the resolved timing is immediate:
 ```text
 Dxyn
   → do not consult VerticalBlank
-  → read sprite and draw immediately
+  → continue draw attempt immediately
 ```
 
 Immediate drawing also leaves any already-pending vertical-blank opportunity untouched.
 
-For either draw-timing mode, the executor still coordinates:
+After timing has been resolved, `resolveSpriteDrawForm()` decides the amount and width of sprite data from the decoded instruction, instruction-set identity, and live display mode.
+
+For ordinary `Dxyn`, `n` remains the byte count. `Dxy0` is where instruction-set membership matters:
+
+```text
+chip8 instruction set
+    Dxy0
+    → zero source rows
+    → existing zero-height/no-op behavior
+
+superchip-1.1 + low mode
+    Dxy0
+    → 16 source bytes
+    → 8 × 16 logical sprite
+
+superchip-1.1 + high mode
+    Dxy0
+    → 32 source bytes
+    → 16 × 16 sprite
+```
+
+The extended interpretation therefore does not come from display capability alone. A machine composed with a switchable display but the `chip8` instruction set still receives base `Dxy0` semantics.
+
+The executor then coordinates:
 
 ```text
 Registers       → coordinates
 IndexRegister   → sprite start
 Memory          → sprite bytes
-DisplayBuffer   → XOR drawing / collision
-Registers       → VF result
+DisplayBuffer   → XOR drawing / draw facts
 ```
 
-`VerticalBlank` participates only when the selected profile and current display mode require it.
-
-SUPER-CHIP `Dxy0` also demonstrates that sprite geometry can depend on display mode without changing the decoded instruction shape:
+`DisplayBuffer` returns a `SpriteDrawResult` describing facts of the draw rather than deciding complete machine semantics:
 
 ```text
-fixed display
-    height 0 retains the existing no-op behavior
-
-SUPER-CHIP low mode
-    16 source bytes
-    8 × 16 logical sprite
-    logical pixels map to 2 × 2 backing pixels
-    VF = boolean collision
-
-SUPER-CHIP high mode
-    32 source bytes
-    16 × 16 sprite
-    VF = collision rows + rows clipped below the bottom
+collision
+collisionRows
+clippedBottomRows
 ```
 
-Ordinary low-resolution SUPER-CHIP `Dxyn` drawing uses the same 2 × 2 logical-to-backing mapping while retaining boolean collision semantics.
+Finally, `resolveSpriteDrawFlag()` interprets those facts according to instruction-set semantics and display mode:
 
-No lower-level component owns that complete relationship; the instruction coordinates it through focused display and timing capabilities.
+```text
+Classic / CHIP-48
+    → VF = boolean collision
+
+SUPER-CHIP low
+    → VF = boolean collision
+
+SUPER-CHIP high
+    → VF = collisionRows + clippedBottomRows
+```
+
+This prevents a high-resolution-capable display from granting SUPER-CHIP `VF` semantics to a machine whose instruction set is still `chip8`.
+
+The resulting draw orchestration remains readable without pushing whole-machine policy into `DisplayBuffer`:
+
+```text
+executeDrawSprite()
+    ↓
+resolveSpriteDrawTiming()
+    ↓
+resolveSpriteDrawForm()
+    ↓
+fetch + draw
+    ↓
+resolveSpriteDrawFlag()
+```
 
 ### Unsupported execution and exhaustiveness
 
-`InstructionExecutor` uses `UnsupportedInstructionError` when a decoded instruction cannot execute on the configured machine. This includes decoded `0mmm` native calls and profile-specific rejection of SUPER-CHIP-only operations such as `00FD` and `Fx75` / `Fx85` under Classic CHIP-8 or CHIP-48.
+`InstructionExecutor` uses `UnsupportedInstructionError` when a decoded instruction cannot execute on the configured machine. This includes decoded `0mmm` native calls and rejection of SUPER-CHIP-only operations when the selected instruction set is `chip8`.
 
 ```text
 invalid encoded word
     → Decoder
     → InvalidOpcodeError
 
-recognized but unexecutable instruction
+recognized instruction outside the selected instruction set
+    → InstructionExecutor
+    → UnsupportedInstructionError
+
+recognized but deliberately unimplemented machine operation
     → InstructionExecutor
     → UnsupportedInstructionError
 ```
 
-The current outer switch is therefore not compile-time exhaustive: the default branch handles instruction kinds that have no executor implementation, while explicit branches may also reject a decoded instruction because the active compatibility configuration does not support that machine operation.
+SUPER-CHIP membership checks are centralized by `requireSuperChipInstruction()` so `00FD`, display control, `Fx30`, and `Fx75` / `Fx85` apply the same pre-mutation rule.
+
+The current outer switch is not compile-time exhaustive: the default branch handles instruction kinds that have no executor implementation, while explicit branches may also reject a decoded instruction because the active instruction set does not define that operation.
 
 That gives a useful runtime safety net, but a newly added union member may compile and fail only when executed. An exhaustive `never` check would provide stronger compile-time protection, but would require intentionally unsupported execution to be represented more explicitly.
 
-The current implementation keeps the runtime default. Future variant work may provide evidence for revisiting that tradeoff.
+The current implementation keeps the runtime default. Future instruction-set work may provide evidence for revisiting that tradeoff.
 
 ### SUPER-CHIP state-transfer instructions use focused capabilities
 
 Several SUPER-CHIP instructions extend machine semantics without requiring a new execution architecture.
 
-`Fx30` uses the existing font capability with an explicit size request:
+`Fx30` is admitted by the `superchip-1.1` instruction set and then uses the existing font capability with an explicit size request:
 
 ```text
 Fx29
     → Font.getSpriteAddress(value, "small")
 
 Fx30
+    → requireSuperChipInstruction()
     → Font.getSpriteAddress(value, "large")
 ```
 
-`ClassicFont` supports the small font and rejects a large-font request. `SuperChipFont` supports both the Classic small font and the SUPER-CHIP 1.1 ten-byte large decimal font.
+`ClassicFont` supports the small font and rejects a large-font request. `SuperChipFont` supports both the shared small font and the SUPER-CHIP 1.1 ten-byte large decimal font.
 
-The targeted historical large font contains digits `0` through `9`; the executor does not introduce a separate modern hexadecimal large-font interpretation.
+The targeted historical large font contains digits `0` through `9`; values above `9` are intentionally not normalized into a modern hexadecimal large-font interpretation.
 
-`Fx75` and `Fx85` transfer registers through the explicit `RplFlags` state object:
+`Fx75` and `Fx85` are likewise SUPER-CHIP-only instructions. After the common instruction-set guard, they transfer registers through the explicit `RplFlags` state object:
 
 ```text
 Fx75
@@ -823,6 +906,16 @@ Fx85
 The supported RPL storage is limited to the eight historical flags corresponding to `V0` through `V7`. `Fx75` and `Fx85` with `x > 7` are rejected by the decoder as invalid instruction encodings, so execution cannot partially mutate the valid RPL range before discovering an invalid endpoint.
 
 RPL lifetime is intentionally longer than ordinary resettable machine state. `MachineInitializer` does not clear `RplFlags`, so instruction execution can observe values preserved across reset or program initialization when the host reuses the same RPL store.
+
+Instruction-set membership and resource lifetime remain separate concerns:
+
+```text
+Chip8InstructionSet
+    → says Fx75 / Fx85 exist
+
+RplFlags + host composition
+    → provide storage and decide how long it lives
+```
 
 ## Execution Context
 
@@ -849,23 +942,23 @@ export interface ExecutionContext {
 }
 ```
 
-The context has no machine behavior of its own. It provides stable access to the components that own state and capabilities. `ExecutionContext` deliberately does not contain `Chip8Profile` or `Chip8Compatibility`.
+The context has no machine behavior of its own. It provides stable access to the components that own state and capabilities. `ExecutionContext` deliberately does not contain `Chip8Profile`, `Chip8InstructionSet`, or `Chip8Quirks`.
 
 Those values configure the machine when components are composed; they are not mutable machine state or execution capabilities.
 
 For example:
 
 ```text
-profile.compatibility
+profile.instructionSet + profile.quirks
     → InstructionExecutor constructor
 
-profile.compatibility.spriteOverflow
+profile.quirks.spriteOverflow
     → DisplayBuffer constructor
 
 profile.display.specification
     → DisplayBuffer constructor
 
-profile.largeFont
+profile.fonts.small / profile.fonts.large
     → font composition and machine initialization
 
 ExecutionContext
@@ -976,7 +1069,10 @@ Application
    ├── constructs machine components from profile characteristics
    ├── constructs ExecutionContext
    ├── constructs Decoder
-   └── constructs InstructionExecutor(profile.compatibility)
+   └── constructs InstructionExecutor(
+         profile.instructionSet,
+         profile.quirks,
+       )
              ↓
             Cpu
 ```
@@ -1050,7 +1146,7 @@ Ram
 
 Likewise, `ProgramCounter` stores and advances `Address` values without duplicating memory-size validation. If execution moves outside available RAM, the later `Memory.read()` fails where that contextual information is available.
 
-`Fx1E` is a deliberate profile-specific exception: historical SUPER-CHIP defines leaving the 4 KiB address space through that instruction as interpreter exit, so `InstructionExecutor` compares the resulting `I` value with the configured memory size when that compatibility behavior is selected.
+`Fx1E` is a deliberate quirk-sensitive exception: historical SUPER-CHIP defines leaving the 4 KiB address space through that shared instruction as interpreter exit, so `InstructionExecutor` compares the resulting `I` value with the configured memory size when the `indexOverflow` quirk selects `"exit-interpreter"`.
 
 `Stack` similarly owns capacity and underflow. `InstructionExecutor` calls `push()` and `pop()` rather than reproducing stack validation itself.
 
@@ -1112,163 +1208,49 @@ This keeps CHIP-8 waiting behavior inside the emulated machine model rather than
 
 ## Testing and Verification
 
-The execution architecture is verified at several boundaries rather than through one large end-to-end suite.
+The execution architecture is verified at the narrowest boundary that owns each behavior:
 
 ```text
 Decoder tests
-    → encoded instruction interpreted correctly?
+    → encoded opcode → typed Instruction
 
 InstructionExecutor tests
-    → decoded instruction semantics correct?
+    → semantics of an already-decoded instruction
 
 Cpu tests
-    → fetch/decode/execute collaboration correct?
+    → fetch / pre-advance / decode / execute orchestration
 
-Component tests
-    → focused state invariants correct?
-
-Conformance tests
-    → composed Classic machine behaves correctly?
-```
-
-### Decoder tests isolate representation translation
-
-Decoder tests start from real `Opcode` values and assert the exact typed `Instruction` produced. They also verify rejection of encoded forms that resemble valid instruction families but violate required bit patterns.
-
-They deliberately do not test register mutation, display behavior, timers, or other execution effects.
-
-### Executor tests start after decoding
-
-`InstructionExecutor` tests construct typed instructions directly and execute them against a real `ExecutionContext`.
-
-That isolates the question:
-
-> Given this semantic instruction, does execution produce the correct machine-state effect?
-
-The suite uses real Core components with focused test substitutions where useful, such as deterministic randomness, rather than large mocks that reproduce Core behavior.
-
-### Semantic edge cases receive direct coverage
-
-The executor suite covers behavior that can be correct for ordinary operands but fail at aliases, boundaries, or compatibility choices, including:
-
-- arithmetic overflow and borrow behavior;
-- profile-controlled logic-operation handling of `VF`;
-- `VF` aliasing an operand;
-- both Vx- and Vy-source shift semantics;
-- all three `Fx55` / `Fx65` index-register update behaviors;
-- both V0- and Vx-based jump-offset semantics;
-- draw collision and sprite-overflow behavior;
-- fixed-display zero-height drawing;
-- SUPER-CHIP low- and high-resolution `Dxy0` geometry;
-- SUPER-CHIP low-resolution 2 × 2 backing-pixel mapping;
-- high-resolution affected-row `VF` semantics;
-- vertical-blank-gated, immediate, and display-mode-dependent draw timing;
-- preservation of pending vertical blank during immediate drawing;
-- SUPER-CHIP display mode changes and physical scrolling;
-- `Fx30` large-font address lookup;
-- inclusive `Fx75` / `Fx85` RPL transfers;
-- `Fx0A` wait completion;
-- `00FD` support/rejection and exit-state mutation;
-- historical SUPER-CHIP `00C0` interpreter exit;
-- historical SUPER-CHIP `Fx1E` interpreter exit on index overflow;
-- rejection of `Fx75` / `Fx85` encodings above `V7`;
-- unsupported `0mmm` execution.
-
-These cases turn compatibility-sensitive and ordering-sensitive semantics into executable regression evidence.
-
-### CPU tests verify orchestration
-
-CPU tests use the real collaboration between memory, decoder, executor, and context to verify behavior that belongs to the pipeline itself:
-
-- big-endian two-byte fetch;
-- decode and execution delegation;
-- normal program-counter advancement;
-- pre-advance behavior for calls;
-- jump replacement of the normal address;
-- additional advancement for taken skips;
-- retry by restoring the instruction address;
-- pre-fetch exit guarding after any SUPER-CHIP interpreter-exit condition.
-
-The testing rule is:
-
-> Test behavior at the narrowest useful boundary that can prove it.
-
-```text
-opcode interpretation     → Decoder test
-ADD carry semantics       → InstructionExecutor test
-stack underflow           → Stack test
-CPU pre-advance convention→ Cpu test
-complete ROM behavior     → conformance test
-```
-
-Focused tests make failures diagnosable; composed tests catch collaboration errors.
-
-### External conformance provides independent evidence
-
-The implementation also executes independently authored CHIP-8 programs through the normal machine pipeline.
-
-The Classic baseline includes:
-
-- IBM Logo;
-- original corax89 opcode test;
-- Timendus Corax+;
-- Timendus Flags;
-- Timendus Quirks in Classic CHIP-8 mode;
-- Timendus Keypad.
-
-Multi-profile compatibility is additionally checked with Gulrak's Variant Detection Test v1.4.
-
-The same ROM is executed independently using:
-
-```text
-CLASSIC_CHIP8_PROFILE
-CHIP48_PROFILE
-```
-
-and its stable framebuffer output is compared against separate golden results for each profile.
-
-This independently exercises compatibility dimensions including:
-
-```text
-logic VF behavior
-memory-transfer I updates
-shift source
-jump-offset source
-display wait behavior
-sprite wrapping / clipping
-```
-
-The Gulrak test is particularly useful because it distinguishes all three currently modeled `Fx55` / `Fx65` index-register outcomes:
-
-```text
-MEM1 → I += X + 1
-MEMX → I += X
-MEM0 → I unchanged
-```
-
-Conformance does not replace focused tests. A failing ROM can expose a behavioral mismatch without identifying whether the root cause lies in decoding, compatibility semantics, memory, display behavior, timing, or another component.
-
-The two evidence types answer different questions:
-
-```text
-focused tests
-    → does this specific contract hold?
+component tests
+    → local state invariants
 
 conformance tests
-    → does the composed implementation satisfy independent expectations?
+    → composed historical-machine behavior against external ROMs
 ```
 
-### The Classic opcode audit is the behavior inventory
+### Focused tests
 
-[`../reference/classic-opcode-audit.md`](../reference/classic-opcode-audit.md) records the supported Classic instruction baseline and the evidence behind it.
+Decoder tests validate instruction recognition, operand extraction, and rejection of invalid encodings without involving machine-state mutation.
 
-At `v0.5.0` it records 35 recognized Classic opcode families, 34 executable virtual-machine families, direct unit coverage for those executable families, and intentional rejection of `0mmm` during execution.
+Executor tests start after decoding and use typed instructions directly. They protect semantic boundaries such as arithmetic flags, register aliasing, shared-instruction quirk choices, draw timing and geometry, SUPER-CHIP instruction-set isolation, display control, large-font lookup, RPL transfer, and interpreter exit.
 
-This architecture document explains **how and why execution is structured this way**. The opcode audit remains the authoritative inventory of **what Classic behavior is implemented and verified**.
+CPU tests cover pipeline behavior that does not belong to one instruction implementation: big-endian fetch, normal pre-advance, control-flow overrides, retry by restoring the instruction address, and the pre-fetch `ExitState` guard.
+
+The important rule is:
+
+> Test behavior where its responsibility lives; use broader tests only to verify collaboration among those responsibilities.
+
+### External conformance
+
+External ROMs provide independent evidence that the composed implementation matches historical expectations. The current suite includes Classic CHIP-8 tests, Gulrak's multi-profile Variant Detection Test, and pinned Timendus v4.2 legacy SUPER-CHIP Quirks/Scrolling automation.
+
+Conformance does not replace focused tests. A ROM can reveal a mismatch without identifying whether it originated in decoding, instruction-set membership, quirks, memory, display behavior, timing, or another collaborator.
+
+The detailed Classic behavior inventory remains in the [Classic opcode coverage audit](../reference/classic-opcode-audit.md), while SUPER-CHIP target/evidence is recorded in the [SUPER-CHIP 1.1 coverage audit](../reference/superchip-1.1-coverage-audit.md) and fixture details live in the [conformance README](../../packages/core/tests/conformance/README.md).
 
 ## Related Documentation
 
 - [Architecture overview](./overview.md) — places execution in the wider Core architecture.
+- [Machine profiles and variation](./machine-profiles-and-variation.md) — owns the `instructionSet` / shared-quirk profile model.
 - [Machine lifecycle](./machine-lifecycle.md) — construction, initialization, reset, runtime startup, and state lifecycle.
 - [Disassembly architecture](./disassembly.md) — reuses the same `Decoder` and typed `Instruction` boundary for read-only inspection.
 - [Classic opcode audit](../reference/classic-opcode-audit.md) — supported instruction behavior and verification evidence.
@@ -1288,11 +1270,14 @@ encoded uncertainty
 semantic instruction
     → execute through strong types
 
-compatibility-sensitive behavior
-    → configured explicitly at composition
+instruction-set membership
+    → selects which variant-specific semantics exist
+
+shared-instruction quirks
+    → select demonstrated behavioral variation
 
 mode-sensitive behavior
-    → resolved from configured semantics + live machine state
+    → resolve from configured semantics + live machine state
 
 normal PC progression
     → owned by Cpu
@@ -1310,4 +1295,4 @@ waiting conditions
     → represented as emulated state, not exceptions
 ```
 
-Together, these boundaries allow Classic CHIP-8, CHIP-48, and SUPER-CHIP 1.1 to share one decoding and execution architecture while selecting different historical semantics and machine capabilities explicitly. The same seams remain available for future CHIP-8-family variation when concrete requirements justify extending them.
+Together, these boundaries allow Classic CHIP-8, CHIP-48, and historical SUPER-CHIP 1.1 to share one decoding and execution architecture without forcing extension-only semantics into a generic compatibility object. The same seams remain available for future CHIP-8-family variation when concrete requirements justify extending them.

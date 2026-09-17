@@ -44,9 +44,13 @@ This keeps the reusable dependency graph acyclic and prevents presentation or in
 
 ## Machine profile
 
-`Chip8Profile` is the declarative description of the machine being emulated.
+`Chip8Profile` is the declarative description of the machine target being emulated.
 
-A profile describes the whole emulated machine target. Compatibility-sensitive behavior is one part of that description rather than another name for the profile.
+A profile combines three different kinds of information:
+
+1. **machine characteristics** needed to compose and initialize the machine;
+2. **instruction-set identity**, which determines which instruction semantics exist;
+3. **quirks**, which describe how instructions shared by supported variants behave differently.
 
 Conceptually:
 
@@ -58,33 +62,29 @@ Chip8Profile
     │   ├── stack capacity
     │   ├── display specification and refresh frequency
     │   ├── timer frequency
-    │   ├── small font image and placement
-    │   └── optional large font image and placement
+    │   └── fonts
+    │       ├── small font image and placement
+    │       └── optional large font image and placement
     │
-    └── compatibility
+    ├── instructionSet
+    │   ├── chip8
+    │   └── superchip-1.1
+    │
+    └── quirks
         ├── shift source
         ├── memory-transfer index behavior
         ├── jump-offset source
         ├── logic-operation flag behavior
         ├── sprite overflow behavior
         ├── sprite draw timing behavior
-        ├── interpreter-exit availability
-        ├── RPL-flag availability
-        ├── index-overflow behavior
-        └── zero-row scroll-down behavior
+        └── index-overflow behavior
 ```
 
-The display specification may describe either fixed geometry or a SUPER-CHIP display with one shared backing store and multiple logical modes. Sprite draw timing may likewise be uniform or depend on the active display mode. These are still declarative machine characteristics and semantic choices rather than host presentation policy.
+This separation is intentional.
 
-Chip8NX currently provides three built-in historical profiles:
+Instruction-set membership answers questions such as whether `00FD`, `Fx30`, `Fx75`, `Fx85`, SUPER-CHIP display-control instructions, and the extended interpretation of `Dxy0` exist. Those are not represented as `"unsupported"` quirk values for machines where the instructions do not exist.
 
-- `CLASSIC_CHIP8_PROFILE`;
-- `CHIP48_PROFILE`, representing CHIP-48 2.25;
-- `SUPERCHIP_PROFILE`, representing the project's documented historical SUPER-CHIP 1.1 target.
-
-Named historical profiles are coherent presets derived from the behavior of their target interpreters. The same `Chip8Profile` type may also represent deliberate custom combinations when a host or test needs them.
-
-Compatibility choices use semantic values rather than boolean quirk flags. For example:
+Quirks instead describe demonstrated variation in instructions shared by the supported machine families. For example:
 
 ```ts
 shiftSource: "vx";
@@ -92,11 +92,41 @@ memoryTransferIndex: "increment-by-x";
 spriteOverflow: "clip";
 ```
 
-This keeps the selected behavior explicit without requiring callers to interpret what an enabled or disabled "quirk" means.
+Using explicit semantic values keeps the selected behavior readable without requiring callers to interpret what an enabled or disabled boolean "quirk" means.
 
-A profile does not construct components, select host implementations, or represent current mutable state. Applications remain composition roots and provide the relevant profile values to the components they construct.
+The display specification may describe either fixed geometry or a SUPER-CHIP display with one shared backing store and multiple logical modes. Sprite draw timing may likewise be uniform or depend on the active display mode. These remain declarative machine characteristics and shared-instruction quirks rather than host presentation policy.
+
+Font configuration is grouped as one machine characteristic:
+
+```text
+profile.fonts.small
+    ├── image
+    └── baseAddress
+
+profile.fonts.large
+    ├── image
+    └── baseAddress
+
+or null when the machine has no large font
+```
+
+Chip8NX currently provides three built-in historical profiles:
+
+- `CLASSIC_CHIP8_PROFILE`;
+- `CHIP48_PROFILE`, representing CHIP-48 2.25;
+- `SUPERCHIP_PROFILE`, representing the project's documented historical SUPER-CHIP 1.1 target.
+
+Classic CHIP-8 and CHIP-48 currently use the `chip8` instruction-set identity and differ through machine characteristics and shared-instruction quirks. SUPER-CHIP uses the `superchip-1.1` instruction-set identity and overrides the shared quirks that differ from CHIP-48 while extending the machine with SUPER-CHIP-specific semantics and resources.
+
+Named historical profiles are coherent presets derived from the behavior of their target interpreters. The same `Chip8Profile` type may also represent deliberate custom combinations when a host or test needs them, but the built-in profiles remain the project's historical reference points.
+
+A profile does not construct components, select host implementations, own mutable machine state, or define resource lifetime. In particular, the availability of SUPER-CHIP RPL instructions comes from the instruction set, while the persistence of the `RplFlags` store is a composition and lifecycle concern outside profile data.
+
+Applications remain composition roots and provide the relevant profile values to the components they construct.
 
 Runtime execution policy such as CPU frequency is intentionally separate from the machine profile. Timer frequency and emulated display timing belong to the profile because they are characteristics of the emulated machine, while CPU execution frequency remains host/runtime policy.
+
+For the canonical profile model and extension rules, see [Machine profiles and variation](./machine-profiles-and-variation.md).
 
 See [Machine state and capabilities architecture](./machine-state-and-capabilities.md) for the detailed state/configuration model and the project's evidence-driven approach to CHIP-8-family variation.
 
@@ -122,15 +152,21 @@ flowchart LR
 
 The typed `Instruction` is the central boundary between encoded representation and instruction semantics.
 
-`InstructionExecutor` operates through `ExecutionContext`, which groups the machine state and capabilities required by instruction semantics. The context does not construct those collaborators or collapse their responsibilities into one machine object; it is an explicit execution boundary.
+`InstructionExecutor` receives the active `Chip8InstructionSet` and `Chip8Quirks`. The instruction set determines which variant-specific semantics are available, while quirks determine the behavior of shared instructions. The executor operates through `ExecutionContext`, which groups the machine state and capabilities required by instruction semantics.
+
+The context does not construct those collaborators or collapse their responsibilities into one machine object; it is an explicit execution boundary.
 
 Control-flow instructions override the already-advanced program counter when required. Retry-style instructions such as Classic `Fx0A` and vblank-gated `Dxyn` restore the current instruction address so the same instruction can be attempted again later.
 
-SUPER-CHIP interpreter-exit conditions use `ExitState` rather than exceptions or runtime pause. This includes explicit `00FD`, historical invalid `00C0`, and `Fx1E` index overflow. Once one of those conditions marks the interpreter exited, subsequent `Cpu.step()` calls return before fetch, so no additional instruction attempt or trace is produced until initialization resets the exit state.
+SUPER-CHIP-only instructions are guarded by instruction-set membership rather than by `"unsupported"` compatibility settings. Historical SUPER-CHIP semantics that are intrinsic to the targeted `superchip-1.1` instruction set, such as `00C0` interpreter exit and the extended `Dxy0` forms, are interpreted from that instruction-set identity. Shared semantics that genuinely vary, such as `Fx1E` index overflow behavior, remain quirks.
+
+SUPER-CHIP interpreter-exit conditions use `ExitState` rather than exceptions or runtime pause. This includes explicit `00FD`, historical `00C0`, and the configured historical `Fx1E` index-overflow behavior. Once one of those conditions marks the interpreter exited, subsequent `Cpu.step()` calls return before fetch, so no additional instruction attempt or trace is produced until initialization resets the exit state.
+
+The draw path is kept inside instruction execution rather than pushed into the display state. `DisplayBuffer` reports draw facts such as collision rows and clipped rows; `InstructionExecutor` resolves timing, sprite form, and the value written to `VF` according to the active instruction set, quirks, and display mode.
 
 This diagram intentionally omits initialization, scheduling, timers, and observation. Those concerns have different lifecycles and are described separately below.
 
-See [Instruction execution architecture](./instruction-execution.md) for the detailed fetch/decode/execute model, typed instruction representation, execution semantics, invariant ownership, and verification strategy.
+See [Instruction execution architecture](./instruction-execution.md) for the detailed fetch/decode/execute model, typed instruction representation, instruction-set and quirk semantics, invariant ownership, and verification strategy.
 
 ## Machine state and capabilities
 
@@ -142,22 +178,28 @@ Roles whose implementations genuinely vary are exposed through capability bounda
 
 Interface use and state ownership are independent concerns: for example, `Memory` is both an interface and mutable machine state, while `Keyboard` is a capability whose implementation owns interpreter-relevant state.
 
-Applications construct the object graph explicitly, using profile characteristics where appropriate:
+Applications construct the object graph explicitly, using profile characteristics where appropriate. Conceptually:
 
 ```ts
 new Stack(profile.stackCapacity);
 
 new ProgramCounter(profile.programStartAddress);
 
-new DisplayBuffer(
-  profile.display.specification,
-  profile.compatibility.spriteOverflow,
-);
+new DisplayBuffer(profile.display.specification, profile.quirks.spriteOverflow);
 
-new InstructionExecutor(profile.compatibility);
+const font = profile.fonts.large === null
+  ? new ClassicFont(profile.fonts.small.baseAddress)
+  : new SuperChipFont(
+    profile.fonts.small.baseAddress,
+    profile.fonts.large.baseAddress,
+  );
+
+new InstructionExecutor(profile.instructionSet, profile.quirks);
 ```
 
 Most components grouped by `ExecutionContext` belong to one machine initialization lifecycle. `RplFlags` is the deliberate exception: SUPER-CHIP treats those eight user flags as persistent storage, so `MachineInitializer` does not reset them. The composition root therefore decides how long the store lives and may share it across machine-session replacement.
+
+The profile tells the executor that the SUPER-CHIP RPL instructions exist; it does not own or reset the RPL state itself.
 
 See [Machine state and capabilities architecture](./machine-state-and-capabilities.md) for focused invariant ownership, snapshot-based state observation, capability substitution, profiles and runtime configuration, reset semantics, and lifecycle ownership.
 
@@ -222,7 +264,7 @@ Inspection currently provides two reusable formatter implementations:
 - `ClassicInstructionFormatter` presents Classic CHIP-8 instruction semantics and the shared textual forms used by the extended instruction model;
 - `Chip48InstructionFormatter` presents CHIP-48-style semantics where the textual representation differs, while delegating unchanged instructions to the Classic formatter.
 
-This distinction matters for instructions such as `Bnnn` and `8xy6` / `8xyE`, whose decoded operands are shared but whose historical interpretation differs between Classic CHIP-8 and CHIP-48-style profiles. The Web host currently reuses `Chip48InstructionFormatter` for SUPER-CHIP because the targeted SUPER-CHIP profile inherits those CHIP-48-style interpretations while its additional opcodes use the shared formatter forms.
+This distinction matters for instructions such as `Bnnn` and `8xy6` / `8xyE`, whose decoded operands are shared but whose historical interpretation differs between Classic CHIP-8 and CHIP-48-style profiles. The Web host currently reuses `Chip48InstructionFormatter` for SUPER-CHIP because the targeted SUPER-CHIP profile uses those CHIP-48-style shared-instruction interpretations while its additional opcodes use the shared formatter forms.
 
 Formatter selection remains a composition concern. Inspection does not inspect a global machine profile or choose a formatter implicitly. Disassembly is strict over the requested range: invalid complete opcodes remain decoding errors. Policies such as treating unknown bytes as data and continuing through a whole ROM belong to the consuming application rather than the reusable disassembler.
 
@@ -275,12 +317,12 @@ validate memory layout
     ↓
 reset machine state
     ↓
-install font + program
+install fonts + program
 ```
 
-Known layout errors are rejected before mutation begins. The initializer validates the small font, optional large font, and program image as non-empty, in-bounds, non-overlapping memory ranges before resetting or loading state.
+Known layout errors are rejected before mutation begins. The initializer validates `profile.fonts.small`, optional `profile.fonts.large`, and the program image as non-empty, in-bounds, non-overlapping memory ranges before resetting or loading state.
 
-Initialization resets ordinary machine state, including display state and `ExitState`, and restores the profile-defined initial display mode where applicable. It deliberately does **not** reset `RplFlags`; those flags model persistent SUPER-CHIP storage whose lifetime is owned by the host composition rather than by one initialization cycle.
+Initialization resets ordinary machine state, including display state and `ExitState`, and restores the profile-defined initial display mode where applicable. It deliberately does **not** reset `RplFlags`; those flags model persistent SUPER-CHIP storage whose lifetime is owned by host composition rather than by one initialization cycle.
 
 Initialization does not construct components, perform host I/O, control runtime pause/resume, or provide general rollback after mutation has started.
 
@@ -355,11 +397,12 @@ flowchart LR
 
     Profile -->|"display specification"| Buffer
     Profile -->|"display frequency"| Runtime
-    Profile -->|"draw timing behavior"| Cpu
-    Profile -->|"sprite overflow"| Buffer
+    Profile -->|"draw timing quirk"| Cpu
+    Profile -->|"sprite-overflow quirk"| Buffer
+    Profile -->|"instruction-set semantics"| Cpu
 
     Runtime -->|"display frame"| VBlank
-    VBlank -.->|"consumed when profile and mode require it"| Cpu
+    VBlank -.->|"consumed when quirks and mode require it"| Cpu
     Cpu --> Buffer
 
     Buffer -.-> Terminal
@@ -388,9 +431,9 @@ The current display mode is mutable machine state owned by `DisplayBuffer`. `00F
 
 Raw framebuffer access is expressed in backing coordinates. That keeps host presentation independent of SUPER-CHIP's logical scaling rules: the Web `CanvasDisplay`, for example, renders the complete backing store rather than reinterpreting low-resolution pixels itself.
 
-### Draw timing and collision semantics
+### Draw timing, sprite form, and collision semantics
 
-Whether `Dxyn` must consume a vertical-blank opportunity is an instruction-semantics choice supplied by the active profile. A uniform profile may always wait or always draw immediately; SUPER-CHIP uses display-mode-dependent timing:
+Whether `Dxyn` must consume a vertical-blank opportunity is a shared-instruction quirk supplied by the active profile. A uniform profile may always wait or always draw immediately; SUPER-CHIP uses display-mode-dependent timing:
 
 ```text
 SUPER-CHIP low
@@ -400,9 +443,36 @@ SUPER-CHIP high
     → immediate
 ```
 
-Immediate drawing does not consult or consume a pending `VerticalBlank`. The scheduler remains profile-agnostic: it only produces display opportunities at the configured refresh frequency, while instruction execution decides whether the active profile and display mode require one.
+Immediate drawing does not consult or consume a pending `VerticalBlank`. The scheduler remains profile-agnostic: it only produces display opportunities at the configured refresh frequency, while instruction execution decides whether the active quirks and display mode require one.
 
-SUPER-CHIP also gives `Dxy0` mode-sensitive sprite dimensions: low resolution consumes 16 bytes as an 8×16 logical sprite, while high resolution consumes 32 bytes as a 16×16 sprite. Low-resolution `VF` retains boolean collision semantics. High-resolution `VF` reports affected rows: collision rows plus sprite rows clipped below the bottom of the display.
+The extended meaning of `Dxy0` is instead part of the `superchip-1.1` instruction semantics. Under the base `chip8` instruction set, a zero-height draw remains a zero-row draw even if the composed display is capable of SUPER-CHIP modes. Under `superchip-1.1`, `Dxy0` uses mode-sensitive sprite dimensions:
+
+```text
+SUPER-CHIP low
+    → 16 bytes
+    → 8 × 16 logical sprite
+
+SUPER-CHIP high
+    → 32 bytes
+    → 16 × 16 sprite
+```
+
+The executor resolves that sprite form from the instruction-set identity and active display mode before asking `DisplayBuffer` to perform the draw.
+
+`DisplayBuffer` returns structured draw facts, including boolean collision, collision-row count, and rows clipped below the bottom edge. The executor then interprets those facts according to instruction-set semantics and display mode:
+
+```text
+Classic / CHIP-48
+    → VF = boolean collision
+
+SUPER-CHIP low
+    → VF = boolean collision
+
+SUPER-CHIP high
+    → VF = collision rows + bottom-clipped rows
+```
+
+This prevents a high-resolution-capable display from granting SUPER-CHIP `VF` semantics to a machine whose instruction set is still `chip8`.
 
 Likewise, `DisplayBuffer` owns the selected sprite-overflow behavior without knowing which historical profile selected it.
 
@@ -461,35 +531,27 @@ Application
 
 This allows a minimal host to remain minimal while richer hosts can add inspection capabilities without changing the emulated machine.
 
-Current applications illustrate different composition needs:
+Current applications demonstrate different composition needs:
 
 - the Terminal host composes Core with selected Inspection formatting tools for optional trace output;
 - the disassembler application composes Core decoding and memory semantics with Inspection disassembly and instruction formatting;
-- the Web host composes Core execution and CPU observation with Inspection disassembly, bounded trace history, and profile-appropriate formatting to provide live CPU state, nearby instructions, and recent instruction-attempt presentation. It currently allows the user to choose between Classic CHIP-8, CHIP-48 2.25, and SUPER-CHIP 1.1.
+- the Web host composes Core execution and CPU observation with Inspection disassembly, bounded trace history, profile-appropriate formatting, and browser-specific presentation.
 
-The Web host remains responsible for the policy around that composition. It chooses the active machine profile, corresponding instruction formatter, nearby-disassembly window, trace-history capacity, refresh cadence, DOM presentation, and lifecycle behavior without moving those concerns into either reusable package.
-
-Changing the selected profile while a ROM is loaded creates a fresh Web machine session from the retained ROM image. The new session receives the selected profile consistently across initialization, execution, display behavior, runtime timing, font composition, and inspection formatting. Whether the previous session was running or paused is preserved as host lifecycle policy.
-
-Some state intentionally lives above one Web machine session. The Web host owns one `RplFlags` instance for its application lifetime and injects that same store into replacement sessions, so SUPER-CHIP RPL contents survive reset, ROM replacement, and profile recomposition during the current page lifetime. Browser-reload persistence is not currently part of the Core or Web contract.
-
-Reset is different from profile replacement: it reinitializes the existing machine using the profile already retained by that session. Reset restores ordinary machine state and clears interpreter exit, while persistent RPL storage is preserved.
+The Web host also demonstrates two useful lifecycle boundaries without requiring a generic machine/session framework: changing profile recomposes a session around the retained ROM, while host-owned `RplFlags` can outlive an individual session. The exact browser workflow belongs in the [Web application guide](../guides/web-application.md); the architectural evidence is evaluated in [Host composition evaluation](./composition-evaluation.md).
 
 Applications remain responsible for host-specific concerns such as rendering, audio presentation, physical input mapping, filesystem access, DOM or terminal interaction, and lifecycle integration.
 
-The reusable packages deliberately do not require a dependency-injection container or a single mandatory machine factory.
-
-The Terminal application provides optional higher-level composition helpers through its Level 1 / Level 2 / Level 3 model. Evaluation against the Web application showed that this structure is useful for Terminal but does not need to become a mandatory Core or project-wide composition framework.
-
-Different hosts may therefore develop different host-local composition structures around the same reusable boundaries.
+The reusable packages do not require a dependency-injection container or a single mandatory machine factory. Different hosts may develop different host-local composition structures around the same reusable boundaries.
 
 Inspection may depend only on Core's public API. Reaching into `packages/core/src/...` would bypass the package boundary and couple Inspection to private implementation details.
 
-Core must remain usable without any inspection, formatting, disassembly, trace-history, or host-presentation tooling.
+Core must remain usable without inspection, formatting, disassembly, trace-history, or host-presentation tooling.
 
 A future reusable debugger layer, if demonstrated by real execution-control needs, would depend inward on Core. Its exact relationship with Inspection should be determined by actual shared behavior rather than imposed in advance.
 
 See:
 
+- [Machine profiles and variation](./machine-profiles-and-variation.md)
 - [Terminal composition levels](../guides/terminal-composition-levels.md)
+- [Web application](../guides/web-application.md)
 - [Host composition evaluation](./composition-evaluation.md)

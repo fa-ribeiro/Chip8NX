@@ -43,29 +43,51 @@ or:
 const profile = SUPERCHIP_PROFILE;
 ```
 
-The profile supplies stable machine characteristics and compatibility semantics such as:
+A profile combines three kinds of declarative information:
 
 ```text
-memory size
-program start address
-stack capacity
-display specification and refresh frequency
-timer frequency
-small-font image and base address
-optional large-font image and base address
-shift semantics
+machine characteristics
+    memory size
+    program start address
+    stack capacity
+    display specification and refresh frequency
+    timer frequency
+    fonts.small image and base address
+    optional fonts.large image and base address
+
+instructionSet
+    which instruction semantics exist
+
+quirks
+    how instructions shared by supported variants behave
+```
+
+The current built-in instruction-set identities are:
+
+```text
+chip8
+superchip-1.1
+```
+
+Classic CHIP-8 and CHIP-48 currently use the `chip8` instruction set and differ through machine characteristics and shared-instruction quirks. SUPER-CHIP selects `superchip-1.1`, which adds the extension-specific semantics modeled by Core.
+
+For the architecture behind this split, see [Machine profiles and variation](../architecture/machine-profiles-and-variation.md).
+
+Current shared-instruction quirk dimensions include:
+
+```text
+shift source
 memory-transfer index behavior
-jump-offset semantics
+jump-offset source
 logic-flag behavior
 sprite-overflow behavior
 sprite-draw timing behavior
-interpreter-exit availability
-RPL-flag availability
 index-overflow behavior
-zero-row scroll-down behavior
 ```
 
-The profile describes **what machine is being emulated**. Host/runtime policy such as CPU frequency remains separate.
+The profile therefore describes **what machine is being emulated**, but it does not contain mutable machine state or construct components.
+
+Host/runtime policy such as CPU frequency remains separate.
 
 ## 2. Construct machine state and capabilities
 
@@ -100,17 +122,17 @@ const soundTimer = new Timer();
 
 const displayBuffer = new DisplayBuffer(
   profile.display.specification,
-  profile.compatibility.spriteOverflow,
+  profile.quirks.spriteOverflow,
 );
 const verticalBlank = new VerticalBlank();
 
 const keyboard = new KeyboardState();
 
-const font = profile.largeFont === null
-  ? new ClassicFont(profile.fontBaseAddress)
+const font = profile.fonts.large === null
+  ? new ClassicFont(profile.fonts.small.baseAddress)
   : new SuperChipFont(
-    profile.fontBaseAddress,
-    profile.largeFont.baseAddress,
+    profile.fonts.small.baseAddress,
+    profile.fonts.large.baseAddress,
   );
 
 const randomNumberGenerator = new DefaultRandomNumberGenerator();
@@ -121,13 +143,29 @@ const rplFlags = new RplFlags();
 
 `DisplayBuffer` owns emulated display state. For a fixed-display profile, its logical and backing dimensions are the same. For SUPER-CHIP, it owns the current low/high display mode over the shared 128×64 backing framebuffer.
 
-`VerticalBlank` stores display-synchronization opportunities produced by runtime scheduling and consumed by instructions that require them.
+`profile.quirks.spriteOverflow` configures how the display buffer handles sprite pixels that extend beyond display edges. That is a shared-instruction quirk even though the resulting pixel-placement rule is owned by `DisplayBuffer`.
 
-`Font` is a capability rather than an instruction-specific memory-layout dependency. Classic and CHIP-48 use `ClassicFont`; SUPER-CHIP uses `SuperChipFont` so both small and large sprite-address lookup are available.
+`VerticalBlank` stores display-synchronization opportunities produced by runtime scheduling and consumed by draw instructions when the active draw-timing quirk requires them.
 
-`ExitState` represents interpreter exit requested by SUPER-CHIP `00FD` or triggered by historical exit conditions such as invalid `00C0` and `Fx1E` index overflow.
+`Font` is a capability rather than an instruction-specific memory-layout dependency. Classic CHIP-8 and CHIP-48 use `ClassicFont`; SUPER-CHIP uses `SuperChipFont` so both small- and large-sprite address lookup are available.
 
-`RplFlags` represents the eight SUPER-CHIP user flags. Its lifecycle is intentionally longer than ordinary resettable machine state. If a host wants RPL values to survive machine reset or machine-session replacement, it must keep the same `RplFlags` instance across those operations.
+The profile's font definitions and the runtime `Font` capability have related but different roles:
+
+```text
+profile.fonts.small / profile.fonts.large
+    → image bytes + installation addresses
+    → used by initialization and composition
+
+Font
+    → glyph value + requested size → sprite address
+    → used by instruction execution
+```
+
+`ExitState` represents interpreter exit. The selected SUPER-CHIP instruction set can reach it through explicit `00FD` and historical `00C0`; the shared `Fx1E` instruction can also reach it when `profile.quirks.indexOverflow` selects the historical SUPER-CHIP exit behavior.
+
+`RplFlags` represents the eight SUPER-CHIP user flags. The `superchip-1.1` instruction set determines whether `Fx75` / `Fx85` exist; the `RplFlags` object owns the actual stored values.
+
+Its lifecycle is intentionally longer than ordinary resettable machine state. If a host wants RPL values to survive machine reset or machine-session replacement, it must keep the same `RplFlags` instance across those operations.
 
 For a simple one-machine host, constructing it once at application startup is sufficient.
 
@@ -156,6 +194,8 @@ const context: ExecutionContext = {
 
 `ExecutionContext` groups the state and capabilities required by instruction execution. It is not a factory and does not take ownership of their construction or host lifecycle.
 
+It also deliberately does not contain `Chip8Profile`, `Chip8InstructionSet`, or `Chip8Quirks`. Those values configure the composed machine rather than becoming mutable execution state.
+
 The context is deliberately explicit. When a new instruction family demonstrates a genuinely new machine dependency, adding that dependency to the context lets TypeScript identify every composition site that must make an ownership decision.
 
 ## 4. Obtain a program image
@@ -182,7 +222,14 @@ const initializer = new MachineInitializer(new MemoryImageLoader());
 initializer.initialize(context, profile, program);
 ```
 
-Initialization validates known memory-layout relationships before mutation, resets ordinary resettable machine state, installs the profile's small font and optional large font, and loads the program.
+Initialization validates known memory-layout relationships before mutation, resets ordinary resettable machine state, installs `profile.fonts.small.image`, installs `profile.fonts.large.image` when configured, and loads the program.
+
+The corresponding base addresses are taken from:
+
+```text
+profile.fonts.small.baseAddress
+profile.fonts.large.baseAddress
+```
 
 For SUPER-CHIP, initialization also restores the display to its initial low-resolution mode and resets `ExitState`.
 
@@ -210,11 +257,25 @@ import { Cpu, Decoder, InstructionExecutor } from "@chip8nx/core";
 const cpu = new Cpu(
   context,
   new Decoder(),
-  new InstructionExecutor(profile.compatibility),
+  new InstructionExecutor(profile.instructionSet, profile.quirks),
 );
 ```
 
-The decoder remains profile-independent. It recognizes encoded CHIP-8-family instruction syntax, while the executor and the composed machine capabilities provide the semantics required by the selected profile.
+The decoder remains profile-independent. It answers which semantic instruction an opcode encodes.
+
+The executor receives two distinct semantic inputs:
+
+```text
+profile.instructionSet
+    → which instruction semantics belong to this machine
+
+profile.quirks
+    → how instructions shared by supported variants behave
+```
+
+This distinction matters for SUPER-CHIP. For example, `00FD`, `Fx30`, `Fx75`, `Fx85`, display-control instructions, extended `Dxy0`, and high-resolution affected-row `VF` semantics belong to `superchip-1.1`; they are not represented as supported/unsupported quirks.
+
+By contrast, shift source, `Fx55` / `Fx65` index behavior, `Bnnn` offset source, logic-flag behavior, sprite timing, and `Fx1E` overflow handling are shared-instruction quirks.
 
 One normal CPU attempt is:
 
@@ -230,7 +291,7 @@ decode
 execute
 ```
 
-The exit check happens before fetch. Once any SUPER-CHIP interpreter-exit condition marks the interpreter exited, later `cpu.step()` calls become no-ops until initialization resets `ExitState`.
+The exit check happens before fetch. Once a SUPER-CHIP interpreter-exit condition marks the interpreter exited, later `cpu.step()` calls become no-ops until initialization resets `ExitState`.
 
 For a non-exited CPU, the normal sequencing remains important: the program counter is advanced before decoding/execution, and retry-style instructions restore the instruction address when they need to attempt again.
 
@@ -278,6 +339,8 @@ The two profile frequencies have distinct semantics:
 - `profile.timerFrequency` controls delay/sound timer countdown;
 - `profile.display.refreshFrequency` controls emulated display-frame boundaries and therefore the production of vertical-blank opportunities.
 
+The runtime receives those concrete frequencies; it does not receive the profile, instruction set, or quirks themselves.
+
 The runtime starts paused.
 
 ## 8. Start and service execution
@@ -296,7 +359,7 @@ regularly from the host event loop.
 
 The host does **not** need to call `tick()` at the CPU, timer, or display frequency. The deadline-driven scheduler decides which CPU, timer, and display events are due and preserves their emulated chronological order.
 
-SUPER-CHIP does not require a separate scheduler. The runtime continues to produce display opportunities uniformly; instruction execution decides whether the selected profile and current display mode require one.
+SUPER-CHIP does not require a separate scheduler. The runtime continues to produce display opportunities at the configured display frequency; instruction execution decides whether `profile.quirks.spriteDrawTiming` and the current display mode require a particular draw attempt to consume one.
 
 ## Pause and resume
 
@@ -309,6 +372,8 @@ Pause suspends scheduled CPU, timer, and display progression. Host time spent pa
 
 Interpreter exit is different from runtime pause. SUPER-CHIP exit conditions update `ExitState`; they do not call `runtime.pause()` and do not introduce a second runtime lifecycle state.
 
+A runtime may therefore remain resumed while later CPU attempts immediately return because the interpreter is exited.
+
 ## Single-step execution
 
 While paused:
@@ -319,11 +384,13 @@ runtime.step();
 
 performs one CPU **attempt**.
 
-That distinction matters: `Fx0A` or a display-synchronized draw may retry rather than complete a logical instruction on that attempt.
+That distinction matters: `Fx0A` may retry rather than complete a logical instruction on that attempt.
 
-Timers and normal scheduled display time do not advance. A draw that requires vertical blank can receive the runtime's temporary step-time vblank opportunity so debugger-style stepping can make useful progress without advancing scheduled time.
+Timers and normal scheduled display time do not advance. When no vertical-blank opportunity is already pending, the runtime supplies one temporary opportunity around the CPU attempt and removes it afterward if the instruction did not consume it.
 
-For SUPER-CHIP this means:
+That lets vertical-blank-gated drawing make progress while paused without advancing scheduled display time.
+
+For the built-in SUPER-CHIP profile:
 
 ```text
 low-resolution draw
@@ -333,7 +400,9 @@ high-resolution draw
     → immediate
 ```
 
-The runtime remains unaware of SUPER-CHIP display modes; the executor resolves that semantic choice from the profile compatibility and current `DisplayBuffer` mode.
+The runtime does not inspect SUPER-CHIP display modes or `Chip8Quirks`. The executor resolves `spriteDrawTiming` from the injected quirks and the current `DisplayBuffer` mode.
+
+An immediate draw ignores the temporary opportunity, which the runtime then discards if it created it for that step.
 
 ## Rendering
 
@@ -426,7 +495,20 @@ new Cpu + InstructionExecutor
 new Chip8Runtime
 ```
 
-This is important because profiles can differ in more than instruction quirks. SUPER-CHIP changes display specification and font capabilities in addition to compatibility semantics.
+This is important because profiles can differ along several independent axes:
+
+```text
+machine characteristics
+    → memory, stack, display, timing, fonts
+
+instructionSet
+    → extension-specific instruction semantics
+
+quirks
+    → behavior of shared instructions
+```
+
+SUPER-CHIP therefore differs from the base profiles by more than a set of instruction quirks. It also changes display architecture, font resources, and instruction-set membership.
 
 A host may preserve explicitly longer-lived state, such as `RplFlags`, across that recomposition when its lifecycle requires it.
 
@@ -440,6 +522,7 @@ component implementation selection
 ROM I/O
 composition
 longer-lived host ownership such as RPL storage
+CPU frequency selection
 runtime lifecycle calls
 host event loop
 rendering
@@ -451,8 +534,9 @@ The reusable Core owns:
 
 ```text
 CHIP-8-family machine state
-instruction semantics
-profile-defined machine characteristics
+instruction decoding and semantics
+profile model
+shared-instruction quirk model
 machine initialization
 CPU execution
 runtime timing coordination
@@ -464,9 +548,10 @@ The important separation is:
 ```text
 Chip8Profile
     → what machine is being emulated
+    → machine characteristics + instructionSet + quirks
 
 Chip8RuntimeConfiguration
-    → how the host chooses to drive it
+    → how the host chooses to drive CPU execution
 
 ExecutionContext
     → the state and capabilities of the composed machine
@@ -477,7 +562,7 @@ Application
 
 ## Why the manual path remains useful
 
-The Terminal host provides higher-level convenience compositions, while the Web host has now demonstrated profile recomposition across Classic CHIP-8, CHIP-48, and SUPER-CHIP 1.1.
+The Terminal host provides higher-level convenience compositions, while the Web host has demonstrated profile recomposition across Classic CHIP-8, CHIP-48, and SUPER-CHIP 1.1.
 
 Those applications share recognizable construction steps, but they still make different host-level ownership decisions. In particular, the Web application keeps `RplFlags` above individual machine sessions so their contents can survive ROM replacement and profile recomposition.
 

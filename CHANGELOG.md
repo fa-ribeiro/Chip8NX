@@ -12,6 +12,39 @@ During the `0.x` development phase:
 
 ## [Unreleased]
 
+### Added
+
+- Added the public `Chip8InstructionSet` model, separating instruction-set membership and extension-specific semantics from behavioral quirks of shared instructions.
+- Added profile-isolation regression coverage proving that SUPER-CHIP-capable resources do not grant SUPER-CHIP instruction semantics to Classic CHIP-8 or CHIP-48 machines. Coverage includes display controls, `Fx30`, extended `Dxy0`, and high-resolution affected-row `VF` behavior.
+- Added automated Timendus v4.2 Scrolling conformance coverage for the historical SUPER-CHIP target in both legacy low-resolution and high-resolution modes.
+
+### Changed
+
+- Refactored the public `Chip8Profile` semantic model from the previous compatibility aggregate to three explicit concerns:
+  - machine characteristics and resources;
+  - `instructionSet`, which selects which instruction semantics exist;
+  - `quirks`, which select how instructions shared by supported variants behave.
+
+- Narrowed `Chip8Quirks` to shared-instruction variation only. SUPER-CHIP-only semantics such as display controls, `00FD`, historical `00C0`, `Fx30`, `Fx75` / `Fx85`, extended `Dxy0`, and high-resolution affected-row `VF` behavior now follow from the `superchip-1.1` instruction set.
+- Normalized profile font definitions under `fonts.small` and optional `fonts.large`, with each font carrying its image and base address together.
+- Updated `InstructionExecutor` composition to receive `Chip8InstructionSet` and `Chip8Quirks` independently, centralizing SUPER-CHIP membership checks and clarifying sprite-draw timing, form, and `VF` interpretation.
+- Updated machine initialization, public API coverage, profile composition, and host integration to use the revised profile/font model while preserving the existing SUPER-CHIP target behavior and RPL lifetime semantics.
+
+### Fixed
+
+- Removed a duplicated legacy low-resolution Timendus Scrolling conformance test.
+- Corrected conformance fixture documentation metadata and historical SUPER-CHIP `00C0` terminology.
+
+### Documentation
+
+- Reconciled architecture, guide, reference, and release documentation with the `machine characteristics / instructionSet / quirks` model.
+- Added `machine-profiles-and-variation.md` as the canonical architecture reference for machine-profile semantics and CHIP-8-family variation.
+- Restructured large architecture documents to reduce duplicated contracts, clarify topic ownership, and link to canonical explanations instead of re-specifying the same behavior in multiple places.
+- Added reader-oriented documentation navigation, architecture reading paths, topic-ownership guidance, and local tables of contents for the largest documents.
+- Trimmed speculative tracing material and oversized verification inventories while retaining the implemented contracts and representative verification strategy.
+- Updated ADR 0010 with a later-evolution note that preserves the original unified-profile decision while pointing to the current `instructionSet` / `quirks` representation.
+- Restored and reconciled the repository-root project README.
+
 ## [0.9.0] - 2026-09-13 - SUPER-CHIP 1.1
 
 ### Added
@@ -48,7 +81,7 @@ During the `0.x` development phase:
 - Added `Fx75` (`LD R, Vx`) and `Fx85` (`LD Vx, R`) RPL transfer instructions, restricted to the historical `V0`–`V7` range.
 - Added historical SUPER-CHIP `Fx1E` index-overflow behavior: moving `I` beyond the 4 KiB address space exits the interpreter.
 - Added historical SUPER-CHIP `00C0` behavior: the zero-row scroll form exits the interpreter rather than acting as a no-op.
-- Added explicit interpreter-exit state used by historical SUPER-CHIP exit conditions (`00FD`, invalid `00C0`, and `Fx1E` index overflow), with CPU execution becoming inert after exit until machine initialization.
+- Added explicit interpreter-exit state used by historical SUPER-CHIP exit conditions (`00FD`, historical `00C0`, and `Fx1E` index overflow), with CPU execution becoming inert after exit until machine initialization.
 - Added Web-host SUPER-CHIP 1.1 profile selection.
 - Added Web framebuffer rendering of the complete physical display backing store so SUPER-CHIP low- and high-resolution modes are presented correctly.
 

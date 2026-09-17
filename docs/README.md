@@ -2,7 +2,94 @@
 
 This directory contains long-form documentation for the Chip8NX project.
 
-Source-level API behavior should normally be documented with JSDoc close to the TypeScript implementation. Documentation here focuses on concepts that span multiple classes or modules, explains architectural reasoning, and provides task-oriented guides.
+Source-level API behavior should normally be documented with JSDoc close to the TypeScript implementation. Documentation here focuses on concepts that span multiple classes or modules, explains architectural reasoning, records stable implementation/conformance facts, and provides task-oriented guides.
+
+## Start here
+
+If you are new to the project, begin with the [architecture overview](./architecture/overview.md). It explains the Core/Inspection/host boundaries and gives the vocabulary used by the rest of the documentation.
+
+Then choose the reading path that matches what you are trying to understand.
+
+### Understand the machine architecture
+
+```text
+Architecture overview
+    ↓
+Machine state and capabilities
+    ↓
+Machine profiles and variation
+    ↓
+Instruction execution
+    ↓
+Runtime and timing
+    ↓
+Machine lifecycle
+```
+
+- [Architecture overview](./architecture/overview.md)
+- [Machine state and capabilities](./architecture/machine-state-and-capabilities.md)
+- [Machine profiles and variation](./architecture/machine-profiles-and-variation.md)
+- [Instruction execution](./architecture/instruction-execution.md)
+- [Runtime and timing](./architecture/runtime-and-timing.md)
+- [Machine lifecycle](./architecture/machine-lifecycle.md)
+
+### Embed Chip8NX in an application
+
+```text
+Embedding the Core
+    ↓
+Machine initialization
+    ↓
+Machine lifecycle
+    ↓
+Runtime and timing
+```
+
+- [Embedding the Core](./guides/embedding-the-core.md)
+- [Machine initialization](./architecture/machine-initialization.md)
+- [Machine lifecycle](./architecture/machine-lifecycle.md)
+- [Runtime and timing](./architecture/runtime-and-timing.md)
+
+### Understand CHIP-8-family variation and SUPER-CHIP
+
+```text
+Machine profiles and variation
+    ↓
+Instruction execution
+    ↓
+Machine state and capabilities
+    ↓
+Runtime and timing
+    ↓
+SUPER-CHIP 1.1 coverage audit
+```
+
+- [Machine profiles and variation](./architecture/machine-profiles-and-variation.md)
+- [Instruction execution](./architecture/instruction-execution.md)
+- [Machine state and capabilities](./architecture/machine-state-and-capabilities.md)
+- [Runtime and timing](./architecture/runtime-and-timing.md)
+- [SUPER-CHIP 1.1 coverage audit](./reference/superchip-1.1-coverage-audit.md)
+
+### Understand inspection and debugging foundations
+
+```text
+Disassembly
+    ↓
+Tracing
+    ↓
+Web application
+```
+
+- [Disassembly](./architecture/disassembly.md)
+- [Tracing](./architecture/tracing.md)
+- [Web application](./guides/web-application.md)
+
+### Understand host composition decisions
+
+- [Host composition evaluation](./architecture/composition-evaluation.md)
+- [Terminal composition levels](./guides/terminal-composition-levels.md)
+- [Web application](./guides/web-application.md)
+- [ADR 0012 — Application-owned composition](./decisions/0012-application-owned-composition.md)
 
 ## Structure
 
@@ -16,40 +103,41 @@ docs/
 
 ### Architecture
 
-Architecture documents explain how the emulator is structured and how major components collaborate.
+Architecture documents explain how the emulator is structured, which document owns each major semantic contract, and how components collaborate.
 
-See [Architecture](./architecture/README.md).
+See [Architecture](./architecture/README.md) for the detailed map and topic ownership guide.
 
-Current topics include:
+Current architecture topics include:
 
-- the Core and Inspection package architecture, explicit machine profiles, and application-composition boundaries;
-- [instruction execution](./architecture/instruction-execution.md), including fetch/decode/execute orchestration, the typed `Instruction` boundary, Classic/CHIP-48/SUPER-CHIP semantics, interpreter exit, invariant ownership, and verification;
-- [runtime and timing](./architecture/runtime-and-timing.md), including monotonic time, exact deadline scheduling, catch-up, pause/resume semantics, timer and vertical-blank state, display-mode-dependent sprite timing, equal-deadline ordering, single stepping, and interpreter exit behavior;
-- [machine state and capabilities](./architecture/machine-state-and-capabilities.md), including focused mutable state, capability seams, display mode and backing geometry, `ExitState`, persistent RPL flags, small/large-font lookup, profiles, runtime configuration, and reset ownership;
-- [machine initialization](./architecture/machine-initialization.md), including binary images, small/large-font placement, memory-layout validation, validate-before-mutate guarantees, display/exit reset semantics, deliberately preserved RPL state, and ROM-replacement boundaries;
-- [machine lifecycle](./architecture/machine-lifecycle.md), including construction, initialization, paused/running transitions, interpreter exit, single stepping, reset sequencing, profile recomposition, RPL persistence, and application/runtime ownership;
-- [disassembly](./architecture/disassembly.md), including Core decoding semantics, Inspection-owned disassembly and instruction formatting, strict reusable behavior, and application-level exploratory traversal policy;
-- [tracing](./architecture/tracing.md), including Core CPU-attempt observation, success/failure records, retry visibility, non-interference guarantees, and Inspection-owned formatting and bounded history;
-- [host composition evaluation](./architecture/composition-evaluation.md), including the Terminal and Web composition case studies, profile-aware composition, persistent host-owned state, formatter selection, and the evidence for keeping machine/session construction application-owned.
+- [overview](./architecture/overview.md) — package and host boundaries and the high-level system map;
+- [machine state and capabilities](./architecture/machine-state-and-capabilities.md) — mutable machine state, capabilities, invariants, observation, and state-lifetime categories;
+- [machine profiles and variation](./architecture/machine-profiles-and-variation.md) — machine characteristics/resources, `instructionSet`, shared-instruction `quirks`, built-in historical profiles, and profile-extension rules;
+- [instruction execution](./architecture/instruction-execution.md) — fetch/decode/execute orchestration, instruction-set membership, quirk-sensitive execution, retries, interpreter exit, and execution verification;
+- [runtime and timing](./architecture/runtime-and-timing.md) — scheduling, timers, vertical blank, pause/resume, catch-up, equal-deadline ordering, and manual-step timing;
+- [machine initialization](./architecture/machine-initialization.md) — validate-before-mutate initialization, memory/font/program installation, and the exact reset contract;
+- [machine lifecycle](./architecture/machine-lifecycle.md) — construction, initialization, running/paused transitions, interpreter exit, reset sequencing, and session replacement;
+- [disassembly](./architecture/disassembly.md) — Core decoding semantics and Inspection-owned static instruction inspection;
+- [tracing](./architecture/tracing.md) — passive CPU-attempt observation, non-interference, formatting, and bounded history;
+- [host composition evaluation](./architecture/composition-evaluation.md) — evidence from the Terminal and Web hosts for application-owned composition and intentionally deferred abstractions.
 
 ### Guides
 
-Guides explain how to accomplish larger tasks using the emulator or how to understand host-level composition.
+Guides explain how to accomplish concrete tasks using the emulator or how to work with host-level composition.
 
 See [Guides](./guides/README.md).
 
 Current topics include:
 
-- embedding the CHIP-8 Core in an application, including profile-driven Classic, CHIP-48, and SUPER-CHIP composition;
-- disassembling CHIP-8 programs, customizing instruction formatting, and exploratory whole-ROM inspection;
-- terminal composition levels and terminal component diagrams;
-- continuous integration;
-- preparing, verifying, and tagging project releases, including application-level manual verification;
-- the Web application and browser-host composition, including selectable machine profiles, SUPER-CHIP framebuffer presentation, execution controls, responsive play-and-inspection layout, passive machine inspection, keyboard adaptation, audio, and appearance themes.
+- embedding the CHIP-8 Core in an application;
+- disassembling CHIP-8 programs and performing exploratory whole-ROM inspection;
+- understanding Terminal composition levels;
+- understanding the Web application and browser-host composition;
+- reproducing continuous integration locally;
+- preparing and verifying project releases.
 
 ### Reference
 
-Reference documents record stable implementation and conformance facts.
+Reference documents record stable implementation and conformance facts rather than teaching the architecture from first principles.
 
 See [Reference](./reference/README.md).
 
@@ -64,7 +152,32 @@ Architecture Decision Records preserve significant design choices and their reas
 
 See [Architecture Decision Records](./decisions/README.md).
 
-ADRs are historical records. New experiments and later machine-profile evidence should not rewrite accepted ADRs unless the project deliberately adopts a new architectural decision.
+ADRs are historical records. New experiments, later machine-profile evidence, and subsequent refactors should not rewrite accepted ADRs as though the newer architecture had existed when the original decision was made. When needed, document later consequences or superseding decisions explicitly.
+
+## Documentation ownership rule
+
+When several documents touch the same subject, prefer one canonical explanation and short contextual summaries elsewhere.
+
+For example:
+
+```text
+profile semantics
+    → machine-profiles-and-variation.md
+
+exact initialization/reset contents
+    → machine-initialization.md
+
+manual-step / vertical-blank timing
+    → runtime-and-timing.md
+
+lifecycle sequencing
+    → machine-lifecycle.md
+
+historical SUPER-CHIP coverage/evidence
+    → reference/superchip-1.1-coverage-audit.md
+```
+
+Cross-links should carry readers to the owning document rather than reproducing the full contract in every related page.
 
 ## API documentation
 

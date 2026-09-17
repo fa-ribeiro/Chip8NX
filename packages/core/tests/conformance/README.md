@@ -25,6 +25,7 @@ deno test --allow-read packages/core/tests/conformance/timendus-corax-plus.test.
 deno test --allow-read packages/core/tests/conformance/timendus-flags.test.ts
 deno test --allow-read packages/core/tests/conformance/timendus-quirks.test.ts
 deno test --allow-read packages/core/tests/conformance/timendus-keypad.test.ts
+deno test --allow-read packages/core/tests/conformance/timendus-scrolling.test.ts
 deno test --allow-read packages/core/tests/conformance/variant-detection.test.ts
 ```
 
@@ -168,16 +169,25 @@ Chip8NX does not redistribute this ROM.
 
 The Timendus CHIP-8 test suite is licensed under GPL-3.0. The external ROM remains subject to its upstream license and is not covered by the Chip8NX MIT license.
 
-The automated test selects the Classic CHIP-8 target by writing `1` to address `0x1FF`, using the automation mechanism provided by the Timendus suite.
+Chip8NX uses the Timendus automation byte at address `0x1FF` to exercise more than one supported profile:
 
-The test verifies these compatibility behaviors:
+```text
+1 = Classic CHIP-8
+4 = legacy SUPER-CHIP
+```
 
-- `VF` reset by `8XY1`, `8XY2`, and `8XY3`;
-- `I` increment after `FX55` and `FX65`;
-- display synchronization with vertical blank;
-- sprite clipping and coordinate wrapping;
+The Classic run uses `CLASSIC_CHIP8_PROFILE`. The legacy SUPER-CHIP run uses `SUPERCHIP_PROFILE` and finishes in low-resolution mode. Both execute through the normal machine initialization, CPU, runtime, scheduler, timer, vertical-blank, and display pipeline.
+
+The ROM provides external evidence for these shared-instruction quirks:
+
+- logical-operation handling of `VF`;
+- `I` updates after `FX55` and `FX65`;
+- sprite-draw synchronization behavior;
+- sprite clipping / overflow behavior;
 - `8XY6` and `8XYE` shift-source behavior;
-- `BNNN` jump-offset behavior.
+- `BNNN` / `BXNN` jump-offset behavior.
+
+These are modeled by `Chip8Quirks`: they describe how instructions shared by supported machine families behave. SUPER-CHIP-only instruction membership is modeled separately by `Chip8InstructionSet` and is not what this ROM is primarily testing.
 
 #### Timendus Keypad Test
 
@@ -241,7 +251,18 @@ Chip8NX does not redistribute this ROM.
 
 The Timendus CHIP-8 test suite is licensed under GPL-3.0. The external ROM remains subject to its upstream license and is not covered by the Chip8NX MIT license.
 
-The scrolling ROM provides automated selections at address `0x1FF`, including historical SUPER-CHIP low-resolution behavior and SUPER-CHIP high-resolution behavior. These modes will be used by the dedicated SUPER-CHIP conformance tests.
+The scrolling ROM provides automated selections at address `0x1FF`. Chip8NX currently exercises these two SUPER-CHIP paths:
+
+```text
+2 = legacy SUPER-CHIP low-resolution scrolling
+3 = SUPER-CHIP high-resolution scrolling
+```
+
+Both automated tests use `SUPERCHIP_PROFILE` and therefore the `superchip-1.1` instruction-set semantics.
+
+The low-resolution run verifies historical scrolling in physical backing-buffer units while the display remains in low mode. The high-resolution run verifies the same SUPER-CHIP scrolling instructions in high mode. In both cases, the test checks the final arrow glyph regions produced by the ROM after `00FB`, `00FC`, and `00Cn` scrolling.
+
+The tests run through the normal machine initialization, CPU, runtime, scheduler, timer, vertical-blank, and display pipeline rather than invoking display helpers directly.
 
 ### Gulrak Variant Detection Test
 
@@ -267,7 +288,7 @@ Chip8NX does not redistribute this ROM.
 
 The Variant Detection Test is published by Steffen Schümann (Gulrak) as part of the Cadmium project, which is MIT-licensed. The external ROM remains subject to its upstream license and is not covered by the Chip8NX MIT license.
 
-The test identifies historical CHIP-8 variants and reports compatibility-sensitive behavior for:
+The test identifies historical CHIP-8 variants and reports variant-sensitive shared-instruction behavior for:
 
 - `VF` reset by `8XY1`, `8XY2`, and `8XY3`;
 - `I` updates after `FX55` and `FX65`;
@@ -327,11 +348,11 @@ Get-FileHash packages/core/tests/conformance/roms/variant-detection-1.4.ch8 -Alg
 
 ## Future Fixtures
 
-Further Timendus fixtures will be added when they exercise behavior applicable to the supported Chip8NX machine profiles.
+Further Timendus fixtures may be added when they exercise behavior applicable to the supported Chip8NX machine profiles and when their automation and expected completion state can be made deterministic.
 
-The Timendus Beep test depends on host audio presentation and is therefore deferred until Chip8NX has an appropriate audio integration boundary.
+The Timendus Beep test exercises sound presentation rather than only Core timer state. It is therefore not currently part of this Core conformance suite; adding it would require an explicit conformance strategy for the host/audio boundary rather than treating browser or terminal audio as a Core machine requirement.
 
-The Timendus Scrolling test is not applicable to the Classic CHIP-8 profile. It is now relevant to the supported SUPER-CHIP 1.1 profile and is a candidate for future automated SUPER-CHIP conformance coverage once its exact legacy mode, fixture version, checksum, and expected completion state are pinned here.
+The Timendus Scrolling fixture is no longer future work: its exact v4.2 fixture identity is pinned above and the repository contains automated SUPER-CHIP low- and high-resolution conformance tests for it.
 
 When a new fixture becomes part of an automated conformance test:
 

@@ -27,6 +27,23 @@ apps/web
 
 Core determines what the CHIP-8 machine does. Inspection provides passive, host-independent ways to inspect what Core exposes. The Web application decides how those capabilities are composed and presented in a browser.
 
+## In this document
+
+- [Run the application](#run-the-application)
+- [Architecture](#architecture)
+- [Web machine session](#web-machine-session)
+- [Inspection snapshot](#inspection-snapshot)
+- [Input](#input)
+- [Display](#display)
+- [Sound](#sound)
+- [Runtime and host loop](#runtime-and-host-loop)
+- [Execution controls](#execution-controls)
+- [Machine profile selection](#machine-profile-selection)
+- [Loading another ROM](#loading-another-rom)
+- [Status and machine configuration](#status-and-machine-configuration)
+- [Appearance lifecycle](#appearance-lifecycle)
+- [Composition lessons](#composition-lessons)
+
 ## Run the application
 
 From the repository root:
@@ -50,8 +67,9 @@ The Web host currently provides:
 - bounded best-effort disassembly around the current program counter;
 - bounded recent CPU instruction-attempt history;
 - responsive desktop and narrow-screen layouts;
-- persistent Retro Green, Retro Amber, and Dark appearance themes;
-- theme-aware framebuffer presentation.
+- persistent Retro Green, Retro Amber, Dark, and LCD Calculator appearance themes;
+- theme-aware framebuffer and favicon presentation;
+- a compact status area that separates transient messages from machine/runtime configuration facts.
 
 Loading a valid ROM creates and initializes a fresh Web session using the currently selected machine profile and starts execution immediately.
 
@@ -642,7 +660,7 @@ See [Runtime and timing architecture](../architecture/runtime-and-timing.md).
 
 ### SUPER-CHIP interpreter exit
 
-SUPER-CHIP interpreter-exit conditions mark Core's `ExitState` as exited. These include explicit `00FD`, historical invalid `00C0`, and `Fx1E` index overflow. They do **not** automatically pause `Chip8Runtime` or stop the browser host loop.
+SUPER-CHIP interpreter-exit conditions mark Core's `ExitState` as exited. These include explicit `00FD`, the historical SUPER-CHIP `00C0` interpretation, and `Fx1E` index overflow when the profile's shared-instruction quirk selects interpreter exit. They do **not** automatically pause `Chip8Runtime` or stop the browser host loop.
 
 Subsequent scheduled CPU attempts become no-ops because `Cpu.step()` checks `ExitState` before fetching another opcode. Timers, host-loop servicing, rendering, and browser lifecycle remain separate concerns.
 
@@ -835,6 +853,23 @@ SUPER-CHIP 1.1
 
 The selected profile is used whenever a ROM is loaded. A loaded machine also retains its exact `Chip8Profile` in `WebMachineSession`, so Reset always reinitializes with the profile that actually created that session.
 
+The Web host treats the profile as a declarative machine definition with three distinct kinds of input:
+
+```text
+machine characteristics
+    → memory, stack, display, timing, fonts
+
+instructionSet
+    → which instruction semantics exist
+
+quirks
+    → how shared instructions vary
+```
+
+Those values are consumed during composition rather than copied into independent Web-side feature flags.
+
+See [Machine profiles and variation](../architecture/machine-profiles-and-variation.md) for the canonical profile model.
+
 ### Recomposing a loaded machine
 
 Changing the profile while a ROM is loaded does not mutate the existing machine in place.
@@ -864,12 +899,13 @@ The replacement receives profile-specific machine construction, including:
 
 - memory and stack characteristics;
 - display specification;
-- font capability and optional large font;
-- compatibility-controlled instruction execution;
+- small-font and optional large-font resources plus the corresponding `Font` capability;
+- `profile.instructionSet`, which selects the instruction semantics available to the machine;
+- `profile.quirks`, which selects behavioral variation of shared instructions and configures sprite overflow where required;
 - timer and display refresh frequencies;
 - an inspection formatter appropriate to the selected profile.
 
-Classic uses `ClassicInstructionFormatter`. CHIP-48 and SUPER-CHIP currently use the CHIP-48-style formatter for compatibility-sensitive instruction presentation while sharing the common formatting support for SUPER-CHIP instructions.
+Classic uses `ClassicInstructionFormatter`. CHIP-48 and SUPER-CHIP currently use the CHIP-48-style formatter for instructions whose presentation follows CHIP-48-style shared semantics, while sharing the common formatting support for SUPER-CHIP instructions.
 
 The Web host does not add a generic profile manager or variant hierarchy. The selector is application policy that chooses an existing `Chip8Profile` and then uses the same explicit composition path as normal ROM loading.
 
@@ -889,7 +925,7 @@ Web application lifetime
               └── later replacements
 ```
 
-This models the longer-lived storage required by the targeted SUPER-CHIP behavior without making browser-local storage part of Core. Reloading the browser still creates a new application-level RPL store.
+This models the longer-lived storage required by the targeted SUPER-CHIP behavior without making browser-local storage part of Core. The `superchip-1.1` instruction set determines whether `Fx75` / `Fx85` exist; the host-owned `RplFlags` instance determines how long their stored values live. Reloading the browser still creates a new application-level RPL store.
 
 ## Loading another ROM
 
@@ -947,6 +983,38 @@ This allows selecting the same ROM file again to produce a new change event and 
 
 The persistent ROM filename describes the successfully loaded machine; transient loading, running, paused, reset, and failure information belongs to the separate status presentation.
 
+## Status and machine configuration
+
+The footer separates transient application status from stable machine/runtime configuration.
+
+The free-form status area is used for lifecycle and error messages such as loading, running, paused, reset, and failure states. Beside it, a compact definition list presents facts derived from the current profile or composed machine:
+
+```text
+profile
+CPU host frequency
+timer frequency
+display refresh frequency
+current display resolution / mode
+Chip8NX version
+```
+
+These values do not all have the same ownership.
+
+```text
+profile / timer / refresh / display definition
+    → selected Chip8Profile and current DisplayBuffer
+
+CPU frequency
+    → Web host/runtime policy
+
+version
+    → application/release metadata
+```
+
+Before a ROM is loaded, the display entry describes the selected profile's initial display. After composition, it is derived from the live `DisplayBuffer`, so SUPER-CHIP mode changes are reflected as `LOW` or `HIGH` together with the current logical resolution.
+
+The status area therefore presents existing configuration/state; it does not introduce a second source of truth for machine semantics.
+
 ## Appearance lifecycle
 
 Appearance is Web presentation state and is independent of the loaded CHIP-8 session.
@@ -957,6 +1025,7 @@ The selected theme is persisted through browser local storage when possible:
 Retro Green
 Retro Amber
 Dark
+LCD Calculator
 ```
 
 Storage failure is non-fatal. A browser that cannot persist the selection can still run the emulator.
@@ -969,7 +1038,9 @@ Changing theme does not:
 - clear trace history;
 - alter CHIP-8 framebuffer state.
 
-CSS updates the application interface, while the host updates `CanvasDisplay` with the display colors resolved from the selected theme and redraws the current framebuffer.
+CSS updates the application interface, while the host updates `CanvasDisplay` with the display colors resolved from the selected theme, redraws the current framebuffer, and regenerates the theme-aware favicon.
+
+Themes select color palettes only. Component structure, layout, spacing, typography, and behavior remain shared across themes rather than becoming theme-specific variants.
 
 This keeps appearance policy entirely outside the emulated machine.
 
@@ -1062,7 +1133,9 @@ profile selector
     Web policy
         ↓
 Chip8Profile
-    machine description
+    machine characteristics
+    instructionSet
+    quirks
         ↓
 explicit component composition
 ```

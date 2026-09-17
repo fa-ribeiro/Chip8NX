@@ -120,9 +120,11 @@ This gives execution and inspection one authoritative interpretation of the inst
 
 `Decoder` belongs to `@chip8nx/core`.
 
-Its responsibility is to translate an `Opcode` into a typed `Instruction` according to the machine's instruction-set semantics.
+Its responsibility is to translate a supported encoded `Opcode` into a typed `Instruction` without consulting the active machine profile.
 
 It is authoritative for opcode interpretation and validation. Disassembly does not maintain a parallel decoder.
+
+Whether the decoded instruction is executable by a particular machine is a later execution concern: `InstructionExecutor` enforces the selected `Chip8InstructionSet`, while shared behavioral differences come from `Chip8Quirks`.
 
 `Decoder` currently has one demonstrated implementation, so the project does not introduce a speculative decoder interface merely to make the dependency graph symmetrical.
 
@@ -144,7 +146,7 @@ Different textual conventions can be introduced without changing Core execution 
 
 ### Built-in instruction formatters
 
-`ClassicInstructionFormatter` provides the conventional Classic CHIP-8 representation. `Chip48InstructionFormatter` provides the demonstrated CHIP-48-style presentation differences, including compatibility-sensitive forms such as offset jumps and shifts.
+`ClassicInstructionFormatter` provides the conventional Classic CHIP-8 representation. `Chip48InstructionFormatter` provides the demonstrated CHIP-48-style presentation differences for shared instructions such as offset jumps and shifts.
 
 It produces conventional uppercase assembly such as:
 

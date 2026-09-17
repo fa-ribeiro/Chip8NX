@@ -22,7 +22,10 @@ The lifecycle is intentionally distributed across explicit responsibilities:
 
 ```text
 Application
-    → construction and lifecycle coordination
+    → profile selection, construction, and lifecycle coordination
+
+Chip8Profile
+    → declarative machine definition
 
 MachineInitializer
     → initial/reset machine state
@@ -37,15 +40,33 @@ See also:
 
 - [Machine initialization architecture](./machine-initialization.md)
 - [Machine state and capabilities architecture](./machine-state-and-capabilities.md)
+- [Machine profiles and variation](./machine-profiles-and-variation.md)
 - [Runtime and timing architecture](./runtime-and-timing.md)
 - [Instruction execution architecture](./instruction-execution.md)
 - [ADR 0012 — Application-owned composition](../decisions/0012-application-owned-composition.md)
+
+## In this document
+
+- [Construction](#construction)
+- [Initialization](#initialization)
+- [Runtime Startup](#runtime-startup)
+- [Running](#running)
+- [Pause](#pause)
+- [Resume](#resume)
+- [Single Stepping](#single-stepping)
+- [`Fx0A` Does Not Pause the Runtime](#fx0a-does-not-pause-the-runtime)
+- [Interpreter Exit Does Not Pause the Runtime](#interpreter-exit-does-not-pause-the-runtime)
+- [Reset](#reset)
+- [ROM Replacement](#rom-replacement)
+- [Profile Replacement](#profile-replacement)
+- [Lifecycle Ownership](#lifecycle-ownership)
+- [Lifecycle Design Rules](#lifecycle-design-rules)
 
 ## Construction
 
 Construction belongs to the application composition root.
 
-The application chooses concrete implementations and assembles the object graph:
+The application selects a `Chip8Profile`, chooses concrete implementations, and assembles the object graph:
 
 ```ts
 const profile = CLASSIC_CHIP8_PROFILE;
@@ -57,10 +78,20 @@ const programCounter = new ProgramCounter(profile.programStartAddress);
 
 const displayBuffer = new DisplayBuffer(
   profile.display.specification,
-  profile.compatibility.spriteOverflow,
+  profile.quirks.spriteOverflow,
 );
 
-const executor = new InstructionExecutor(profile.compatibility);
+const font = profile.fonts.large === null
+  ? new ClassicFont(profile.fonts.small.baseAddress)
+  : new SuperChipFont(
+    profile.fonts.small.baseAddress,
+    profile.fonts.large.baseAddress,
+  );
+
+const executor = new InstructionExecutor(
+  profile.instructionSet,
+  profile.quirks,
+);
 
 const verticalBlank = new VerticalBlank();
 const keyboard = new KeyboardState();
@@ -78,9 +109,22 @@ and:
 
 The selected profile constrains construction without constructing the objects itself.
 
-It does not install the font/program or establish the complete runnable state.
+Its fields participate at different boundaries:
 
-Some state may deliberately outlive one constructed machine session. `RplFlags` is the current demonstrated case: a host may own one RPL store above individual machine sessions and inject it into each new `ExecutionContext`.
+```text
+machine characteristics
+    → memory, stack, display, timing, fonts
+
+instructionSet
+    → which instruction semantics exist
+
+quirks
+    → how shared instructions vary
+```
+
+Construction does not install the configured font images or program, establish the complete runnable state, or begin scheduled execution.
+
+Some state may deliberately outlive one constructed machine session. `RplFlags` is the current demonstrated case: a host may own one RPL store above individual machine sessions and inject that same store into each new `ExecutionContext`.
 
 See [Machine state and capabilities architecture](./machine-state-and-capabilities.md) for composition roles and state/capability ownership.
 
@@ -104,7 +148,7 @@ machine ready while runtime remains paused
 
 Known invalid memory-layout relationships are rejected before mutation begins.
 
-Initialization resets ordinary execution state such as registers, timers, stack state, display state, and `ExitState`. It also restores profile-defined display initialization, which means a SUPER-CHIP display returns to its initial low-resolution mode.
+Initialization resets ordinary execution state such as registers, timers, stack state, display state, keyboard interpreter state, vertical-blank state, and `ExitState`. It also restores profile-defined display initialization, which means a SUPER-CHIP display returns to its initial low-resolution mode.
 
 Initialization deliberately does **not** clear `RplFlags`.
 
@@ -118,11 +162,14 @@ persistent RPL state
     → preserved across initialization
 ```
 
+The profile's instruction-set identity determines whether RPL instructions exist; it does not own the RPL values or their lifetime.
+
 Initialization does not:
 
 ```text
 construct components
 perform host file I/O
+select a different profile
 pause/resume the runtime
 render output
 rebuild the host session
@@ -148,7 +195,7 @@ flowchart LR
     Build --> Init --> Paused --> Resume --> Tick
 ```
 
-Runtime timing is also derived partly from the selected profile.
+Runtime timing is derived partly from the selected profile and partly from host/runtime policy.
 
 For example:
 
@@ -191,6 +238,16 @@ The deadline-driven scheduler determines which emulated occurrences are due from
 
 The host event-loop frequency is therefore not the emulator's CPU/timer/display timing model.
 
+When scheduled deadlines are equal, registration order gives a deterministic machine-visible order:
+
+```text
+vertical blank
+    ↓
+timers
+    ↓
+CPU
+```
+
 See [Runtime and timing architecture](./runtime-and-timing.md) for deadline ordering, catch-up, equal-deadline policy, and exact timing semantics.
 
 ## Pause
@@ -217,7 +274,7 @@ The distinction is:
 
 ```text
 pause
-    → preserve state
+    → preserve machine state
     → stop scheduled progression
 
 reset
@@ -225,6 +282,8 @@ reset
 ```
 
 This makes pause suitable for debugging and inspection.
+
+Pausing also does not change `ExitState`. Runtime lifecycle and interpreter lifecycle remain independent axes.
 
 ## Resume
 
@@ -236,9 +295,11 @@ runtime.resume();
 
 reactivates scheduled progression.
 
-Resume does not replay elapsed paused time. Each suspended task is rebased from the current clock time.
+Resume does not replay elapsed paused time. Each suspended task is rebased from the current scheduler time.
 
 Calling `resume()` on an already-running runtime is idempotent and does not rebase active deadlines.
+
+Resume also does not alter interpreter state. If `ExitState` is already exited, the runtime may be running while CPU attempts remain inert.
 
 Detailed scheduler semantics belong in [Runtime and timing architecture](./runtime-and-timing.md).
 
@@ -252,61 +313,29 @@ One call to:
 runtime.step();
 ```
 
-performs one CPU **attempt**.
+performs one CPU **attempt** and leaves the runtime paused.
 
-It does not:
-
-```text
-advance scheduler time
-tick the delay timer
-tick the sound timer
-advance the normal scheduled display task
-resume the runtime
-```
-
-The word _attempt_ matters because an instruction may deliberately wait and retry.
-
-Examples include:
+At the lifecycle level, stepping means:
 
 ```text
-Fx0A
-    → wait for keyboard press/release lifecycle
-
-Dxyn
-    → wait for a display opportunity when the active profile/mode requires it
+paused runtime
+    ↓
+one Cpu.step() attempt
+    ↓
+paused runtime
 ```
 
-The runtime remains paused after the step.
+Normal scheduled time does not advance, so timer tasks and the regular display task do not progress as part of the step.
 
-### Display-synchronized draw during a step
+The word _attempt_ matters because an instruction can deliberately remain incomplete and retry later. `Fx0A` is one example; a vertical-blank-gated draw is another. If the interpreter has already exited, the single `Cpu.step()` call reaches the exit guard and performs no fetch or execution.
 
-Sprite-draw timing is profile-controlled and may be either uniform or display-mode-dependent.
+Paused stepping also has a specific vertical-blank contract so display-synchronized instructions can be attempted without temporarily resuming the scheduler. `Chip8Runtime` supplies and cleans up that opportunity according to the runtime timing rules; lifecycle code does not inspect the opcode, draw-timing quirk, or current display mode.
 
-Classic CHIP-8 and CHIP-48 use vertical-blank-gated drawing.
-
-SUPER-CHIP 1.1 demonstrates mode-dependent timing:
-
-```text
-low-resolution mode
-    → vertical-blank gated
-
-high-resolution mode
-    → immediate
-```
-
-Because normal vertical-blank scheduling is suspended while paused, `runtime.step()` may temporarily make one display opportunity available when the current instruction semantics require one and none is already pending.
-
-Immediate drawing does not require that aid.
-
-The temporary opportunity exists only so debugger-style stepping can make useful progress.
-
-Scheduled time still does not advance.
-
-The exact preservation/cleanup rules are documented in [Runtime and timing architecture](./runtime-and-timing.md).
+The authoritative rules for temporary vertical blank, preservation of preexisting pending state, cleanup of unused temporary state, and the distinction between immediate and vertical-blank-gated drawing are documented in [Runtime and timing architecture](./runtime-and-timing.md#single-step-timing-semantics).
 
 ## `Fx0A` Does Not Pause the Runtime
 
-Classic `Fx0A` waits for a key press followed by release.
+`Fx0A` waits for the keyboard's required press-then-release lifecycle.
 
 During normal running, this does **not** call:
 
@@ -340,15 +369,28 @@ See [Instruction execution architecture](./instruction-execution.md) for retry s
 
 ## Interpreter Exit Does Not Pause the Runtime
 
-SUPER-CHIP interpreter-exit conditions mutate `ExitState`. These include explicit `00FD`, historical invalid `00C0`, and `Fx1E` index overflow.
+SUPER-CHIP interpreter-exit semantics mutate `ExitState`.
 
-It does not call:
+In the current historical SUPER-CHIP 1.1 model, exit can occur through:
+
+```text
+00FD
+    → explicit SUPER-CHIP interpreter exit
+
+00C0
+    → historical SUPER-CHIP 1.1 zero-scroll interpretation
+
+Fx1E overflow
+    → shared instruction whose configured indexOverflow quirk selects exit
+```
+
+None of these calls:
 
 ```ts
 runtime.pause();
 ```
 
-and it does not throw an exception to escape execution.
+and none throws an exception merely to escape the runtime.
 
 Instead:
 
@@ -361,7 +403,7 @@ current instruction attempt completes normally
     ↓
 later Cpu.step() calls observe ExitState before fetch
     ↓
-CPU attempt becomes a no-op
+CPU work becomes a no-op
 ```
 
 This creates an important distinction:
@@ -378,85 +420,46 @@ The two are intentionally independent.
 
 If the runtime remains resumed after interpreter exit, scheduler occurrences may continue and timers/display timing may continue to advance, but CPU steps no longer fetch or execute instructions.
 
-A host may choose to react to an exited machine in its own UI or lifecycle policy, but Core does not automatically convert interpreter exit into runtime pause.
+A host may choose to react to an exited machine in its own UI or lifecycle policy, but Core does not automatically convert interpreter exit into runtime pause, process termination, or an application callback.
 
-Machine initialization resets `ExitState`, making execution possible again after Reset or reinitialization.
+Machine initialization resets `ExitState`, making CPU execution possible again after reset or reinitialization.
 
 ## Reset
 
-Reset reuses machine initialization.
+Reset is a lifecycle operation built from machine initialization.
 
-A typical lifecycle sequence is:
+A typical host sequence is:
 
 ```text
-running
+running or paused session
     ↓
 runtime.pause()
     ↓
 MachineInitializer.initialize(
   existing context,
-  profile,
-  program
+  session profile,
+  session program
 )
     ↓
-paused at defined initial state
+paused at the defined initial state
 ```
 
-Reset must reuse the profile already associated with the current machine session.
-
-Conceptually:
-
-```text
-machine session
-    ├── profile
-    ├── program
-    └── execution state
-```
-
-Reset changes the resettable execution state while retaining:
+Reset keeps the identity of the current machine session:
 
 ```text
 same profile
 same program
 same composed object graph
-same persistent RPL storage
+same longer-lived RPL storage
 ```
 
-A host must therefore not silently substitute a default profile during reset.
+while re-establishing the resettable state defined by initialization. A host must therefore not silently substitute a default profile or another ROM when the user asks to reset the current machine.
 
-Reset does not require reconstructing every Core component.
+`MachineInitializer` owns the exact reset/install contract, including memory reconstruction, display reset, interpreter-state reset, font/program installation, validation guarantees, and deliberate preservation of `RplFlags`. Those details are documented once in [Machine initialization architecture](./machine-initialization.md).
 
-This is different from changing the selected profile.
+Initialization itself does not resume the runtime. After reset, the application explicitly decides whether the machine remains paused or resumes execution.
 
-A different profile may configure:
-
-```text
-different font data
-different display specification
-different timing
-different instruction semantics
-different display behavior
-```
-
-so a host may reasonably treat profile replacement as construction of a fresh machine session rather than reset of the existing one.
-
-The existing object graph can remain in place while the initializer:
-
-```text
-resets ordinary mutable machine state
-re-establishes control/timer state
-resets display pixels and initial display mode
-resets interpreter exit state
-reinstalls small and optional large font data
-reloads the program image
-preserves RPL flags
-```
-
-The runtime should be paused before reinitialization.
-
-Initialization itself does not resume the runtime afterward; the application explicitly chooses whether to remain paused or call `resume()`.
-
-Detailed reset scope, memory restoration, keyboard/RNG lifecycle, RPL persistence, failure guarantees, and ROM-replacement alternatives belong in [Machine initialization architecture](./machine-initialization.md).
+A profile change is not reset: it changes the machine definition and may require a differently composed object graph.
 
 ## ROM Replacement
 
@@ -482,20 +485,9 @@ initialize new program
 
 `MachineInitializer` supports in-place reuse, but Core does not require it.
 
-The current Web host, for example:
+The current Web host uses a fresh session when a new ROM is loaded. Reset, by contrast, reuses the current session.
 
-```text
-Reset
-    → reuses the existing graph and retained profile
-
-new ROM
-    → composes a fresh session
-
-new profile
-    → composes a fresh session from the retained ROM image
-```
-
-The Web application deliberately owns one `RplFlags` instance above those individual sessions, so SUPER-CHIP RPL contents survive ROM replacement within the same application lifetime.
+The Web application deliberately owns one `RplFlags` instance above those individual sessions, so RPL contents survive ROM replacement within the same application lifetime.
 
 That persistence is host-lifetime state, not browser-storage persistence. Reloading or restarting the application creates a new RPL store.
 
@@ -503,72 +495,45 @@ This distinction keeps Core lifecycle semantics separate from frontend/session p
 
 ## Profile Replacement
 
-Changing the active `Chip8Profile` is an application-session decision rather than a Core runtime transition.
+Changing the active `Chip8Profile` is an application-session decision rather than a Core runtime transition. A profile describes **what machine is being emulated**, so replacement is conceptually broader than reset.
 
-A profile describes what machine is being emulated, so replacing it is conceptually broader than Reset.
-
-The current Web host uses:
+The current Web host treats profile replacement as recomposition:
 
 ```text
-existing session
-    ├── retained ROM image
-    ├── current running / paused host state
-    └── host-owned RPL storage
-
-user selects another profile
+retained ROM image
+    +
+selected Chip8Profile
+    +
+host-owned longer-lived state where required
     ↓
-compose fresh machine session
+compose and initialize replacement session
     ↓
-initialize retained ROM using new profile
-    ↓
-select matching inspection formatter
-    ↓
-reuse host-owned RPL storage
-    ↓
-preserve previous running / paused policy
+install replacement using host lifecycle policy
 ```
 
-The fresh session receives the selected profile consistently across:
+This ensures the replacement machine receives the selected profile consistently across machine characteristics, instruction-set membership, shared-instruction quirks, timing, resources, and inspection presentation. The exact meaning of those profile dimensions belongs in [Machine profiles and variation](./machine-profiles-and-variation.md).
 
-```text
-memory / stack / PC construction
-display specification
-small and optional large font installation
-instruction compatibility
-sprite-overflow behavior
-sprite-draw timing
-timer frequency
-display frequency
-inspection formatting
-```
+Session-local execution state such as trace history does not survive replacement in the current Web host. `RplFlags` are different because their lifetime is deliberately owned above individual Web sessions, so the same store can be injected into the replacement.
 
-Trace history and other session-local execution state are not preserved because the replacement represents a new emulated machine.
-
-Persistent RPL storage is deliberately different: it belongs to a longer host-managed lifetime and is therefore reused by the current Web application across profile recomposition.
-
-This gives three distinct host operations:
+The lifecycle distinction is:
 
 ```text
 Reset
-    → same profile
+    → same machine definition
     → same ROM
     → same object graph
-    → reinitialize resettable machine state
-    → preserve RPL flags
+    → reinitialize resettable state
 
 ROM replacement
-    → host chooses whether to reuse or rebuild
     → different program
-    → may preserve longer-lived host-owned state
+    → host chooses whether to reuse or rebuild
 
 Profile replacement
     → different machine definition
-    → current Web host rebuilds the session
-    → may reuse retained ROM bytes
-    → preserves host-owned RPL storage
+    → host may need a newly composed session
 ```
 
-Core does not prescribe that exact host policy. It supplies the profile, initialization, execution, state, and runtime boundaries that make the policy explicit.
+Core provides the profile, initialization, execution, state, and runtime boundaries; the host owns the replacement policy. The current browser workflow is documented in [Web application](../guides/web-application.md), while the architectural evidence for keeping recomposition application-owned is summarized in [Host composition evaluation](./composition-evaluation.md).
 
 ## Lifecycle Ownership
 
@@ -576,6 +541,8 @@ Core does not prescribe that exact host policy. It supplies the profile, initial
 flowchart TD
     Host["Application / host"]
     Profile["Chip8Profile"]
+    InstructionSet["Chip8InstructionSet"]
+    Quirks["Chip8Quirks"]
     Init["MachineInitializer"]
     Runtime["Chip8Runtime"]
     State["Machine state / configured components"]
@@ -583,9 +550,14 @@ flowchart TD
     IO["Host I/O / presentation"]
 
     Host -->|"select"| Profile
-    Profile -->|"constrain construction"| Host
+    Profile -->|"machine characteristics"| Host
+    Profile --> InstructionSet
+    Profile --> Quirks
 
     Host -->|"construct"| State
+    InstructionSet -->|"configure executor"| State
+    Quirks -->|"configure executor / display"| State
+
     Host -->|"own lifetime"| Persistent
     Persistent --> State
 
@@ -614,7 +586,8 @@ Application
 
 Chip8Profile
     → describe emulated machine characteristics
-    → describe compatibility-sensitive semantics
+    → select instruction-set identity
+    → select shared-instruction quirks
 
 MachineInitializer
     → establish or re-establish resettable machine state
@@ -633,43 +606,40 @@ State/capability components
 1. **Construction does not start execution.**\
    Object creation and emulated progression remain separate.
 
-2. **Initialization does not construct the graph.**\
-   It establishes state in already-composed components.
+2. **Profiles describe the machine; they do not construct it.**\
+   Machine characteristics, instruction-set membership, and shared-instruction quirks guide application composition.
 
-3. **The runtime starts paused.**\
-   Applications explicitly decide when execution begins.
+3. **Initialization establishes state in an already-composed graph.**\
+   Its exact reset/install contract belongs in [Machine initialization](./machine-initialization.md).
 
-4. **Pause preserves machine state.**\
-   It suspends progression without creating execution debt.
+4. **The runtime starts paused.**\
+   Applications explicitly decide when scheduled execution begins.
 
-5. **Single stepping is paused instruction execution, not scheduled time.**\
-   One step performs one CPU attempt while timers and normal display scheduling remain still.
+5. **Pause preserves machine state.**\
+   It suspends scheduled progression without creating execution debt.
 
-6. **Instruction waits are not runtime pauses.**\
-   `Fx0A` and profile/mode-controlled retrying draw behavior remain instruction-level control flow.
+6. **Single stepping is paused CPU execution, not scheduled time.**\
+   One step performs one `Cpu.step()` attempt while the runtime remains paused; temporary-vblank mechanics belong to [Runtime and timing](./runtime-and-timing.md#single-step-timing-semantics).
 
-7. **Interpreter exit is not runtime pause.**\
-   SUPER-CHIP interpreter-exit conditions change `ExitState`; later CPU steps become inert while runtime state remains independently paused or running.
+7. **Instruction waits are not runtime pauses.**\
+   `Fx0A` and vertical-blank-gated retry behavior remain instruction-level control flow.
 
-8. **Reset reuses initialization.**\
-   Re-establishing initial state does not require rebuilding the object graph.
+8. **Interpreter exit is not runtime pause.**\
+   Exit changes `ExitState`; later CPU steps become inert while runtime state remains independent.
 
-9. **Reset retains the machine profile.**\
-   Reset changes machine state, not which historical machine is being emulated.
+9. **Reset reuses initialization and retains the session identity.**\
+   It keeps the current profile, program, object graph, and explicitly longer-lived state such as RPL storage.
 
-10. **Reset does not imply that every state object is cleared.**\
-    Longer-lived state such as SUPER-CHIP RPL flags may deliberately survive initialization.
-
-11. **Reset does not automatically resume.**\
+10. **Reset does not automatically resume.**\
     Post-reset execution policy belongs to the application.
 
-12. **ROM replacement is host/session policy.**\
-    Applications may reuse or rebuild the machine graph and may preserve explicitly longer-lived state.
+11. **ROM replacement is host/session policy.**\
+    Applications may reuse or rebuild the machine graph and may preserve explicitly longer-lived host-owned state.
 
-13. **Profile replacement is host/session policy.**\
-    Changing the machine definition may justify a fresh session; Core does not hide that transition behind Reset.
+12. **Profile replacement is host/session policy.**\
+    Changing the machine definition may justify a fresh session; Core does not hide that transition behind reset.
 
-14. **Lifecycle ownership remains explicit.**\
-    Application, profile, initializer, runtime, and state components each own distinct responsibilities.
+13. **Lifecycle ownership remains explicit.**\
+    Application, profile, initializer, runtime, and state/capability components each own distinct responsibilities.
 
-These rules keep lifecycle sequencing understandable without making one class responsible for profile selection, construction, initialization, timing, reset, exit handling, persistent-state lifetime, session replacement, and host behavior.
+These rules keep lifecycle sequencing understandable without making one class responsible for profile selection, construction, initialization, timing, reset, interpreter exit, persistent-state lifetime, session replacement, and host behavior.

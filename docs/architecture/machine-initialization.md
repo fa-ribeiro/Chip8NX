@@ -27,9 +27,25 @@ See also:
 
 - [Architecture overview](./overview.md)
 - [Machine state and capabilities architecture](./machine-state-and-capabilities.md)
+- [Machine profiles and variation](./machine-profiles-and-variation.md)
 - [Machine lifecycle](./machine-lifecycle.md)
 - [Instruction execution architecture](./instruction-execution.md)
 - [ADR 0012 — Application-owned composition](../decisions/0012-application-owned-composition.md)
+
+## In this document
+
+- [Responsibility Model](#responsibility-model)
+- [Construction and Initialization](#construction-and-initialization)
+- [Initialization Inputs](#initialization-inputs)
+- [Validate Before Mutate](#validate-before-mutate)
+- [Initialization Sequence](#initialization-sequence)
+- [Prevalidated, Not Fully Transactional](#prevalidated-not-fully-transactional)
+- [Reset and ROM Replacement](#reset-and-rom-replacement)
+- [Runtime and Host Boundaries](#runtime-and-host-boundaries)
+- [Reset / Replacement Matrix](#reset--replacement-matrix)
+- [Testing and Verification](#testing-and-verification)
+- [Ownership Through Initialization](#ownership-through-initialization)
+- [Design Summary](#design-summary)
 
 ## Responsibility Model
 
@@ -147,7 +163,7 @@ const memory = new Ram(profile.memorySize);
 const stack = new Stack(profile.stackCapacity);
 const displayBuffer = new DisplayBuffer(
   profile.display.specification,
-  profile.compatibility.spriteOverflow,
+  profile.quirks.spriteOverflow,
 );
 ```
 
@@ -207,18 +223,26 @@ The initializer coordinates them for one lifecycle operation but does not own th
 
 ### `Chip8Profile`
 
-The profile supplies stable machine-definition data used by initialization:
+The profile supplies the stable machine-definition data used by initialization:
 
 ```text
-expected memory size
-program start address
-small font image
-small font base address
-optional large font image
-optional large font base address
+profile.memorySize
+profile.programStartAddress
+
+profile.fonts.small
+    image
+    baseAddress
+
+profile.fonts.large
+    image
+    baseAddress
+
+or null when no large font exists
 ```
 
 These are definition/reset sources rather than current execution values.
+
+`Chip8Profile` also contains the machine's `instructionSet`, shared-instruction `quirks`, display characteristics, and timing characteristics, but initialization does not need every profile field. Those values configure other collaborators at composition time. `MachineInitializer` consumes only the subset required to validate memory layout and establish the initial machine state.
 
 ### Program `MemoryImage`
 
@@ -392,8 +416,8 @@ exitState.reset()
 
 RplFlags are preserved
 
-load profile small font image
-load optional profile large font image
+load profile.fonts.small.image
+load profile.fonts.large.image when configured
 load program image
 ```
 
@@ -435,15 +459,15 @@ restore the relevant interpreter-visible state.
 
 Keyboard reset is semantic rather than physical: it clears transient `Fx0A` interpretation while preserving keys that remain pressed.
 
-`ExitState.reset()` makes the CPU executable again after any previous SUPER-CHIP interpreter-exit condition, including `00FD`, invalid `00C0`, or `Fx1E` index overflow.
+`ExitState.reset()` makes the CPU executable again after any previous SUPER-CHIP interpreter-exit condition, including explicit `00FD`, historical `00C0`, or the configured historical `Fx1E` index-overflow condition.
 
 ### 4. Reinstall definition data
 
 The initializer loads:
 
 ```text
-1. profile small font image
-2. optional profile large font image
+1. `profile.fonts.small.image`
+2. `profile.fonts.large.image` when configured
 3. program image
 ```
 
@@ -471,7 +495,7 @@ RplFlags
     → preserved
 ```
 
-This is an intentional historical-semantic decision, not an omission. The host owns the lifetime of the `RplFlags` instance and can reuse that store across reset, ROM replacement, or machine-session recomposition when it wants SUPER-CHIP persistence.
+This is an intentional historical-semantic decision, not an omission. SUPER-CHIP instruction-set membership determines whether `Fx75` / `Fx85` exist, while the host owns the lifetime of the `RplFlags` instance. The host can therefore reuse that store across reset, ROM replacement, or machine-session recomposition when it wants the historical persistence behavior.
 
 For the Web host, the RPL store lives above individual `WebMachineSession` instances, so changing ROM or profile does not implicitly erase it during the current page lifetime. Browser-reload persistence is a separate host-storage concern and is not part of `MachineInitializer`.
 
@@ -652,9 +676,9 @@ Reset therefore rebuilds memory from immutable definition sources:
 ```text
 Memory.clear()
     ↓
-profile.fontImage
+profile.fonts.small.image
     ↓
-optional profile.largeFont.image
+profile.fonts.large.image when configured
     ↓
 stored program MemoryImage
 ```
@@ -863,186 +887,33 @@ The key point is:
 
 ## Testing and Verification
 
-Initialization is tested at the boundary that owns each responsibility.
+Initialization is tested at the boundary that owns each responsibility:
 
 ```text
-MemoryImage tests
-    → binary-image value semantics
+MemoryImage
+    → immutable binary-value semantics
 
-MemoryImageLoader tests
-    → generic placement
+MemoryImageLoader
+    → generic contiguous placement
 
-MachineInitializer tests
-    → CHIP-8 layout/reset policy
-      and failure-before-mutation guarantees
+MachineInitializer
+    → CHIP-8 layout / reset policy
+      + validate-before-mutate guarantees
 ```
 
-### `MemoryImage`
+`MemoryImage` tests protect copying and byte validation. `MemoryImageLoader` tests verify sequential placement and rely on real `Memory` implementations for concrete address-range failures.
 
-Tests verify:
+`MachineInitializer` tests begin with deliberately non-initial machine state and verify that successful initialization restores the defined reset state, reinstalls the configured small/optional-large fonts and program image, resets display/keyboard/exit state appropriately, and preserves longer-lived resources such as `RplFlags` and provider-owned RNG progression.
 
-```text
-ordinary byte iterables accepted
-Uint8Array input accepted
-source data copied
-invalid byte values rejected
-```
+Failure tests seed observable state, attempt an invalid initialization, and verify that mutation never begins for known layout errors such as empty images, out-of-range placement, memory/profile size mismatch, and overlapping font/program ranges.
 
-The copy test protects `MemoryImage` as an immutable definition source.
+The tests intentionally prove **prevalidation**, not general transaction rollback. Unexpected collaborator failures after mutation starts remain outside the initializer's current guarantee.
 
-### `MemoryImageLoader`
+Boundary cases such as images ending exactly at memory end or adjacent non-overlapping ranges are natural additional hardening cases when coverage work revisits this area.
 
-Tests verify sequential placement:
+The verification rule is:
 
-```text
-image = [0x10, 0x20, 0x30]
-start = 0x300
-
-memory[0x300] = 0x10
-memory[0x301] = 0x20
-memory[0x302] = 0x30
-```
-
-They also verify memory outside the image range remains unchanged.
-
-Out-of-range behavior is exercised through real `Ram`, confirming that concrete address validation belongs to `Memory` and its errors propagate through the loader.
-
-### `MachineInitializer`
-
-Initializer tests compose real Core state/capability components and verify the complete reset contract.
-
-The machine is deliberately made non-initial first, then initialization is expected to restore:
-
-```text
-memory
-registers
-stack
-PC
-I
-timers
-display pixels and initial mode
-vertical blank
-keyboard interpreter state
-ExitState
-small font image
-optional large font image
-program image
-RPL preservation
-```
-
-### Keyboard, exit, RPL, and RNG lifecycle evidence
-
-The tests explicitly protect several subtle lifecycle boundaries.
-
-Keyboard:
-
-```text
-held key preserved
-old Fx0A wait discarded
-```
-
-Exit state:
-
-```text
-previously exited interpreter
-    → reset to executable
-```
-
-RPL flags:
-
-```text
-preexisting RPL contents
-    → preserved across machine initialization
-```
-
-RNG:
-
-```text
-provider progression preserved across machine initialization
-```
-
-This confirms that reset scope follows semantic ownership rather than blindly resetting every dependency or every piece of state.
-
-### Failure-before-mutation evidence
-
-Initializer tests seed observable machine state, attempt invalid initialization, and then verify the old state remains unchanged.
-
-Covered invalid cases include:
-
-```text
-program too large
-small font too large
-large font too large
-small-font/program overlap
-small-font/large-font overlap
-large-font/program overlap
-memory/profile size mismatch
-empty small font image
-empty configured large font image
-empty program image
-```
-
-These tests prove:
-
-```text
-known invalid layout
-    ↓
-throw
-    ↓
-mutation phase never begins
-```
-
-They do not claim general rollback for arbitrary later collaborator failures.
-
-### Boundary hardening opportunities
-
-The documented half-open range model naturally permits:
-
-```text
-image ending exactly at memory end
-font images/program exactly adjacent
-```
-
-Explicit regression tests for those two boundary cases would strengthen the contract further.
-
-That is a test-hardening opportunity, not evidence of a current defect.
-
-### Verification rule
-
-The overall testing rule is:
-
-> Verify generic binary behavior generically, and verify CHIP-8-specific layout/reset semantics at the initializer boundary.
-
-Examples:
-
-```text
-source image copied
-    → MemoryImage test
-
-bytes placed sequentially
-    → MemoryImageLoader test
-
-memory access rejected
-    → Ram / loader collaboration
-
-font/font or font/program overlap rejected
-    → MachineInitializer test
-
-invalid layout preserves previous state
-    → MachineInitializer test
-
-keyboard wait state reset correctly
-    → MachineInitializer test
-
-ExitState reset correctly
-    → MachineInitializer test
-
-RPL contents preserved
-    → MachineInitializer test
-
-RNG provider state preserved
-    → MachineInitializer test
-```
+> Test generic image/placement behavior generically, and keep CHIP-8-specific layout, reset, lifetime, and failure-before-mutation evidence at the initializer boundary.
 
 ## Ownership Through Initialization
 
@@ -1107,7 +978,7 @@ The initialization architecture follows a few stable rules:
    `MemoryImage` owns immutable bytes; `MemoryImageLoader` owns sequential placement.
 
 3. **CHIP-8 setup policy belongs in `MachineInitializer`.**\
-   Small/large-font and program layout, reset ordering, and state establishment are machine-level concerns.
+   `fonts.small`, optional `fonts.large`, program layout, reset ordering, and state establishment are machine-level concerns.
 
 4. **Validate semantic relationships before controlled mutation.**\
    Known invalid layout conditions fail before existing machine state is changed.
@@ -1116,7 +987,7 @@ The initialization architecture follows a few stable rules:
    Unexpected collaborator failures after mutation starts are not automatically rolled back.
 
 6. **Memory is rebuilt from immutable definition sources.**\
-   Writable small-font, optional large-font, and program bytes are reinstalled during reset.
+   Writable `fonts.small`, optional `fonts.large`, and program bytes are reinstalled during reset.
 
 7. **Reset reuses the object graph when the application wants it to.**\
    Component identity can remain stable across initialization.

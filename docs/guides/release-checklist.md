@@ -29,11 +29,26 @@ During `0.x`, PATCH releases are maintenance changes that do not represent a new
 - [ ] Reconcile future-work wording so completed capabilities are no longer described as future work.
 - [ ] Update architecture, guide, reference, or documentation indexes when the release changes documented behavior or adds/moves documentation.
 - [ ] Check examples and command lines against the current repository.
-- [ ] Check documentation for stale assumptions that were invalidated by the milestone, especially constructor signatures, profile lists, lifecycle rules, and responsibility boundaries.
+- [ ] Check documentation for stale assumptions invalidated by the milestone, especially constructor signatures, profile fields, profile lists, lifecycle rules, and responsibility boundaries.
+- [ ] When profile semantics changed, verify that current-state documentation consistently distinguishes:
+
+  ```text
+  machine characteristics
+      → memory / stack / display / timing / fonts
+
+  instructionSet
+      → which instruction semantics exist
+
+  quirks
+      → how shared instructions vary
+  ```
+
+- [ ] Check that extension-specific semantics are not accidentally documented as generic support/compatibility flags.
+- [ ] Check that persistent-state lifetime is documented separately from instruction-set membership where relevant, especially for SUPER-CHIP `RplFlags`.
 
 Do not introduce version fields solely for release bookkeeping. Only update files that genuinely carry a project or package version.
 
-Historical milestone text should normally remain historical. Update current-state documentation without rewriting earlier releases as though their later architecture already existed.
+Historical milestone text and accepted ADRs should normally remain historical. Update current-state documentation without rewriting earlier decisions as though their later architecture already existed.
 
 ## 3. Run the repository validation contract
 
@@ -46,11 +61,15 @@ deno task ci
 
 A release should not be tagged unless this passes.
 
-If the external conformance ROM fixtures are installed and the release changes emulator behavior or conformance-sensitive code, also run:
+The normal `ci` task intentionally does not run the external ROM conformance suite. When external conformance fixtures are installed and the release changes machine semantics, profiles, decoding/execution behavior, display behavior, timing, initialization, or conformance-sensitive code, also run:
 
 ```bash
 deno task test:conformance
 ```
+
+Treat this as a separate release-quality gate rather than silently assuming it was covered by `deno task ci`.
+
+For releases that change a supported profile or its semantic model, review the relevant conformance targets explicitly. Current SUPER-CHIP coverage includes the pinned Timendus v4.2 legacy SUPER-CHIP Quirks run and the low- and high-resolution Scrolling runs documented in [`packages/core/tests/conformance/README.md`](../../packages/core/tests/conformance/README.md).
 
 Public-API documentation diagnostics can be reviewed with:
 
@@ -60,7 +79,29 @@ deno task docs:check
 
 `docs:check` should be reviewed as part of release preparation. Historical `missing-jsdoc` diagnostics may still exist in the repository; distinguish those known diagnostics from newly introduced documentation problems rather than treating their mere presence as either a new failure or an automatic success.
 
-## 4. Perform application-level manual verification
+Also check for simple textual/mechanical problems:
+
+```bash
+git diff --check
+```
+
+## 4. Verify profile and instruction-set boundaries
+
+When a release changes profile semantics, extension support, or composition, verify that resources/capabilities do not accidentally grant instruction-set membership.
+
+Typical checks include:
+
+- [ ] Classic CHIP-8 still executes with the base `chip8` instruction set and its own shared-instruction quirks.
+- [ ] CHIP-48 still executes with the base `chip8` instruction set and its own shared-instruction quirks.
+- [ ] SUPER-CHIP 1.1 executes with `instructionSet.kind = "superchip-1.1"` and its intended shared-instruction quirks.
+- [ ] A SUPER-CHIP-capable `DisplayBuffer` does not make SUPER-CHIP-only instructions executable under Classic CHIP-8 or CHIP-48.
+- [ ] `Fx30`, `Fx75`, `Fx85`, SUPER-CHIP display controls, extended `Dxy0`, and high-resolution affected-row `VF` behavior remain gated by SUPER-CHIP instruction-set semantics rather than by resource presence alone.
+- [ ] Shared behaviors such as shifts, `Fx55` / `Fx65`, `Bnnn`, logic `VF`, sprite timing, sprite overflow, and `Fx1E` overflow follow the selected `Chip8Quirks` values.
+- [ ] `MachineInitializer` resets ordinary state including `ExitState` but preserves `RplFlags`.
+
+These checks should normally be protected by focused unit/integration tests. The release review verifies that the tests, public API, and documentation still describe the same boundary.
+
+## 5. Perform application-level manual verification
 
 Automated tests validate machine semantics and focused adapters, but they cannot prove that a complete host application presents the machine correctly.
 
@@ -80,20 +121,33 @@ Then verify the behavior relevant to the release. Typical checks include:
 - [ ] audio presentation still behaves normally when relevant;
 - [ ] inspection views continue to update without affecting execution;
 - [ ] profile changes recompose the machine successfully when profile selection changed;
-- [ ] framebuffer presentation shows the complete emulated display at the correct geometry when display behavior changed.
-
-For `v0.9.0`, explicitly verify:
-
-- [ ] Classic CHIP-8 ROMs still run under the Classic profile;
-- [ ] CHIP-48 ROMs still run under the CHIP-48 profile;
-- [ ] selecting SUPER-CHIP 1.1 recomposes and restarts the current ROM successfully;
-- [ ] a SUPER-CHIP ROM can use both 64×32 and 128×64 display modes;
-- [ ] the full SUPER-CHIP framebuffer is visible in both modes rather than only a scaled top-left region;
-- [ ] changing profiles while a ROM is loaded preserves the expected running/paused host state.
+- [ ] changing profile while a ROM is loaded preserves the expected running/paused host state;
+- [ ] reset retains the session's selected profile rather than substituting a default profile;
+- [ ] SUPER-CHIP RPL contents survive reset/session recomposition according to the current Web lifetime contract when relevant;
+- [ ] framebuffer presentation shows the complete physical backing framebuffer at the correct geometry when display behavior changed;
+- [ ] SUPER-CHIP low mode presents the 64×32 logical machine over the shared 128×64 backing framebuffer correctly;
+- [ ] SUPER-CHIP high mode presents 128×64 correctly;
+- [ ] the visible resolution/mode status follows live `DisplayBuffer` state after `00FE` / `00FF` changes;
+- [ ] appearance/theme changes alter presentation only and do not reset or otherwise modify machine state.
 
 These checks deliberately remain application-owned. A presentation bug does not necessarily imply a Core semantic bug, and a green Core test suite does not prove that a host adapter interprets Core state correctly.
 
-## 5. Review the release candidate
+## 6. Review conformance claims
+
+External ROM conformance and internal unit/integration coverage are different kinds of evidence.
+
+Before release:
+
+- [ ] confirm every conformance claim in README/reference/release notes corresponds to a test that actually exists;
+- [ ] confirm the required third-party fixture is pinned/documented with the expected path, version/commit where applicable, checksum, provenance, and license;
+- [ ] confirm the conformance suite was actually run locally when the release depends on that evidence;
+- [ ] do not describe focused internal tests as external conformance;
+- [ ] do not describe a fixture as future work once an automated test for it is part of the repository;
+- [ ] do not claim a broader variant dialect than the machine profile actually targets.
+
+For the historical SUPER-CHIP profile, keep the target explicit: Chip8NX models the documented legacy/SUPER-CHIP 1.1 semantics used by the project, not a generic modern SCHIP dialect and not every HP48 implementation accident.
+
+## 7. Review the release candidate
 
 - [ ] Review the complete release diff.
 - [ ] Check for whitespace errors:
@@ -108,12 +162,13 @@ These checks deliberately remain application-owned. A presentation bug does not 
   git status --short
   ```
 
-- [ ] Confirm README, changelog, documentation, implementation, tests, and public API describe the same behavior.
+- [ ] Confirm README, changelog, documentation, implementation, tests, conformance evidence, and public API describe the same behavior.
 - [ ] Confirm generated or temporary files are not accidentally included in the release commit.
+- [ ] Confirm historical ADRs were not rewritten merely to match the current architecture; use current-state docs or later consequences/decisions instead.
 
 At this point the release candidate is ready to commit.
 
-## 6. Complete the release
+## 8. Complete the release
 
 After committing and pushing the release-preparation changes:
 

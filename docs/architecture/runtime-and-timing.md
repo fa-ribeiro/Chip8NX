@@ -31,6 +31,18 @@ See also:
 - [ADR 0011 — Deadline-driven scheduler](../decisions/0011-deadline-driven-scheduler.md)
 - [ADR 0013 — Emulated display timing](../decisions/0013-emulated-display-timing.md)
 
+## In this document
+
+- [Responsibility Model](#responsibility-model)
+- [Dependency Direction](#dependency-direction)
+- [Deadline-Driven Scheduling](#deadline-driven-scheduling)
+- [Suspension, Resumption, and Execution Debt](#suspension-resumption-and-execution-debt)
+- [Runtime Ordering at Equal Deadlines](#runtime-ordering-at-equal-deadlines)
+- [Timed Machine State](#timed-machine-state)
+- [Single-Step Timing Semantics](#single-step-timing-semantics)
+- [Testing and Verification](#testing-and-verification)
+- [Design Summary](#design-summary)
+
 ## Responsibility Model
 
 Runtime timing is divided among four layers:
@@ -146,17 +158,19 @@ runtime.tick();
 
 The runtime and scheduler decide which emulated events are due when that happens.
 
-SUPER-CHIP does not add a profile-specific runtime path. The runtime still produces display-boundary opportunities at the configured display refresh frequency. Instruction execution decides whether the current profile and display mode require a draw to consume one.
+SUPER-CHIP does not add a profile-specific runtime path. The runtime still produces display-boundary opportunities at the configured display refresh frequency. Instruction execution decides whether the configured sprite-draw timing quirk and current display mode require a draw to consume one.
 
 ```text
 Chip8Runtime
     → produce display opportunities
 
 InstructionExecutor
-    → apply profile + display-mode drawing semantics
+    → apply sprite-draw timing quirk + live display-mode semantics
 ```
 
-This keeps timing orchestration separate from machine compatibility semantics.
+This keeps timing orchestration separate from shared-instruction semantics.
+
+`Chip8Runtime` does not receive `Chip8Profile`, `Chip8InstructionSet`, or `Chip8Quirks`. Those semantics are resolved during composition and execution. The runtime receives only the frequencies required to schedule its three generic machine tasks.
 
 ### Timed machine state remains separate
 
@@ -603,7 +617,7 @@ See [Machine lifecycle](./machine-lifecycle.md) for the broader construction, in
 
 ### Interpreter exit is not a runtime lifecycle state
 
-SUPER-CHIP interpreter-exit conditions mark `ExitState` as exited. These include explicit `00FD`, historical invalid `00C0`, and `Fx1E` index overflow.
+SUPER-CHIP interpreter-exit conditions mark `ExitState` as exited. These include explicit `00FD`, the historical SUPER-CHIP `00C0` interpretation, and `Fx1E` index overflow when the configured shared-instruction quirk selects interpreter exit.
 
 That state belongs to CPU/machine semantics, not to `Chip8Runtime`.
 
@@ -682,11 +696,11 @@ Dxyn may consume it
 
 The runtime always produces display-boundary signals according to the configured display frequency. It does not inspect the active profile or display mode.
 
-The execution layer resolves draw timing:
+The execution layer resolves `profile.quirks.spriteDrawTiming`:
 
 ```text
 uniform timing
-    → use the profile's configured draw timing
+    → use the configured timing directly
 
 display-mode timing
     → inspect the current DisplayBuffer mode
@@ -711,7 +725,7 @@ Therefore the responsibility remains:
 Scheduler / Chip8Runtime
     → when display opportunities occur
 
-Chip8Profile compatibility
+Chip8Quirks.spriteDrawTiming
     → which timing model applies
 
 DisplayBuffer
@@ -723,7 +737,7 @@ InstructionExecutor
 
 No profile-specific scheduling branch is required.
 
-This extends the policy established by [ADR 0013](../decisions/0013-emulated-display-timing.md) without moving compatibility logic into the runtime.
+This extends the policy established by [ADR 0013](../decisions/0013-emulated-display-timing.md) without moving shared-instruction quirk logic into the runtime.
 
 ### Timers before CPU
 
@@ -902,7 +916,7 @@ none pending
 
 Sprite drawing never inspects clocks or scheduler deadlines.
 
-The instruction executor first resolves the active draw timing from the injected compatibility configuration. For display-mode-dependent timing, it also reads the current `DisplayBuffer` mode.
+The instruction executor first resolves the active draw timing from the injected `Chip8Quirks.spriteDrawTiming` value. For display-mode-dependent timing, it also reads the current `DisplayBuffer` mode.
 
 When the resolved timing is vertical-blank-gated:
 
@@ -945,7 +959,7 @@ Scheduler / Runtime
 VerticalBlank
     → store availability
 
-Chip8Profile compatibility
+Chip8Quirks.spriteDrawTiming
     → describe the timing rule
 
 DisplayBuffer
@@ -1084,7 +1098,7 @@ rewind forever
 
 The debugger could never step past that instruction.
 
-`Chip8Runtime` deliberately remains unaware of instruction compatibility and display mode, so `runtime.step()` does not ask whether the current draw attempt requires vertical blank.
+`Chip8Runtime` deliberately remains unaware of instruction-set membership, instruction quirks, and display mode, so `runtime.step()` does not ask whether the current draw attempt requires vertical blank.
 
 Instead, when no opportunity is already pending, it supplies one temporary opportunity around the CPU attempt:
 
@@ -1194,7 +1208,7 @@ That provides a much stronger debugging contract.
 
 ## Testing and Verification
 
-Timing behavior is tested at the narrowest layer that owns each guarantee, then composed in runtime integration tests.
+Timing is tested at the layer that owns each guarantee, using `TestClock` whenever scheduler time must be controlled precisely:
 
 ```text
 Timer / VerticalBlank tests
@@ -1206,181 +1220,25 @@ Chip8Runtime integration tests
 external conformance
 ```
 
-### Deterministic time
+### Generic scheduling
 
-Scheduler tests use `TestClock` rather than wall-clock time.
+Scheduler tests verify the generic timing contract independently of CHIP-8 semantics: first deadlines, exact rational periods, drift resistance, chronological catch-up, equal-deadline registration order, one-sample scheduling horizons, suspension/resumption, absence of paused execution debt, and callback-error behavior.
 
-Tests explicitly advance nanoseconds and then call `Scheduler.tick()`.
+`Timer` and `VerticalBlank` tests verify only their local state transitions, including timer no-underflow and non-accumulating vertical-blank availability.
 
-This lets boundary behavior be tested precisely.
+### Runtime integration
 
-For example, a 60 Hz task can be checked at:
+`Chip8Runtime` integration tests compose real Core collaborators to verify machine-level timing policy: starting paused, configured CPU/timer/display frequencies, pause/resume behavior, deterministic equal-deadline ordering, and manual stepping without scheduled-time progression.
 
-```text
-16,666,666 ns
-    → not yet due
+The paused-step tests specifically protect the temporary-vblank contract: a vertical-blank-gated draw can complete while paused, a preexisting pending opportunity is preserved unless instruction semantics consume it, and a temporary unused opportunity is removed even when the CPU attempt throws.
 
-16,666,667 ns
-    → first occurrence due
-```
+Mode-dependent SUPER-CHIP draw timing remains an execution-layer concern because that decision requires `Chip8Quirks.spriteDrawTiming` and the live display mode. Likewise, interpreter exit is verified at CPU/execution boundaries rather than inventing a separate runtime state.
 
-This verifies that fractional deadlines are not rounded down.
+The verification rule is:
 
-### Scheduler verification
+> Prove generic chronology in the scheduler, local state in the state component, and CHIP-8 timing policy only at the runtime/execution boundary that owns it.
 
-The scheduler suite protects:
-
-- first-deadline behavior;
-- exact rational frequencies;
-- long-running drift resistance;
-- chronological catch-up;
-- interleaving across different frequencies;
-- registration-order tie-breaking;
-- one-time sampling of the scheduling horizon;
-- suspension;
-- resume rebasing;
-- absence of paused execution debt;
-- idempotent resume;
-- callback error propagation;
-- occurrence consumption before callback invocation.
-
-These are generic scheduler guarantees, independent of CHIP-8 semantics.
-
-### Timed-state verification
-
-`Timer` tests cover:
-
-- initial value;
-- set/get;
-- decrement;
-- reaching zero;
-- no underflow.
-
-`VerticalBlank` tests cover:
-
-- initial unavailability;
-- signaling;
-- consuming;
-- non-accumulation;
-- reset;
-- non-destructive observation of pending state.
-
-These tests prove local state transitions without involving time progression.
-
-### Runtime verification is integration-level
-
-`Chip8Runtime` tests live under:
-
-```text
-packages/core/tests/integration/
-```
-
-because they compose real Core collaborators:
-
-```text
-Cpu
-Decoder
-InstructionExecutor
-ExecutionContext
-Ram
-Registers
-Timers
-VerticalBlank
-Scheduler
-TestClock
-```
-
-They verify machine-wide timing behavior such as:
-
-- runtime starts paused;
-- no scheduled work occurs while paused;
-- resumed CPU and timers run at configured frequencies;
-- pause freezes progression;
-- resume creates no execution debt;
-- one manual step advances only CPU execution;
-- stepping while running is rejected;
-- display opportunities are produced by runtime timing;
-- vertical-blank-gated `Dxyn` can complete during manual stepping while paused;
-- unused temporary vertical blank is cleaned up after a manual step.
-
-Mode-dependent draw timing itself is verified at the execution layer, where compatibility configuration and `DisplayBuffer` mode are available. The runtime tests remain focused on the generic production and temporary supply of display opportunities rather than on SUPER-CHIP profile identity.
-
-Interpreter-exit behavior is likewise verified at the CPU/execution boundary: SUPER-CHIP exit conditions mark `ExitState`, and later CPU attempts become no-ops before fetch. The runtime deliberately adds no separate exit lifecycle.
-
-### Equal-deadline ordering is verified through machine state
-
-The runtime suite tests timer-before-CPU ordering using observable semantics.
-
-If:
-
-```text
-DT = 1
-V0 = 5
-```
-
-and a timer boundary coincides exactly with:
-
-```text
-LD DT, V0
-```
-
-then:
-
-```text
-timer:
-DT 1 → 0
-
-CPU:
-LD DT, V0
-DT 0 → 5
-```
-
-Final:
-
-```text
-DT = 5
-```
-
-proves timer execution preceded CPU execution at the shared instant.
-
-This verifies runtime policy through the real machine rather than only inspecting callback order.
-
-### Verification rule
-
-The overall rule is:
-
-> Test each timing guarantee at the lowest layer that owns it, then use integration tests to verify the collaboration among those guarantees.
-
-Examples:
-
-```text
-timer does not underflow
-    → Timer test
-
-vblank does not accumulate
-    → VerticalBlank test
-
-fractional deadlines stay exact
-    → Scheduler test
-
-global chronological ordering
-    → Scheduler test
-
-timer-before-CPU tie
-    → Chip8Runtime integration test
-
-vblank-gated manual draw can complete while paused
-    → Chip8Runtime integration test
-
-temporary stepping vblank does not leak
-    → Chip8Runtime integration test
-
-SUPER-CHIP low/high draw timing selection
-    → InstructionExecutor and DisplayBuffer tests
-
-ExitState prevents later fetches
-    → Cpu / instruction-execution tests
-```
+External conformance then provides independent evidence that these timing rules compose correctly in real ROM execution.
 
 ## Design Summary
 
@@ -1393,7 +1251,7 @@ The runtime/timing architecture follows a few stable rules:
    Exact periodic deadlines, catch-up, and tie-breaking remain generic.
 
 3. **The runtime owns scheduled timing orchestration, not profile semantics.**\
-   It maps configured frequencies onto CPU, timers, and vertical blank and chooses their equal-deadline registration order; instruction compatibility plus current display mode determine whether drawing consumes the produced display opportunities.
+   It maps configured frequencies onto CPU, timers, and vertical blank and chooses their equal-deadline registration order; `Chip8Quirks.spriteDrawTiming` plus current display mode determine whether drawing consumes the produced display opportunities.
 
 4. **Timed state does not schedule itself.**\
    `Timer` and `VerticalBlank` own state and local transitions only.
