@@ -135,7 +135,7 @@ The expected fixture is:
 
 ```text
 Filename: 4-flags.ch8
-Size:     1041
+Size:     1041 bytes
 SHA-256:  f00ddadd37bc878473de0c8f16faecf9985dea39036a3a796d551bc9fec47cfa
 ```
 
@@ -351,8 +351,6 @@ Get-FileHash packages/core/tests/conformance/roms/variant-detection-1.4.ch8 -Alg
 Further Timendus fixtures may be added when they exercise behavior applicable to the supported Chip8NX machine profiles and when their automation and expected completion state can be made deterministic.
 
 The Timendus Beep test exercises sound presentation rather than only Core timer state. It is therefore not currently part of this Core conformance suite; adding it would require an explicit conformance strategy for the host/audio boundary rather than treating browser or terminal audio as a Core machine requirement.
-
-The Timendus Scrolling fixture is no longer future work: its exact v4.2 fixture identity is pinned above and the repository contains automated SUPER-CHIP low- and high-resolution conformance tests for it.
 
 When a new fixture becomes part of an automated conformance test:
 

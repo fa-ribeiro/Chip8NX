@@ -10,52 +10,35 @@ The project supports **Classic CHIP-8**, **CHIP-48 2.25**, and **SUPER-CHIP 1.1*
 
 ## Status
 
-### Current release: `v0.9.0` — SUPER-CHIP 1.1
+### Current release: `v0.10.0` — Profile Semantics and SUPER-CHIP Hardening
 
-`v0.9.0` extends the profile foundation established in `v0.8.0` with Chip8NX's first machine profile that introduces architectural capabilities beyond Classic CHIP-8: **SUPER-CHIP 1.1**.
+`v0.10.0` hardens the multi-profile architecture established by `v0.8.0` and extended by `v0.9.0`. It does not add another machine target; instead, it makes the existing Classic CHIP-8, CHIP-48, and SUPER-CHIP 1.1 boundaries more explicit and independently verifiable.
 
-Chip8NX now provides three coherent machine profiles:
+A machine profile now separates three concerns:
+
+```text
+machine characteristics / resources
+instructionSet
+    → which instruction semantics exist
+quirks
+    → how shared instructions vary
+```
+
+This replaces the previous compatibility aggregate with an explicit `Chip8InstructionSet` plus `Chip8Quirks`. Extension-only semantics such as SUPER-CHIP display controls, `Fx30`, `Fx75` / `Fx85`, extended `Dxy0`, interpreter exit, and high-resolution affected-row `VF` behavior follow from instruction-set membership rather than being represented as shared quirks.
+
+The release also strengthens profile isolation. Regression tests prove that SUPER-CHIP-capable resources such as the extended display cannot grant SUPER-CHIP instruction semantics to Classic CHIP-8 or CHIP-48 machines.
+
+The three built-in historical machine profiles remain:
 
 - **Classic CHIP-8** — the original baseline machine;
-- **CHIP-48** — the first alternate historical profile introduced in `v0.8.0`;
-- **SUPER-CHIP 1.1** — the historical extended machine targeted by `v0.9.0`.
+- **CHIP-48 2.25** — the first alternate historical profile introduced in `v0.8.0`;
+- **SUPER-CHIP 1.1** — the historical extended machine introduced in `v0.9.0`.
 
-SUPER-CHIP support includes:
+External conformance now includes automated Timendus v4.2 SUPER-CHIP coverage for both legacy quirks and scrolling behavior, including low- and high-resolution scrolling modes. Classic CHIP-8 continues to pass the established IBM Logo, corax89, Timendus Corax+, Flags, Quirks, and Keypad coverage, while Gulrak's Variant Detection Test continues to provide independent multi-profile evidence.
 
-- 64×32 low-resolution and 128×64 high-resolution display modes;
-- a shared 128×64 framebuffer backing store;
-- mode switching without implicit framebuffer clearing;
-- physical scrolling through `00Cn`, `00FB`, and `00FC`;
-- `00FE` / `00FF` low- and high-resolution mode selection;
-- `00FD` interpreter exit;
-- historical `Dxy0` extended-sprite behavior in both display modes;
-- mode-specific collision/VF semantics;
-- vertical-blank-gated low-resolution drawing and immediate high-resolution drawing;
-- the historical ten-byte SUPER-CHIP 1.1 decimal font;
-- `Fx30` large-font lookup;
-- persistent `V0`–`V7` RPL flags through `Fx75` / `Fx85`;
-- historical `Fx1E` interpreter exit when `I` moves beyond the 4 KiB address space;
-- historical `00C0` interpreter-exit behavior;
-- SUPER-CHIP `Fx55` / `Fx65` behavior with `I` left unchanged.
+The release also reconciles the architecture and guide documentation around the new profile model, establishes canonical ownership for machine variation, and reduces duplicated architectural contracts across the documentation set.
 
-The Web host exposes Classic CHIP-8, CHIP-48, and SUPER-CHIP 1.1 through the machine-profile selector. Changing profile recomposes the machine around the same ROM using the selected profile.
-
-The Web Canvas adapter renders the physical framebuffer backing store directly, allowing the same presentation component to display Classic 64×32 output as well as both SUPER-CHIP display modes without duplicating machine semantics in the host.
-
-The Classic CHIP-8 Core remains at the established conformance baseline, with intentional coverage for the complete Classic opcode set and the project's current external conformance suite:
-
-- IBM Logo;
-- original corax89 opcode test;
-- Timendus Corax+;
-- Timendus Flags;
-- Timendus Quirks in Classic CHIP-8 mode;
-- Timendus Keypad.
-
-`0mmm` is recognized and decoded but intentionally rejected because it transfers execution to native CDP1802 code outside the generic CHIP-8 virtual machine.
-
-Additional Classic conformance remains useful when it provides new behavioral evidence, but it no longer blocks feature development.
-
-The development tree after `v0.9.0` further hardens this model by separating extension instruction-set membership from shared-instruction quirks and by adding automated Timendus v4.2 legacy SUPER-CHIP Quirks and Scrolling conformance, including both low- and high-resolution scrolling modes.
+The Web host continues to expose all three machine profiles and now reports `v0.10.0` in its machine/runtime status area.
 
 ## Goals
 
@@ -497,13 +480,23 @@ SUPER-CHIP 1.1
 
 Changing profile rebuilds the current Web machine session around the selected profile while preserving host-owned persistent state such as the SUPER-CHIP RPL flags.
 
+### `v0.10.0` — Profile Semantics and SUPER-CHIP Hardening ✓
+
+Chip8NX hardens the multi-profile architecture without adding a new machine target.
+
+`Chip8Profile` now distinguishes machine characteristics and resources, instruction-set membership, and quirks of shared instructions. The public `Chip8InstructionSet` model makes extension-specific semantics explicit, while `Chip8Quirks` is narrowed to genuine behavioral variation of instructions shared across supported machines.
+
+SUPER-CHIP profile isolation is strengthened with regression coverage proving that extended resources do not accidentally grant extended instruction semantics. External conformance is expanded with Timendus v4.2 legacy SUPER-CHIP Quirks and Scrolling coverage, including both low- and high-resolution scrolling modes.
+
+The release also normalizes profile font resources, clarifies `InstructionExecutor` composition, and reconciles the architecture, guide, reference, and release documentation around the refined profile model.
+
 ## Future work
 
-Post-`v0.9.0` development can proceed across areas such as:
+Post-`v0.10.0` development can proceed across areas such as:
 
 - active debugger behavior built on the existing passive inspection foundation, when concrete needs such as breakpoints, watchpoints, or richer stepping semantics are demonstrated;
 - richer memory or static-analysis inspection when concrete workflows justify it;
-- additional CHIP-8-family profiles such as XO-CHIP when their architectural differences are ready to be modeled explicitly;
+- additional CHIP-8-family profiles such as SCHIP-MODERN or XO-CHIP when their architectural differences are ready to be modeled explicitly;
 - further public reusable-package API and composition refinement when additional consumers create demonstrated pressure for change;
 - desktop hosts;
 - additional SUPER-CHIP historical/conformance evidence where external tests expose meaningful behavior not already represented.

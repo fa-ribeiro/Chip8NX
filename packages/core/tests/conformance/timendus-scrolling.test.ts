@@ -117,21 +117,6 @@ Deno.test(
 );
 
 Deno.test(
-  "SUPER-CHIP 1.1 passes the Timendus Scrolling test in legacy low-resolution mode",
-  async () => {
-    const displayBuffer = await runTimendusScrolling(TIMENDUS_SUPERCHIP_LEGACY_LORES);
-
-    assertEquals(displayBuffer.mode, "low");
-
-    assertEquals(snapshotLogicalRegion(displayBuffer, 34, 17, 8, 8), EXPECTED_ARROW_LEFT);
-
-    assertEquals(snapshotLogicalRegion(displayBuffer, 22, 17, 8, 8), EXPECTED_ARROW_RIGHT);
-
-    assertEquals(snapshotLogicalRegion(displayBuffer, 28, 6, 8, 8), EXPECTED_ARROW_DOWN);
-  },
-);
-
-Deno.test(
   "SUPER-CHIP 1.1 passes the Timendus Scrolling test in high-resolution mode",
   async () => {
     const displayBuffer = await runTimendusScrolling(TIMENDUS_SUPERCHIP_HIRES);

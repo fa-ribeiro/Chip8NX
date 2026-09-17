@@ -58,10 +58,10 @@ function createContext(overrides: Partial<ExecutionContext> = {}): ExecutionCont
 }
 
 function createExecutor(
-  compatibility: Chip8Quirks = CLASSIC_CHIP8_PROFILE.quirks,
+  quirks: Chip8Quirks = CLASSIC_CHIP8_PROFILE.quirks,
   instructionSet: Chip8InstructionSet = CLASSIC_CHIP8_PROFILE.instructionSet,
 ): InstructionExecutor {
-  return new InstructionExecutor(instructionSet, compatibility);
+  return new InstructionExecutor(instructionSet, quirks);
 }
 
 function createFixedDisplayBuffer(width: number, height: number): DisplayBuffer {

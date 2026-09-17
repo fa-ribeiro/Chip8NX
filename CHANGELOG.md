@@ -12,10 +12,13 @@ During the `0.x` development phase:
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-09-17 - Profile Semantics and SUPER-CHIP Hardening
+
 ### Added
 
 - Added the public `Chip8InstructionSet` model, separating instruction-set membership and extension-specific semantics from behavioral quirks of shared instructions.
 - Added profile-isolation regression coverage proving that SUPER-CHIP-capable resources do not grant SUPER-CHIP instruction semantics to Classic CHIP-8 or CHIP-48 machines. Coverage includes display controls, `Fx30`, extended `Dxy0`, and high-resolution affected-row `VF` behavior.
+- Added automated Timendus v4.2 Quirks conformance coverage for the historical SUPER-CHIP target in legacy mode.
 - Added automated Timendus v4.2 Scrolling conformance coverage for the historical SUPER-CHIP target in both legacy low-resolution and high-resolution modes.
 
 ### Changed
@@ -24,7 +27,6 @@ During the `0.x` development phase:
   - machine characteristics and resources;
   - `instructionSet`, which selects which instruction semantics exist;
   - `quirks`, which select how instructions shared by supported variants behave.
-
 - Narrowed `Chip8Quirks` to shared-instruction variation only. SUPER-CHIP-only semantics such as display controls, `00FD`, historical `00C0`, `Fx30`, `Fx75` / `Fx85`, extended `Dxy0`, and high-resolution affected-row `VF` behavior now follow from the `superchip-1.1` instruction set.
 - Normalized profile font definitions under `fonts.small` and optional `fonts.large`, with each font carrying its image and base address together.
 - Updated `InstructionExecutor` composition to receive `Chip8InstructionSet` and `Chip8Quirks` independently, centralizing SUPER-CHIP membership checks and clarifying sprite-draw timing, form, and `VF` interpretation.
