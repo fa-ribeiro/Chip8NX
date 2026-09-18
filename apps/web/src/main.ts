@@ -53,6 +53,7 @@ import { WebInspectionRenderer } from "./inspection/web-inspection-renderer.ts";
 import { BrowserKeyboard } from "./keyboard/browser-keyboard.ts";
 import { KeyboardInputHub } from "./keyboard/keyboard-input-hub.ts";
 import { VirtualKeypad } from "./keyboard/virtual-keypad.ts";
+import { WebMachineLifecycle } from "./machine/web-machine-lifecycle.ts";
 import {
   loadWebTheme,
   parseWebTheme,
@@ -73,19 +74,11 @@ interface WebMachineSession {
   readonly program: MemoryImage;
   readonly profile: Chip8Profile;
 
-  readonly context: ExecutionContext;
-  readonly initializer: MachineInitializer;
-
-  readonly cpu: Cpu;
-  readonly runtime: Chip8Runtime;
-  readonly traceHistory: InstructionTraceBuffer;
+  readonly lifecycle: WebMachineLifecycle;
   readonly snapshotInspection: () => WebInspectionViewModel;
 
   readonly displayBuffer: DisplayBuffer;
   readonly soundTimer: Timer;
-
-  readonly browserKeyboard: BrowserKeyboard;
-  readonly virtualKeypad: VirtualKeypad;
 }
 
 const romInput = requireElement<HTMLInputElement>("#rom-input");
@@ -209,9 +202,7 @@ async function loadAndRun(rom: File): Promise<void> {
   stopHostLoop();
 
   beeper.setActive(false);
-  machine?.runtime.pause();
-  machine?.browserKeyboard.stop();
-  machine?.virtualKeypad.stop();
+  machine?.lifecycle.deactivate();
 
   machine = undefined;
 
@@ -228,10 +219,8 @@ async function loadAndRun(rom: File): Promise<void> {
 
     machine = createMachine(rom.name, program, readSelectedProfile());
 
-    machine.browserKeyboard.start();
-    machine.virtualKeypad.start();
-
-    machine.runtime.resume();
+    machine.lifecycle.activate();
+    machine.lifecycle.start();
 
     renderMachine(machine);
 
@@ -243,6 +232,7 @@ async function loadAndRun(rom: File): Promise<void> {
     romFileName.textContent = rom.name;
     romFileSize.textContent = `${rom.size} bytes`;
   } catch (error) {
+    machine?.lifecycle.deactivate();
     machine = undefined;
 
     updateControls();
@@ -345,6 +335,16 @@ function createMachine(
     profile.display.refreshFrequency,
   );
 
+  const lifecycle = new WebMachineLifecycle(
+    runtime,
+    context.exitState,
+    () => {
+      initializer.initialize(context, profile, program);
+      traceHistory.clear();
+    },
+    [browserKeyboard, virtualKeypad],
+  );
+
   const snapshotInspection = (): WebInspectionViewModel => {
     const cpuState = cpu.snapshot();
 
@@ -367,18 +367,10 @@ function createMachine(
     program,
     profile,
 
-    context,
-    initializer,
-
-    cpu,
-    runtime,
-
-    traceHistory,
+    lifecycle,
     snapshotInspection,
 
     displayBuffer,
-    browserKeyboard,
-    virtualKeypad,
     soundTimer,
   };
 }
@@ -388,35 +380,61 @@ function toggleMachineRunning(): void {
     return;
   }
 
-  if (machine.runtime.isPaused) {
-    unlockAudio();
-    startMachine();
+  switch (machine.lifecycle.state.kind) {
+    case "paused":
+      unlockAudio();
+      startMachine();
+      return;
 
-    return;
+    case "running":
+      pauseMachine();
+      return;
+
+    case "inactive":
+    case "exited":
+    case "failed":
+      return;
   }
-
-  pauseMachine();
 }
 
 function startMachine(): void {
-  if (machine === undefined || !machine.runtime.isPaused) {
+  if (machine === undefined || machine.lifecycle.state.kind !== "paused") {
     return;
   }
 
-  machine.runtime.resume();
-  setStatus(`Running ${machine.romName}`);
+  try {
+    const lifecycleState = machine.lifecycle.start();
 
-  updateControls();
+    if (lifecycleState.kind === "exited") {
+      beeper.setActive(false);
+      renderMachine(machine);
+      setStatus(`Exited ${machine.romName} — interpreter requested exit.`);
+      updateControls();
 
-  runHostLoop(machine);
+      return;
+    }
+
+    setStatus(`Running ${machine.romName}`);
+
+    updateControls();
+
+    runHostLoop(machine);
+  } catch (error) {
+    beeper.setActive(false);
+    renderMachine(machine);
+    setStatus(`Unable to start ROM: ${describeError(error)}`, true);
+    updateControls();
+
+    console.error(error);
+  }
 }
 
 function pauseMachine(): void {
-  if (machine === undefined || machine.runtime.isPaused) {
+  if (machine === undefined || machine.lifecycle.state.kind !== "running") {
     return;
   }
 
-  machine.runtime.pause();
+  machine.lifecycle.pause();
 
   stopHostLoop();
 
@@ -430,20 +448,30 @@ function pauseMachine(): void {
 }
 
 function stepMachine(): void {
-  if (machine === undefined || !machine.runtime.isPaused) {
+  if (machine === undefined || machine.lifecycle.state.kind !== "paused") {
     return;
   }
 
   try {
-    machine.runtime.step();
+    const lifecycleState = machine.lifecycle.step();
 
+    beeper.setActive(false);
     renderMachine(machine);
 
-    setStatus(`Paused ${machine.romName} — stepped one instruction.`);
+    if (lifecycleState.kind === "exited") {
+      setStatus(`Exited ${machine.romName} — interpreter requested exit.`);
+    } else {
+      setStatus(`Paused ${machine.romName} — stepped one instruction.`);
+    }
+
+    updateControls();
   } catch (error) {
+    beeper.setActive(false);
     renderMachine(machine);
 
     setStatus(`Unable to step: ${describeError(error)}`, true);
+
+    updateControls();
 
     console.error(error);
   }
@@ -454,16 +482,12 @@ function resetMachine(): void {
     return;
   }
 
-  machine.runtime.pause();
-
   stopHostLoop();
 
   beeper.setActive(false);
 
   try {
-    machine.initializer.initialize(machine.context, machine.profile, machine.program);
-
-    machine.traceHistory.clear();
+    machine.lifecycle.reset();
 
     renderMachine(machine);
 
@@ -471,7 +495,11 @@ function resetMachine(): void {
 
     updateControls();
   } catch (error) {
+    renderMachine(machine);
+
     setStatus(`Unable to reset ROM: ${describeError(error)}`, true);
+
+    updateControls();
 
     console.error(error);
   }
@@ -484,9 +512,10 @@ function runHostLoop(session: WebMachineSession): void {
 
   const frame = (): void => {
     /*
-     * Ignore a stale frame belonging to a ROM that has since been replaced.
+     * Ignore a stale frame belonging to a ROM that has since been replaced,
+     * or a frame that was already queued when the session stopped running.
      */
-    if (machine !== session || session.runtime.isPaused) {
+    if (machine !== session || session.lifecycle.state.kind !== "running") {
       animationFrameId = undefined;
 
       return;
@@ -500,19 +529,28 @@ function runHostLoop(session: WebMachineSession): void {
        * Chip8Runtime and its scheduler continue to own emulated CPU, timer,
        * and display-refresh timing.
        */
-      session.runtime.tick();
+      const lifecycleState = session.lifecycle.tick();
 
-      beeper.setActive(session.soundTimer.getValue() > 0);
+      if (lifecycleState.kind === "running") {
+        beeper.setActive(session.soundTimer.getValue() > 0);
+      } else {
+        beeper.setActive(false);
+      }
 
       renderMachine(session);
+
+      if (lifecycleState.kind === "exited") {
+        animationFrameId = undefined;
+
+        setStatus(`Exited ${session.romName} — interpreter requested exit.`);
+        updateControls();
+
+        return;
+      }
 
       animationFrameId = requestAnimationFrame(frame);
     } catch (error) {
       animationFrameId = undefined;
-      session.runtime.pause();
-
-      session.browserKeyboard.stop();
-      session.virtualKeypad.stop();
 
       beeper.setActive(false);
 
@@ -556,21 +594,82 @@ function updateControls(): void {
     return;
   }
 
-  const paused = machine.runtime.isPaused;
+  switch (machine.lifecycle.state.kind) {
+    case "inactive":
+      runToggleButton.disabled = true;
+      runToggleButton.dataset.action = "start";
+      runToggleLabel.textContent = "Start";
 
-  runToggleButton.disabled = false;
-  runToggleButton.dataset.action = paused ? "start" : "pause";
-  runToggleLabel.textContent = paused ? "Start" : "Pause";
+      stepButton.disabled = true;
+      resetButton.disabled = true;
 
-  stepButton.disabled = !paused;
-  resetButton.disabled = false;
+      machineState.dataset.state = "inactive";
+      machineStateLabel.textContent = "Inactive";
 
-  machineState.dataset.state = paused ? "paused" : "running";
+      cpuStateIndicator.dataset.state = "inactive";
+      cpuStateIndicatorLabel.textContent = "Idle";
+      return;
 
-  machineStateLabel.textContent = paused ? "Paused" : "Running";
+    case "paused":
+      runToggleButton.disabled = false;
+      runToggleButton.dataset.action = "start";
+      runToggleLabel.textContent = "Start";
 
-  cpuStateIndicator.dataset.state = paused ? "paused" : "running";
-  cpuStateIndicatorLabel.textContent = paused ? "Ready" : "Live";
+      stepButton.disabled = false;
+      resetButton.disabled = false;
+
+      machineState.dataset.state = "paused";
+      machineStateLabel.textContent = "Paused";
+
+      cpuStateIndicator.dataset.state = "paused";
+      cpuStateIndicatorLabel.textContent = "Ready";
+      return;
+
+    case "running":
+      runToggleButton.disabled = false;
+      runToggleButton.dataset.action = "pause";
+      runToggleLabel.textContent = "Pause";
+
+      stepButton.disabled = true;
+      resetButton.disabled = false;
+
+      machineState.dataset.state = "running";
+      machineStateLabel.textContent = "Running";
+
+      cpuStateIndicator.dataset.state = "running";
+      cpuStateIndicatorLabel.textContent = "Live";
+      return;
+
+    case "exited":
+      runToggleButton.disabled = true;
+      runToggleButton.dataset.action = "start";
+      runToggleLabel.textContent = "Start";
+
+      stepButton.disabled = true;
+      resetButton.disabled = false;
+
+      machineState.dataset.state = "exited";
+      machineStateLabel.textContent = "Exited";
+
+      cpuStateIndicator.dataset.state = "exited";
+      cpuStateIndicatorLabel.textContent = "Stopped";
+      return;
+
+    case "failed":
+      runToggleButton.disabled = true;
+      runToggleButton.dataset.action = "start";
+      runToggleLabel.textContent = "Start";
+
+      stepButton.disabled = true;
+      resetButton.disabled = false;
+
+      machineState.dataset.state = "failed";
+      machineStateLabel.textContent = "Error";
+
+      cpuStateIndicator.dataset.state = "failed";
+      cpuStateIndicatorLabel.textContent = "Error";
+      return;
+  }
 }
 
 function updateWebFavicon(): void {
@@ -817,7 +916,7 @@ function recomposeMachineForSelectedProfile(): void {
   }
 
   const previousMachine = machine;
-  const wasPaused = previousMachine.runtime.isPaused;
+  const wasRunning = previousMachine.lifecycle.state.kind === "running";
 
   try {
     /*
@@ -832,27 +931,24 @@ function recomposeMachineForSelectedProfile(): void {
 
     stopHostLoop();
 
-    previousMachine.runtime.pause();
-    previousMachine.browserKeyboard.stop();
-    previousMachine.virtualKeypad.stop();
+    previousMachine.lifecycle.deactivate();
 
     beeper.setActive(false);
 
     machine = replacement;
 
-    replacement.browserKeyboard.start();
-    replacement.virtualKeypad.start();
+    replacement.lifecycle.activate();
 
-    if (!wasPaused) {
-      replacement.runtime.resume();
+    if (wasRunning) {
+      replacement.lifecycle.start();
     }
 
     renderMachine(replacement);
     updateControls();
 
-    setStatus(`${wasPaused ? "Paused" : "Running"} ${replacement.romName} — profile changed.`);
+    setStatus(`${wasRunning ? "Running" : "Paused"} ${replacement.romName} — profile changed.`);
 
-    if (!wasPaused) {
+    if (wasRunning) {
       runHostLoop(replacement);
     }
   } catch (error) {
