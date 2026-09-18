@@ -27,14 +27,15 @@ export class InstructionExecutor {
   constructor(
     private readonly instructionSet: Chip8InstructionSet,
     private readonly quirks: Chip8Quirks,
-  ) {} /**
+  ) {}
+
+  /**
    * Executes one decoded instruction.
    *
    * Normal instruction-pointer advancement is owned by the CPU cycle. This
    * method only performs program-counter changes that are explicit effects
    * of the instruction itself, such as jumps, calls, returns, and skips.
    */
-
   public execute(instruction: Instruction, context: ExecutionContext): void {
     switch (instruction.kind) {
       case "clear-screen":
