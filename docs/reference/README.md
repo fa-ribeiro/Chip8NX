@@ -11,4 +11,5 @@ Reference documents differ from other documentation:
 ## Documents
 
 - [Classic CHIP-8 opcode coverage audit](./classic-opcode-audit.md) — implementation, unit-test, and external-conformance coverage of the Classic CHIP-8 instruction set.
-- [SUPER-CHIP 1.1 coverage audit](./superchip-1.1-coverage-audit.md) — historical target definition, instruction-set semantics, shared quirks, focused and external conformance evidence, and deliberate historical exclusions.
+- [SUPER-CHIP 1.1 coverage audit](./superchip-1.1-coverage-audit.md) — historical target definition, implemented extensions/quirks, focused verification, deliberate exclusions, and external-conformance evidence for legacy SUPER-CHIP.
+- [SUPER-CHIP Modern coverage audit](./superchip-modern-coverage-audit.md) — modern target definition, historical-vs-modern semantic deltas, focused verification, Timendus evidence, and deliberate scope limits.

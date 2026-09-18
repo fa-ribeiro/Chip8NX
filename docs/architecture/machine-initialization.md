@@ -459,7 +459,7 @@ restore the relevant interpreter-visible state.
 
 Keyboard reset is semantic rather than physical: it clears transient `Fx0A` interpretation while preserving keys that remain pressed.
 
-`ExitState.reset()` makes the CPU executable again after any previous SUPER-CHIP interpreter-exit condition, including explicit `00FD`, historical `00C0`, or the configured historical `Fx1E` index-overflow condition.
+`ExitState.reset()` makes the CPU executable again after any previous SUPER-CHIP interpreter-exit condition. Both SUPER-CHIP dialects can exit through `00FD`; historical SUPER-CHIP 1.1 additionally models `00C0` exit and the configured historical `Fx1E` overflow exit.
 
 ### 4. Reinstall definition data
 
@@ -495,7 +495,7 @@ RplFlags
     → preserved
 ```
 
-This is an intentional historical-semantic decision, not an omission. SUPER-CHIP instruction-set membership determines whether `Fx75` / `Fx85` exist, while the host owns the lifetime of the `RplFlags` instance. The host can therefore reuse that store across reset, ROM replacement, or machine-session recomposition when it wants the historical persistence behavior.
+This is an intentional SUPER-CHIP state-lifetime decision, not an omission. Both supported SUPER-CHIP instruction sets determine that `Fx75` / `Fx85` exist, while the host owns the lifetime of the `RplFlags` instance. The host can therefore reuse that store across reset, ROM replacement, or machine-session recomposition according to the application's persistence contract.
 
 For the Web host, the RPL store lives above individual `WebMachineSession` instances, so changing ROM or profile does not implicitly erase it during the current page lifetime. Browser-reload persistence is a separate host-storage concern and is not part of `MachineInitializer`.
 
@@ -887,33 +887,186 @@ The key point is:
 
 ## Testing and Verification
 
-Initialization is tested at the boundary that owns each responsibility:
+Initialization is tested at the boundary that owns each responsibility.
 
 ```text
-MemoryImage
-    → immutable binary-value semantics
+MemoryImage tests
+    → binary-image value semantics
 
-MemoryImageLoader
-    → generic contiguous placement
+MemoryImageLoader tests
+    → generic placement
 
-MachineInitializer
-    → CHIP-8 layout / reset policy
-      + validate-before-mutate guarantees
+MachineInitializer tests
+    → CHIP-8 layout/reset policy
+      and failure-before-mutation guarantees
 ```
 
-`MemoryImage` tests protect copying and byte validation. `MemoryImageLoader` tests verify sequential placement and rely on real `Memory` implementations for concrete address-range failures.
+### `MemoryImage`
 
-`MachineInitializer` tests begin with deliberately non-initial machine state and verify that successful initialization restores the defined reset state, reinstalls the configured small/optional-large fonts and program image, resets display/keyboard/exit state appropriately, and preserves longer-lived resources such as `RplFlags` and provider-owned RNG progression.
+Tests verify:
 
-Failure tests seed observable state, attempt an invalid initialization, and verify that mutation never begins for known layout errors such as empty images, out-of-range placement, memory/profile size mismatch, and overlapping font/program ranges.
+```text
+ordinary byte iterables accepted
+Uint8Array input accepted
+source data copied
+invalid byte values rejected
+```
 
-The tests intentionally prove **prevalidation**, not general transaction rollback. Unexpected collaborator failures after mutation starts remain outside the initializer's current guarantee.
+The copy test protects `MemoryImage` as an immutable definition source.
 
-Boundary cases such as images ending exactly at memory end or adjacent non-overlapping ranges are natural additional hardening cases when coverage work revisits this area.
+### `MemoryImageLoader`
 
-The verification rule is:
+Tests verify sequential placement:
 
-> Test generic image/placement behavior generically, and keep CHIP-8-specific layout, reset, lifetime, and failure-before-mutation evidence at the initializer boundary.
+```text
+image = [0x10, 0x20, 0x30]
+start = 0x300
+
+memory[0x300] = 0x10
+memory[0x301] = 0x20
+memory[0x302] = 0x30
+```
+
+They also verify memory outside the image range remains unchanged.
+
+Out-of-range behavior is exercised through real `Ram`, confirming that concrete address validation belongs to `Memory` and its errors propagate through the loader.
+
+### `MachineInitializer`
+
+Initializer tests compose real Core state/capability components and verify the complete reset contract.
+
+The machine is deliberately made non-initial first, then initialization is expected to restore:
+
+```text
+memory
+registers
+stack
+PC
+I
+timers
+display pixels and initial mode
+vertical blank
+keyboard interpreter state
+ExitState
+small font image
+optional large font image
+program image
+RPL preservation
+```
+
+### Keyboard, exit, RPL, and RNG lifecycle evidence
+
+The tests explicitly protect several subtle lifecycle boundaries.
+
+Keyboard:
+
+```text
+held key preserved
+old Fx0A wait discarded
+```
+
+Exit state:
+
+```text
+previously exited interpreter
+    → reset to executable
+```
+
+RPL flags:
+
+```text
+preexisting RPL contents
+    → preserved across machine initialization
+```
+
+RNG:
+
+```text
+provider progression preserved across machine initialization
+```
+
+This confirms that reset scope follows semantic ownership rather than blindly resetting every dependency or every piece of state.
+
+### Failure-before-mutation evidence
+
+Initializer tests seed observable machine state, attempt invalid initialization, and then verify the old state remains unchanged.
+
+Covered invalid cases include:
+
+```text
+program too large
+small font too large
+large font too large
+small-font/program overlap
+small-font/large-font overlap
+large-font/program overlap
+memory/profile size mismatch
+empty small font image
+empty configured large font image
+empty program image
+```
+
+These tests prove:
+
+```text
+known invalid layout
+    ↓
+throw
+    ↓
+mutation phase never begins
+```
+
+They do not claim general rollback for arbitrary later collaborator failures.
+
+### Boundary hardening opportunities
+
+The documented half-open range model naturally permits:
+
+```text
+image ending exactly at memory end
+font images/program exactly adjacent
+```
+
+Explicit regression tests for those two boundary cases would strengthen the contract further.
+
+That is a test-hardening opportunity, not evidence of a current defect.
+
+### Verification rule
+
+The overall testing rule is:
+
+> Verify generic binary behavior generically, and verify CHIP-8-specific layout/reset semantics at the initializer boundary.
+
+Examples:
+
+```text
+source image copied
+    → MemoryImage test
+
+bytes placed sequentially
+    → MemoryImageLoader test
+
+memory access rejected
+    → Ram / loader collaboration
+
+font/font or font/program overlap rejected
+    → MachineInitializer test
+
+invalid layout preserves previous state
+    → MachineInitializer test
+
+keyboard wait state reset correctly
+    → MachineInitializer test
+
+ExitState reset correctly
+    → MachineInitializer test
+
+RPL contents preserved
+    → MachineInitializer test
+
+RNG provider state preserved
+    → MachineInitializer test
+```
 
 ## Ownership Through Initialization
 

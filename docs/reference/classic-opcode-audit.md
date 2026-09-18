@@ -96,7 +96,7 @@ For Classic CHIP-8:
 
 This must not be confused with SUPER-CHIP behavior, where `Dxy0` has extended sprite semantics.
 
-Chip8NX keeps the Classic zero-height behavior for `CLASSIC_CHIP8_PROFILE` while `SUPERCHIP_PROFILE` supplies the historical extended semantics through the same decoded instruction shape and profile-driven execution path.
+Chip8NX keeps the Classic zero-height behavior for `CLASSIC_CHIP8_PROFILE`. `SUPERCHIP_PROFILE` supplies the historical mode-sensitive extended form, while `SUPERCHIP_MODERN_PROFILE` supplies the Modern 16×16 form in both display modes through the same decoded instruction shape and profile-driven execution path.
 
 ## Classic behavior verified during conformance work
 
@@ -132,7 +132,7 @@ The remaining Timendus fixtures are not blockers for the Classic baseline:
 
 - **Splash screen** provides less coverage than the existing IBM Logo and opcode tests;
 - **Beep** depends on host audio presentation, while Core models the sound timer without owning host audio output;
-- **Scrolling** does not belong to the Classic profile. It is now implemented for the SUPER-CHIP 1.1 profile and should be evaluated as SUPER-CHIP conformance evidence rather than as part of this Classic audit.
+- **Scrolling** does not belong to the Classic profile. It is implemented for both supported SUPER-CHIP profiles and should be evaluated as SUPER-CHIP conformance evidence rather than as part of this Classic audit.
 
 They may be revisited when the corresponding functionality becomes relevant.
 

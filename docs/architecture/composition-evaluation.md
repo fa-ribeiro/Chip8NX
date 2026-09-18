@@ -118,7 +118,7 @@ The Web host observes it and uses `WebAudioBeeper` for browser-specific sound pr
 
 Host loops determine when an application services or observes the emulator; they do not redefine emulated timing.
 
-SUPER-CHIP introduces display-mode-dependent sprite timing, but this still does not make the runtime profile-aware. The runtime continues to produce vertical-blank opportunities; instruction execution resolves `profile.quirks.spriteDrawTiming` against the current display mode and decides whether a draw attempt must consume one.
+Historical SUPER-CHIP 1.1 introduces display-mode-dependent sprite timing, while SUPER-CHIP Modern selects uniform immediate drawing. Neither makes the runtime profile-aware. The runtime continues to produce vertical-blank opportunities; instruction execution resolves `profile.quirks.spriteDrawTiming` against the current display mode when necessary and decides whether a draw attempt must consume one.
 
 Likewise, SUPER-CHIP interpreter-exit conditions change interpreter state through `ExitState` rather than introducing a host/runtime stop callback. An exited CPU simply performs no further fetch/decode/execute work until initialization resets that state.
 
@@ -134,6 +134,7 @@ The current built-in profiles are:
 CLASSIC_CHIP8_PROFILE
 CHIP48_PROFILE
 SUPERCHIP_PROFILE
+SUPERCHIP_MODERN_PROFILE
 ```
 
 Applications still decide how profile data becomes concrete collaborators.
@@ -153,6 +154,7 @@ machine characteristics
 instructionSet
     chip8
     superchip-1.1
+    superchip-modern
 
 quirks
     shift source
@@ -189,7 +191,7 @@ Chip8Profile
 
 This is still application-owned composition. The profile does not instantiate components itself.
 
-The distinction between `instructionSet` and `quirks` also prevents the composition root from treating extension-only semantics as generic feature flags. `00FD`, `Fx30`, `Fx75` / `Fx85`, display controls, extended `Dxy0`, and high-resolution affected-row `VF` semantics follow from `superchip-1.1`; shared behaviors such as shifts, memory transfers, sprite timing, and `Fx1E` overflow follow from `Chip8Quirks`.
+The distinction between `instructionSet` and `quirks` also prevents the composition root from treating extension-only semantics as generic feature flags. `00FD`, `Fx30`, `Fx75` / `Fx85`, display controls, and extended `Dxy0` belong to the SUPER-CHIP instruction family; exact historical-versus-modern meanings follow from `superchip-1.1` or `superchip-modern`. Shared behaviors such as shifts, memory transfers, sprite timing, and `Fx1E` overflow follow from `Chip8Quirks`.
 
 ## What remained host-specific
 
@@ -227,7 +229,7 @@ The Web application has different composition pressures:
 - Canvas framebuffer presentation;
 - Web Audio presentation;
 - ROM replacement and reload lifecycle;
-- selectable Classic CHIP-8, CHIP-48 2.25, and SUPER-CHIP 1.1 profiles;
+- selectable Classic CHIP-8, CHIP-48 2.25, SUPER-CHIP 1.1, and SUPER-CHIP Modern profiles;
 - profile recomposition while retaining the current ROM image;
 - profile-appropriate instruction formatting;
 - application-lifetime RPL storage shared across machine-session replacement;
@@ -286,9 +288,9 @@ The comparison does not demonstrate a need for:
 
 This keeps host-specific lifecycle, policy, interaction, and presentation outside the reusable Core and Inspection packages.
 
-The SUPER-CHIP work is especially useful evidence here. It introduced genuinely new machine behavior—dual display modes, a shared backing framebuffer, large-font support, extension-specific instructions, interpreter exit, and persistent RPL state—without requiring a parallel machine architecture or generic variant framework.
+The SUPER-CHIP work is especially useful evidence here. Historical SUPER-CHIP introduced genuinely new machine behavior—dual display modes, a shared backing framebuffer, large-font support, extension-specific instructions, interpreter exit, and persistent RPL state—without requiring a parallel machine architecture or generic variant framework. SCHIP-MODERN then reused that structural foundation while changing extension semantics such as mode clearing, scroll units, `Dxy0`, collision reporting, draw timing, and `Fx1E` overflow behavior.
 
-The later profile refactor strengthened the same design. Instead of growing one compatibility object with `supported` / `unsupported` switches, the model separated instruction-set membership from shared-instruction quirks while leaving application-owned composition unchanged.
+That second SUPER-CHIP dialect strengthened the same design. Instead of growing one compatibility object with `supported` / `unsupported` switches, or adding a quirk for every extension difference, the model separates instruction-set identity from shared-instruction quirks while leaving application-owned composition unchanged.
 
 ## Repeated machine assembly
 
@@ -341,7 +343,7 @@ That is useful repeated composition, but it is not yet evidence that one univers
 
 The addition of `RplFlags` makes the ownership question even more concrete. A helper that blindly creates all state per machine session would be wrong for the Web host because SUPER-CHIP RPL storage deliberately outlives ordinary reset and replacement `WebMachineSession` objects.
 
-Likewise, formatter selection is application composition rather than Core machine construction. Classic CHIP-8 uses `ClassicInstructionFormatter`, while CHIP-48 and the current SUPER-CHIP profile use CHIP-48-style formatting where their shared semantics differ, together with common formatting support for SUPER-CHIP instructions.
+Likewise, formatter selection is application composition rather than Core machine construction. Classic CHIP-8 uses `ClassicInstructionFormatter`, while CHIP-48 and both supported SUPER-CHIP profiles use CHIP-48-style formatting where their shared semantics differ, together with common formatting support for SUPER-CHIP instructions.
 
 A shared factory would therefore have to decide whether it:
 
@@ -361,27 +363,160 @@ For now, explicit construction remains useful architectural documentation. Revis
 
 See [Embedding the Core](../guides/embedding-the-core.md) for the explicit composition path.
 
-## Profile recomposition as architectural evidence
+## Profile recomposition in the Web host
 
-The Web profile selector provides a concrete example of application-owned recomposition without requiring Core to own a generic machine-session abstraction.
+The Web profile selector provides a concrete example of application-owned recomposition.
 
-When the selected profile changes while a ROM is loaded, the Web host composes a replacement session around the retained program image. The selected `Chip8Profile` is applied consistently across machine characteristics, instruction-set membership, shared-instruction quirks, timing, resources, and inspection presentation. Host lifecycle policy decides when the replacement becomes active and whether the previous session's running/paused state is preserved.
+When a user changes the selected profile while a ROM is loaded, the Web application:
 
-Two boundaries are especially useful evidence:
+1. retains the current ROM image;
+2. constructs a replacement machine using the selected `Chip8Profile`;
+3. initializes that machine with the same ROM;
+4. selects the corresponding instruction formatter;
+5. stops the old host-facing input/runtime lifecycle only after replacement composition succeeds;
+6. preserves whether the previous machine was running or paused;
+7. reattaches the browser keyboard and virtual keypad to the new session;
+8. reuses the application-owned `RplFlags` store.
+
+Conceptually:
 
 ```text
-superchip-1.1
+current ROM
+    +
+selected profile
+    +
+host-owned RplFlags
+    ↓
+create replacement WebMachineSession
+    ↓
+swap sessions
+    ↓
+preserve host lifecycle state
+```
+
+The selected profile is applied consistently across the replacement composition:
+
+```text
+machine characteristics
+    → memory / stack / display / fonts / timing
+
+instructionSet
+    → extension-specific instruction semantics
+
+quirks
+    → shared-instruction behavior
+```
+
+This behavior belongs in `apps/web` because it is a user-interface lifecycle policy, not a Core machine semantic.
+
+### Persistent RPL ownership
+
+Not every machine-related object belongs inside `WebMachineSession`.
+
+SUPER-CHIP RPL flags intentionally survive ordinary machine initialization. The Web application therefore owns one `RplFlags` instance above individual machine sessions and injects it into every replacement session:
+
+```text
+Web application lifetime
+        │
+        └── RplFlags
+              │
+              ├── session A
+              ├── reset A
+              ├── profile recomposition
+              └── session B
+```
+
+This is a concrete example of why lifecycle ownership matters more than mechanical object grouping.
+
+Putting `new RplFlags()` inside every session constructor would make the code locally tidy but would violate the intended SUPER-CHIP persistence semantics.
+
+The current Web contract preserves RPL data for the lifetime of the page/application. Persistence across browser reloads remains outside the current design.
+
+Instruction-set membership and RPL lifetime remain independent:
+
+```text
+superchip-1.1 / superchip-modern
     → Fx75 / Fx85 exist
 
-host-owned RplFlags lifetime
+RplFlags instance lifetime
     → how long stored values survive
 ```
 
-The Web application therefore owns `RplFlags` above individual sessions rather than hiding that lifetime inside `Chip8Profile` or a generic session factory. Likewise, formatter selection remains application composition: Inspection provides reusable formatters, while the host chooses the one appropriate to the selected machine.
+That separation is one reason RPL persistence does not belong inside `Chip8Profile`.
 
-`WebMachineSession` remains a Web-local aggregate because it retains exactly the references required by that host's demonstrated lifecycle, inspection, input, and presentation needs. Another host need not retain the same objects or support profile replacement at all.
+## Formatter composition
 
-These details support the architectural conclusion without making this evaluation a second implementation guide. The concrete browser workflow is documented in [Web application](../guides/web-application.md), and the profile model itself is documented in [Machine profiles and variation](./machine-profiles-and-variation.md).
+Profile support also exposed variation in passive inspection presentation.
+
+The decoder remains shared and profile-agnostic. It preserves enough operand information for later execution semantics and presentation.
+
+The Web composition root chooses the formatter:
+
+```text
+Classic CHIP-8
+    → ClassicInstructionFormatter
+
+CHIP-48
+    → Chip48InstructionFormatter
+
+SUPER-CHIP 1.1
+SUPER-CHIP Modern
+    → Chip48InstructionFormatter
+      for CHIP-48-style shared semantic forms,
+      plus common formatting for SUPER-CHIP instructions
+```
+
+This keeps formatting variation in `@chip8nx/inspection` while keeping the choice of which formatter applies to the active machine in the application composition root.
+
+No global profile lookup or profile-aware singleton is required.
+
+## `WebMachineSession`
+
+`WebMachineSession` remains a Web application aggregate rather than a missing Core machine abstraction.
+
+It retains the references required by the browser application's demonstrated lifecycle and presentation needs:
+
+```text
+ROM lifecycle
+    romName
+    program
+    profile
+    context
+    initializer
+
+execution
+    cpu
+    runtime
+
+inspection
+    traceHistory
+    snapshotInspection()
+
+presentation
+    displayBuffer
+    soundTimer
+
+browser input
+    browserKeyboard
+    virtualKeypad
+```
+
+Application-lifetime `RplFlags` is deliberately **not** owned by the session.
+
+The addition of profile recomposition strengthens rather than weakens the case for keeping this aggregate host-local.
+
+For example, another host might:
+
+- support only one profile;
+- allow profile selection before ROM loading but not while running;
+- retain RPL storage for a different host-defined lifetime;
+- use the same Core CPU observation signal without retaining a trace buffer;
+- inspect memory without presenting nearby instructions;
+- have no interactive inspection UI at all.
+
+Those hosts would not necessarily need the same retained references or lifecycle.
+
+`WebMachineSession` should therefore remain application-owned until multiple consumers demonstrate a stable shared machine-session abstraction.
 
 ## Conclusion
 
@@ -399,6 +534,6 @@ The host-composition evaluation remains complete enough to answer the original c
 - application-owned composition remains the project-wide rule;
 - repeated machine assembly remains worth observing, but not yet extracting.
 
-The Web inspection workbench, CHIP-48 profile selection, SUPER-CHIP 1.1 support, and the later instruction-set/quirk separation all arrived without requiring a universal host abstraction or a Core `Chip8Machine` aggregate. The application instead composes existing reusable boundaries and retains host-specific policy locally.
+The Web inspection workbench, CHIP-48 profile selection, historical SUPER-CHIP support, SCHIP-MODERN, and the instruction-set/quirk separation all arrived without requiring a universal host abstraction or a Core `Chip8Machine` aggregate. The application instead composes existing reusable boundaries and retains host-specific policy locally.
 
 No new Core composition abstraction is introduced as a result of this evaluation.

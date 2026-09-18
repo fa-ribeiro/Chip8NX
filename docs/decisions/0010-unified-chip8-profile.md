@@ -48,13 +48,87 @@ font base address
 
 Future profile-specific compatibility quirks may also belong here when multiple behaviors actually need to coexist.
 
-## Later Evolution
+## Implementation after the initial profile milestones
 
-The unified-profile decision remains in force: `Chip8Profile` is still the complete declarative description of the machine being emulated, and applications still own composition.
+The profile model has since been exercised by more than one historical machine target.
 
-Subsequent CHIP-48 and SUPER-CHIP work refined the representation inside that profile. The earlier compatibility submodel mixed two different concerns: whether extension instruction semantics exist at all, and how instructions shared by supported variants behave.
+Chip8NX currently provides built-in profiles for:
 
-The current profile model separates those concerns explicitly:
+- Classic CHIP-8;
+- CHIP-48 2.25;
+- SUPER-CHIP 1.1.
+
+`Chip8Profile` remains the complete declarative description of the machine being emulated. It now includes both architectural characteristics and compatibility-sensitive behavior.
+
+Conceptually:
+
+```text
+Chip8Profile
+    ├── machine characteristics
+    │   ├── memory size
+    │   ├── program start address
+    │   ├── stack capacity
+    │   ├── display specification and refresh frequency
+    │   ├── timer frequency
+    │   ├── small-font image and placement
+    │   └── optional large-font image and placement
+    │
+    └── compatibility
+        ├── shift source
+        ├── memory-transfer index behavior
+        ├── jump-offset source
+        ├── logic-operation flag behavior
+        ├── sprite overflow behavior
+        ├── sprite draw timing
+        ├── interpreter-exit availability
+        ├── RPL-flag availability
+        ├── index-overflow behavior
+        └── zero-row scroll-down behavior
+```
+
+Compatibility is therefore one part of a profile, not another name for a profile.
+
+A named historical profile describes one coherent historical machine target. For example, the CHIP-48 profile combines CHIP-48 machine characteristics with the compatibility semantics documented for CHIP-48 2.25.
+
+The same `Chip8Profile` type may also be used to construct deliberate custom combinations. The type system does not require every profile value to correspond to a named historical interpreter.
+
+Compatibility choices are represented using semantic values rather than boolean quirk flags. For example:
+
+```ts
+shiftSource: "vx";
+memoryTransferIndex: "increment-by-x";
+spriteOverflow: "clip";
+```
+
+This makes the selected behavior explicit without requiring callers to know what an enabled or disabled "quirk" means.
+
+The introduction of CHIP-48 also demonstrated that some compatibility dimensions require more than two choices. `Fx55` and `Fx65`, for example, currently support:
+
+```text
+increment-by-count   I += X + 1
+increment-by-x       I += X
+unchanged            I is not changed
+```
+
+This variation was added only after a real historical profile demonstrated the need for it.
+
+Profiles remain declarative data. They do not construct machine components, contain host adapters, or own runtime policy such as CPU execution frequency.
+
+Applications remain responsible for composition and supply the relevant profile values to the components they construct.
+
+## Later Evolution: Instruction Set vs Shared Quirks
+
+The unified-profile decision remains in force, but the internal semantic shape evolved after the historical SUPER-CHIP work exposed an important distinction.
+
+The former single compatibility grouping mixed two different questions:
+
+```text
+does this instruction semantic exist?
+
+how does an instruction shared by supported machines vary?
+```
+
+The current profile model therefore separates:
 
 ```text
 Chip8Profile
@@ -65,9 +139,28 @@ Chip8Profile
         → how shared instructions vary
 ```
 
-This is an evolution of the representation, not a reversal of the ADR. The profile remains declarative data; it still does not construct machine components or own host/runtime policy such as CPU execution frequency.
+The built-in instruction-set discriminants are now:
 
-The current architecture is documented in [Machine profiles and variation](../architecture/machine-profiles-and-variation.md).
+```text
+chip8
+superchip-1.1
+superchip-modern
+```
+
+and the built-in profiles are:
+
+```text
+CLASSIC_CHIP8_PROFILE
+CHIP48_PROFILE
+SUPERCHIP_PROFILE
+SUPERCHIP_MODERN_PROFILE
+```
+
+SCHIP-MODERN provided further evidence for this split. Historical and Modern SUPER-CHIP share an extension opcode family but differ in extension-specific meanings such as mode clearing, scrolling units, `00C0`, `Dxy0`, and collision reporting. Those differences remain instruction-set semantics, while shared-instruction variation such as draw timing and `Fx1E` overflow remains in `Chip8Quirks`.
+
+This is an evolution of the representation, not a reversal of the ADR. A `Chip8Profile` still remains the unified declarative description of the emulated machine target, and applications still own concrete composition.
+
+See [Machine profiles and variation](../architecture/machine-profiles-and-variation.md) for the canonical current model.
 
 ## Rationale
 

@@ -4,11 +4,12 @@ This directory documents the high-level architecture of Chip8NX's reusable Core 
 
 Source-level JSDoc explains individual classes, interfaces, methods, and types. The documents here instead explain how larger parts of the system collaborate, their dependency direction, and important state, lifecycle, semantic-variation, observation, composition, and timing boundaries.
 
-Chip8NX currently models three built-in historical machine profiles through the same architecture:
+Chip8NX currently models four built-in machine profiles through the same architecture:
 
 - Classic CHIP-8;
 - CHIP-48 2.25;
-- SUPER-CHIP 1.1.
+- historical SUPER-CHIP 1.1;
+- SUPER-CHIP Modern.
 
 The profile model separates three concerns:
 
@@ -104,7 +105,7 @@ instructionSet
 quirks
 ```
 
-It explains the built-in Classic CHIP-8, CHIP-48, and SUPER-CHIP profiles; why extension-only semantics are different from shared-instruction quirks; how profile values configure focused collaborators; and how new variation should be classified.
+It explains the built-in Classic CHIP-8, CHIP-48, historical SUPER-CHIP, and Modern SUPER-CHIP profiles; why extension-only semantics are different from shared-instruction quirks; how two extension dialects can share opcode-family membership without sharing exact semantics; how profile values configure focused collaborators; and how new variation should be classified.
 
 ### Instruction execution
 
@@ -140,7 +141,7 @@ Host-specific behavior belongs with the relevant host documentation rather than 
 
 The Terminal application's Level-1/2/3 composition model is documented in [Terminal composition levels](../guides/terminal-composition-levels.md).
 
-The browser host's selectable profiles, Canvas/audio/input adapters, execution controls, passive Inspection tooling, persistent host-owned RPL state, appearance, and Web lifecycle policy are documented in [Web application](../guides/web-application.md).
+The browser host's selectable Classic, CHIP-48, historical SUPER-CHIP, and Modern SUPER-CHIP profiles, Canvas/audio/input adapters, execution controls, passive Inspection tooling, persistent host-owned RPL state, appearance, and Web lifecycle policy are documented in [Web application](../guides/web-application.md).
 
 For a practical example of assembling the public Core API around a selected profile, see [Embedding the Core](../guides/embedding-the-core.md).
 

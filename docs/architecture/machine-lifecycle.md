@@ -371,17 +371,20 @@ See [Instruction execution architecture](./instruction-execution.md) for retry s
 
 SUPER-CHIP interpreter-exit semantics mutate `ExitState`.
 
-In the current historical SUPER-CHIP 1.1 model, exit can occur through:
+For the supported SUPER-CHIP targets, exit can occur through:
 
 ```text
 00FD
     → explicit SUPER-CHIP interpreter exit
+    → available in both SUPER-CHIP instruction sets
 
 00C0
-    → historical SUPER-CHIP 1.1 zero-scroll interpretation
+    → historical SUPER-CHIP 1.1 zero-scroll interpretation only
+    → Modern SUPER-CHIP treats it as a zero-row scroll/no-op
 
 Fx1E overflow
     → shared instruction whose configured indexOverflow quirk selects exit
+    → historical SUPER-CHIP exits; Modern SUPER-CHIP continues
 ```
 
 None of these calls:

@@ -135,7 +135,7 @@ The expected fixture is:
 
 ```text
 Filename: 4-flags.ch8
-Size:     1041 bytes
+Size:     1041
 SHA-256:  f00ddadd37bc878473de0c8f16faecf9985dea39036a3a796d551bc9fec47cfa
 ```
 
@@ -173,10 +173,11 @@ Chip8NX uses the Timendus automation byte at address `0x1FF` to exercise more th
 
 ```text
 1 = Classic CHIP-8
+2 = modern SUPER-CHIP
 4 = legacy SUPER-CHIP
 ```
 
-The Classic run uses `CLASSIC_CHIP8_PROFILE`. The legacy SUPER-CHIP run uses `SUPERCHIP_PROFILE` and finishes in low-resolution mode. Both execute through the normal machine initialization, CPU, runtime, scheduler, timer, vertical-blank, and display pipeline.
+The Classic run uses `CLASSIC_CHIP8_PROFILE`. The Modern SUPER-CHIP run uses `SUPERCHIP_MODERN_PROFILE`, and the legacy SUPER-CHIP run uses `SUPERCHIP_PROFILE`. The SUPER-CHIP runs finish in low-resolution mode. All execute through the normal machine initialization, CPU, runtime, scheduler, timer, vertical-blank, and display pipeline.
 
 The ROM provides external evidence for these shared-instruction quirks:
 
@@ -251,16 +252,17 @@ Chip8NX does not redistribute this ROM.
 
 The Timendus CHIP-8 test suite is licensed under GPL-3.0. The external ROM remains subject to its upstream license and is not covered by the Chip8NX MIT license.
 
-The scrolling ROM provides automated selections at address `0x1FF`. Chip8NX currently exercises these two SUPER-CHIP paths:
+The scrolling ROM provides automated selections at address `0x1FF`. Chip8NX currently exercises three SUPER-CHIP paths:
 
 ```text
+1 = modern SUPER-CHIP low-resolution scrolling
 2 = legacy SUPER-CHIP low-resolution scrolling
 3 = SUPER-CHIP high-resolution scrolling
 ```
 
-Both automated tests use `SUPERCHIP_PROFILE` and therefore the `superchip-1.1` instruction-set semantics.
+The Modern low-resolution run uses `SUPERCHIP_MODERN_PROFILE` and therefore the `superchip-modern` instruction-set semantics. The legacy low- and high-resolution runs use `SUPERCHIP_PROFILE` and therefore `superchip-1.1`.
 
-The low-resolution run verifies historical scrolling in physical backing-buffer units while the display remains in low mode. The high-resolution run verifies the same SUPER-CHIP scrolling instructions in high mode. In both cases, the test checks the final arrow glyph regions produced by the ROM after `00FB`, `00FC`, and `00Cn` scrolling.
+The Modern low-resolution run verifies logical-pixel scrolling, which becomes doubled movement in the 128×64 backing store. The legacy low-resolution run verifies historical physical/backing-unit scrolling while the display remains in low mode. The high-resolution run verifies the historical SUPER-CHIP scrolling instructions where logical and backing units coincide geometrically. In all cases, the test checks the final arrow glyph regions produced by the ROM after `00FB`, `00FC`, and `00Cn` scrolling.
 
 The tests run through the normal machine initialization, CPU, runtime, scheduler, timer, vertical-blank, and display pipeline rather than invoking display helpers directly.
 
@@ -351,6 +353,8 @@ Get-FileHash packages/core/tests/conformance/roms/variant-detection-1.4.ch8 -Alg
 Further Timendus fixtures may be added when they exercise behavior applicable to the supported Chip8NX machine profiles and when their automation and expected completion state can be made deterministic.
 
 The Timendus Beep test exercises sound presentation rather than only Core timer state. It is therefore not currently part of this Core conformance suite; adding it would require an explicit conformance strategy for the host/audio boundary rather than treating browser or terminal audio as a Core machine requirement.
+
+The Timendus Scrolling fixture is no longer future work: its exact v4.2 fixture identity is pinned above and the repository contains automated Modern low-resolution, legacy low-resolution, and high-resolution SUPER-CHIP conformance tests for it.
 
 When a new fixture becomes part of an automated conformance test:
 

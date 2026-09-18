@@ -14,13 +14,14 @@ For the architectural rationale behind these steps, see:
 
 ## 1. Select a profile
 
-Chip8NX currently provides three built-in profiles:
+Chip8NX currently provides four built-in profiles:
 
 ```ts
 import {
   CHIP48_PROFILE,
   type Chip8Profile,
   CLASSIC_CHIP8_PROFILE,
+  SUPERCHIP_MODERN_PROFILE,
   SUPERCHIP_PROFILE,
 } from "@chip8nx/core";
 ```
@@ -41,6 +42,12 @@ or:
 
 ```ts
 const profile = SUPERCHIP_PROFILE;
+```
+
+or:
+
+```ts
+const profile = SUPERCHIP_MODERN_PROFILE;
 ```
 
 A profile combines three kinds of declarative information:
@@ -67,11 +74,10 @@ The current built-in instruction-set identities are:
 ```text
 chip8
 superchip-1.1
+superchip-modern
 ```
 
-Classic CHIP-8 and CHIP-48 currently use the `chip8` instruction set and differ through machine characteristics and shared-instruction quirks. SUPER-CHIP selects `superchip-1.1`, which adds the extension-specific semantics modeled by Core.
-
-For the architecture behind this split, see [Machine profiles and variation](../architecture/machine-profiles-and-variation.md).
+Classic CHIP-8 and CHIP-48 currently use the `chip8` instruction set and differ through machine characteristics and shared-instruction quirks. Historical SUPER-CHIP selects `superchip-1.1`; Modern SUPER-CHIP selects `superchip-modern`. The two extension dialects share opcode-family membership but differ where modern semantics intentionally diverge.
 
 Current shared-instruction quirk dimensions include:
 
@@ -161,9 +167,9 @@ Font
     → used by instruction execution
 ```
 
-`ExitState` represents interpreter exit. The selected SUPER-CHIP instruction set can reach it through explicit `00FD` and historical `00C0`; the shared `Fx1E` instruction can also reach it when `profile.quirks.indexOverflow` selects the historical SUPER-CHIP exit behavior.
+`ExitState` represents interpreter exit. Both supported SUPER-CHIP instruction sets can reach it through explicit `00FD`. Historical `superchip-1.1` also reaches it through the targeted `00C0` interpretation, and the shared `Fx1E` instruction reaches it when `profile.quirks.indexOverflow` selects historical interpreter exit. `superchip-modern` instead treats `00C0` as a no-op and selects continued `Fx1E` execution.
 
-`RplFlags` represents the eight SUPER-CHIP user flags. The `superchip-1.1` instruction set determines whether `Fx75` / `Fx85` exist; the `RplFlags` object owns the actual stored values.
+`RplFlags` represents the eight SUPER-CHIP user flags. Both `superchip-1.1` and `superchip-modern` determine that `Fx75` / `Fx85` exist; the `RplFlags` object owns the actual stored values.
 
 Its lifecycle is intentionally longer than ordinary resettable machine state. If a host wants RPL values to survive machine reset or machine-session replacement, it must keep the same `RplFlags` instance across those operations.
 
@@ -273,7 +279,7 @@ profile.quirks
     → how instructions shared by supported variants behave
 ```
 
-This distinction matters for SUPER-CHIP. For example, `00FD`, `Fx30`, `Fx75`, `Fx85`, display-control instructions, extended `Dxy0`, and high-resolution affected-row `VF` semantics belong to `superchip-1.1`; they are not represented as supported/unsupported quirks.
+This distinction matters for SUPER-CHIP. `00FD`, `Fx30`, `Fx75`, `Fx85`, display-control instructions, and extended `Dxy0` belong to the SUPER-CHIP instruction family; exact historical/Modern meanings are selected by `superchip-1.1` or `superchip-modern`. Historical high-resolution affected-row `VF`, for example, must not leak into Modern SUPER-CHIP merely because both use the same high-resolution display capability.
 
 By contrast, shift source, `Fx55` / `Fx65` index behavior, `Bnnn` offset source, logic-flag behavior, sprite timing, and `Fx1E` overflow handling are shared-instruction quirks.
 
@@ -390,14 +396,16 @@ Timers and normal scheduled display time do not advance. When no vertical-blank 
 
 That lets vertical-blank-gated drawing make progress while paused without advancing scheduled display time.
 
-For the built-in SUPER-CHIP profile:
+For the built-in SUPER-CHIP profiles:
 
 ```text
-low-resolution draw
-    → vertical-blank-gated
+SUPER-CHIP 1.1
+    LOW  → vertical-blank-gated
+    HIGH → immediate
 
-high-resolution draw
-    → immediate
+SUPER-CHIP Modern
+    LOW  → immediate
+    HIGH → immediate
 ```
 
 The runtime does not inspect SUPER-CHIP display modes or `Chip8Quirks`. The executor resolves `spriteDrawTiming` from the injected quirks and the current `DisplayBuffer` mode.
@@ -508,7 +516,7 @@ quirks
     → behavior of shared instructions
 ```
 
-SUPER-CHIP therefore differs from the base profiles by more than a set of instruction quirks. It also changes display architecture, font resources, and instruction-set membership.
+Both SUPER-CHIP targets differ from the base profiles by more than a set of instruction quirks. They also change display architecture, font resources, and instruction-set membership. Historical versus Modern extension meanings are selected by the instruction-set discriminant rather than by host-side feature flags.
 
 A host may preserve explicitly longer-lived state, such as `RplFlags`, across that recomposition when its lifecycle requires it.
 
@@ -562,7 +570,7 @@ Application
 
 ## Why the manual path remains useful
 
-The Terminal host provides higher-level convenience compositions, while the Web host has demonstrated profile recomposition across Classic CHIP-8, CHIP-48, and SUPER-CHIP 1.1.
+The Terminal host provides higher-level convenience compositions, while the Web host has demonstrated profile recomposition across Classic CHIP-8, CHIP-48, SUPER-CHIP 1.1, and SUPER-CHIP Modern.
 
 Those applications share recognizable construction steps, but they still make different host-level ownership decisions. In particular, the Web application keeps `RplFlags` above individual machine sessions so their contents can survive ROM replacement and profile recomposition.
 

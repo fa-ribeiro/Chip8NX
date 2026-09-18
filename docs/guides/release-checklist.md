@@ -69,7 +69,7 @@ deno task test:conformance
 
 Treat this as a separate release-quality gate rather than silently assuming it was covered by `deno task ci`.
 
-For releases that change a supported profile or its semantic model, review the relevant conformance targets explicitly. Current SUPER-CHIP coverage includes the pinned Timendus v4.2 legacy SUPER-CHIP Quirks run and the low- and high-resolution Scrolling runs documented in [`packages/core/tests/conformance/README.md`](../../packages/core/tests/conformance/README.md).
+For releases that change a supported profile or its semantic model, review the relevant conformance targets explicitly. Current SUPER-CHIP coverage includes pinned Timendus v4.2 Quirks runs for legacy and Modern SUPER-CHIP, plus Scrolling runs for Modern low-resolution, legacy low-resolution, and high-resolution behavior documented in [`packages/core/tests/conformance/README.md`](../../packages/core/tests/conformance/README.md).
 
 Public-API documentation diagnostics can be reviewed with:
 
@@ -94,8 +94,10 @@ Typical checks include:
 - [ ] Classic CHIP-8 still executes with the base `chip8` instruction set and its own shared-instruction quirks.
 - [ ] CHIP-48 still executes with the base `chip8` instruction set and its own shared-instruction quirks.
 - [ ] SUPER-CHIP 1.1 executes with `instructionSet.kind = "superchip-1.1"` and its intended shared-instruction quirks.
+- [ ] SUPER-CHIP Modern executes with `instructionSet.kind = "superchip-modern"` and its intended 60 Hz, immediate-draw, and continued-index-overflow profile semantics.
 - [ ] A SUPER-CHIP-capable `DisplayBuffer` does not make SUPER-CHIP-only instructions executable under Classic CHIP-8 or CHIP-48.
-- [ ] `Fx30`, `Fx75`, `Fx85`, SUPER-CHIP display controls, extended `Dxy0`, and high-resolution affected-row `VF` behavior remain gated by SUPER-CHIP instruction-set semantics rather than by resource presence alone.
+- [ ] `Fx30`, `Fx75`, `Fx85`, SUPER-CHIP display controls, and extended `Dxy0` remain gated by SUPER-CHIP instruction-set semantics rather than by resource presence alone.
+- [ ] Historical-only semantics (physical scrolling, `00C0` exit, low 8×16 `Dxy0`, high affected-row `VF`) do not leak into Modern SUPER-CHIP, and Modern-only semantics (mode clear, logical scrolling, 16×16 low `Dxy0`) do not leak into historical SUPER-CHIP.
 - [ ] Shared behaviors such as shifts, `Fx55` / `Fx65`, `Bnnn`, logic `VF`, sprite timing, sprite overflow, and `Fx1E` overflow follow the selected `Chip8Quirks` values.
 - [ ] `MachineInitializer` resets ordinary state including `ExitState` but preserves `RplFlags`.
 
@@ -145,7 +147,7 @@ Before release:
 - [ ] do not describe a fixture as future work once an automated test for it is part of the repository;
 - [ ] do not claim a broader variant dialect than the machine profile actually targets.
 
-For the historical SUPER-CHIP profile, keep the target explicit: Chip8NX models the documented legacy/SUPER-CHIP 1.1 semantics used by the project, not a generic modern SCHIP dialect and not every HP48 implementation accident.
+Keep both SUPER-CHIP targets explicit. `SUPERCHIP_PROFILE` models the documented historical/legacy SUPER-CHIP 1.1 semantics used by the project, not a generic modern SCHIP dialect and not every HP48 implementation accident. `SUPERCHIP_MODERN_PROFILE` models the documented modern SUPER-CHIP compatibility behavior targeted by the project; it should not silently absorb unrelated XO-CHIP or emulator-specific extensions.
 
 ## 7. Review the release candidate
 

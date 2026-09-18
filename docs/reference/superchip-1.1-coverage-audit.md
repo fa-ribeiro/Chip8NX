@@ -4,6 +4,8 @@ This document records the historical SUPER-CHIP 1.1 behavior that Chip8NX intent
 
 It is a coverage/reference document rather than a second architecture specification. Architecture ownership remains documented under [`docs/architecture`](../architecture/README.md).
 
+This audit remains intentionally historical. Modern SUPER-CHIP is a separate supported target with different mode-switch, scrolling, `Dxy0`, collision, draw-timing, and `Fx1E` behavior; see the [SUPER-CHIP Modern coverage audit](./superchip-modern-coverage-audit.md).
+
 ## Target
 
 The `SUPERCHIP_PROFILE` target is the calculator-era SUPER-CHIP 1.1 machine, sometimes called **legacy SUPER-CHIP** to distinguish it from simplified modern SCHIP behavior.
@@ -301,7 +303,7 @@ The repository contains focused tests for the SUPER-CHIP implementation, includi
 - public-API composition of the SUPER-CHIP profile, display, large font, instruction-set type, quirks type, and interpreter exit;
 - Web rendering of the full physical backing framebuffer.
 
-The public profile API test also verifies that Classic CHIP-8, CHIP-48, and SUPER-CHIP are all exposed through the reusable Core entrypoint.
+The public profile API test verifies that Classic CHIP-8, CHIP-48, historical SUPER-CHIP 1.1, and SUPER-CHIP Modern are exposed through the reusable Core entrypoint.
 
 ## External conformance status
 
@@ -406,10 +408,10 @@ machine resources / characteristics
 ## Related documentation
 
 - [Architecture overview](../architecture/overview.md)
-- [Machine profiles and variation](../architecture/machine-profiles-and-variation.md)
 - [Instruction execution](../architecture/instruction-execution.md)
 - [Machine state and capabilities](../architecture/machine-state-and-capabilities.md)
 - [Machine initialization](../architecture/machine-initialization.md)
 - [Runtime and timing](../architecture/runtime-and-timing.md)
 - [Web application guide](../guides/web-application.md)
 - [Classic CHIP-8 opcode coverage audit](./classic-opcode-audit.md)
+- [SUPER-CHIP Modern coverage audit](./superchip-modern-coverage-audit.md)

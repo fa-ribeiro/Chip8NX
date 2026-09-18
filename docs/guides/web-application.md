@@ -57,7 +57,7 @@ Open the URL reported by Vite and load a CHIP-8 ROM.
 The Web host currently provides:
 
 - Canvas framebuffer presentation for Classic CHIP-8 and SUPER-CHIP display geometry;
-- selectable Classic CHIP-8, CHIP-48, and SUPER-CHIP 1.1 machine profiles;
+- selectable Classic CHIP-8, CHIP-48, SUPER-CHIP 1.1, and SUPER-CHIP Modern machine profiles;
 - physical keyboard input;
 - a virtual 4×4 CHIP-8 keypad;
 - explicit physical-keyboard to CHIP-8 keypad mapping;
@@ -515,7 +515,7 @@ SUPER-CHIP high
 
 In low-resolution mode, Core represents one logical pixel as a 2×2 block in the backing framebuffer. `CanvasDisplay` does not reproduce that rule; it simply renders the resulting 128×64 backing pixels.
 
-This is important for mode switching and physical scrolling because the backing framebuffer is shared between low- and high-resolution modes.
+This is important because both SUPER-CHIP profiles share the same backing geometry even though their instruction semantics differ: historical mode changes preserve pixels and use physical scroll units, while Modern mode changes clear and Modern scrolling is specified in logical units before Core translates it into backing movement. `CanvasDisplay` only renders the resulting backing framebuffer.
 
 The Canvas backing-store dimensions are adjusted to `DisplayBuffer.backingWidth` and `DisplayBuffer.backingHeight` when necessary. CSS then scales that bitmap for the responsive Web layout.
 
@@ -660,7 +660,7 @@ See [Runtime and timing architecture](../architecture/runtime-and-timing.md).
 
 ### SUPER-CHIP interpreter exit
 
-SUPER-CHIP interpreter-exit conditions mark Core's `ExitState` as exited. These include explicit `00FD`, the historical SUPER-CHIP `00C0` interpretation, and `Fx1E` index overflow when the profile's shared-instruction quirk selects interpreter exit. They do **not** automatically pause `Chip8Runtime` or stop the browser host loop.
+SUPER-CHIP interpreter-exit conditions mark Core's `ExitState` as exited. Both supported SUPER-CHIP profiles provide explicit `00FD`. Historical SUPER-CHIP 1.1 additionally exits for the targeted `00C0` interpretation and for `Fx1E` overflow when its shared-instruction quirk selects interpreter exit; Modern SUPER-CHIP treats `00C0` as a zero-row scroll and selects continued `Fx1E` execution. They do **not** automatically pause `Chip8Runtime` or stop the browser host loop.
 
 Subsequent scheduled CPU attempts become no-ops because `Cpu.step()` checks `ExitState` before fetching another opcode. Timers, host-loop servicing, rendering, and browser lifecycle remain separate concerns.
 
@@ -849,6 +849,7 @@ The Web host exposes the built-in machine profiles through a browser selector:
 Classic CHIP-8
 CHIP-48
 SUPER-CHIP 1.1
+SUPER-CHIP Modern
 ```
 
 The selected profile is used whenever a ROM is loaded. A loaded machine also retains its exact `Chip8Profile` in `WebMachineSession`, so Reset always reinitializes with the profile that actually created that session.
@@ -867,8 +868,6 @@ quirks
 ```
 
 Those values are consumed during composition rather than copied into independent Web-side feature flags.
-
-See [Machine profiles and variation](../architecture/machine-profiles-and-variation.md) for the canonical profile model.
 
 ### Recomposing a loaded machine
 
@@ -905,7 +904,7 @@ The replacement receives profile-specific machine construction, including:
 - timer and display refresh frequencies;
 - an inspection formatter appropriate to the selected profile.
 
-Classic uses `ClassicInstructionFormatter`. CHIP-48 and SUPER-CHIP currently use the CHIP-48-style formatter for instructions whose presentation follows CHIP-48-style shared semantics, while sharing the common formatting support for SUPER-CHIP instructions.
+Classic uses `ClassicInstructionFormatter`. CHIP-48 and both SUPER-CHIP profiles use the CHIP-48-style formatter for instructions whose presentation follows CHIP-48-style shared semantics, while sharing the common formatting support for SUPER-CHIP instructions.
 
 The Web host does not add a generic profile manager or variant hierarchy. The selector is application policy that chooses an existing `Chip8Profile` and then uses the same explicit composition path as normal ROM loading.
 
@@ -921,11 +920,12 @@ Web application lifetime
         └── RplFlags
               ├── Classic session
               ├── CHIP-48 session
-              ├── SUPER-CHIP session
+              ├── SUPER-CHIP 1.1 session
+              ├── SUPER-CHIP Modern session
               └── later replacements
 ```
 
-This models the longer-lived storage required by the targeted SUPER-CHIP behavior without making browser-local storage part of Core. The `superchip-1.1` instruction set determines whether `Fx75` / `Fx85` exist; the host-owned `RplFlags` instance determines how long their stored values live. Reloading the browser still creates a new application-level RPL store.
+This models the longer-lived storage required by the targeted SUPER-CHIP behavior without making browser-local storage part of Core. The `superchip-1.1` and `superchip-modern` instruction sets determine whether `Fx75` / `Fx85` exist; the host-owned `RplFlags` instance determines how long their stored values live. Reloading the browser still creates a new application-level RPL store.
 
 ## Loading another ROM
 
@@ -1011,7 +1011,7 @@ version
     → application/release metadata
 ```
 
-Before a ROM is loaded, the display entry describes the selected profile's initial display. After composition, it is derived from the live `DisplayBuffer`, so SUPER-CHIP mode changes are reflected as `LOW` or `HIGH` together with the current logical resolution.
+Before a ROM is loaded, the display entry describes the selected profile's initial display. After composition, it is derived from the live `DisplayBuffer`, so either SUPER-CHIP profile's mode changes are reflected as `LOW` or `HIGH` together with the current logical resolution. Timer and refresh values likewise come from the selected profile: historical SUPER-CHIP 1.1 reports its configured 64 Hz values, while SUPER-CHIP Modern reports 60 Hz.
 
 The status area therefore presents existing configuration/state; it does not introduce a second source of truth for machine semantics.
 

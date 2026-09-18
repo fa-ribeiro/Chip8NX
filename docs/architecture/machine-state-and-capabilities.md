@@ -541,7 +541,7 @@ The buffer owns:
 
 Classic CHIP-8 and CHIP-48 use fixed 64×32 displays, so their logical and backing dimensions are the same.
 
-SUPER-CHIP 1.1 demonstrates why those concepts must remain distinct:
+Both supported SUPER-CHIP targets use the same switchable display structure:
 
 ```text
 SUPER-CHIP backing store
@@ -556,16 +556,21 @@ high mode
     one logical pixel = 1 backing pixel
 ```
 
-The shared backing store survives mode changes. `00FE` and `00FF` therefore change display interpretation rather than implicitly clearing pixels.
+The display capability itself does not decide whether a mode-change instruction clears pixels or how encoded scrolling distances should be interpreted. Those are instruction-set semantics.
 
-Likewise, SUPER-CHIP scroll operations work in physical backing pixels, independent of the active logical mode.
+For historical `superchip-1.1`, `00FE` / `00FF` preserve backing pixels and scrolling distances are already physical backing units. For `superchip-modern`, the executor clears after a successful mode change and translates logical scroll distances into backing units before calling the buffer.
 
-The distinction between `clear()` and `reset()` is intentional:
+That separation keeps `DisplayBuffer` mechanical:
 
 ```text
+setMode(mode)
+    → change logical interpretation
+
 clear()
-    → clear pixels
-    → preserve current display mode
+    → clear pixels, preserve current mode
+
+scrollDown/Left/Right(...)
+    → move backing pixels by physical units
 
 reset()
     → clear pixels
@@ -578,11 +583,12 @@ The executor still owns the larger drawing collaboration:
 read Vx / Vy
 read sprite bytes from Memory
 resolve draw timing from quirks + display mode
+resolve Dxy0 form from instruction-set semantics + display mode
 call DisplayBuffer drawing operation
-write the required VF result
+interpret SpriteDrawResult into VF
 ```
 
-This split keeps graphical state-transition rules with the graphical state while leaving instruction-level coordination with the executor.
+This split keeps graphical state-transition rules with the graphical state while leaving instruction-level compatibility policy with the executor.
 
 ### Vertical blank
 
@@ -609,19 +615,35 @@ one pending opportunity
 
 This is a small but meaningful state machine, not merely an arbitrary boolean flag.
 
-Draw timing remains an instruction/profile concern. Classic CHIP-8, CHIP-48, and SUPER-CHIP low-resolution drawing consume a pending vertical blank; SUPER-CHIP high-resolution drawing is immediate.
+Draw timing remains an instruction/profile concern:
+
+```text
+Classic CHIP-8
+    → vertical-blank gated
+
+SUPER-CHIP 1.1
+    LOW  → vertical-blank gated
+    HIGH → immediate
+
+SUPER-CHIP Modern
+    → immediate in both modes
+```
+
+An immediate draw does not consume a pending `VerticalBlank`.
 
 See [Runtime and timing architecture](./runtime-and-timing.md) for how opportunities are scheduled and how manual stepping interacts with them.
 
 ### Interpreter exit state
 
-`ExitState` owns whether a SUPER-CHIP interpreter-exit condition has occurred. The state can be set by explicit `00FD` as well as the historical SUPER-CHIP `00C0` interpretation and the configured historical `Fx1E` index-overflow condition.
+`ExitState` owns whether a SUPER-CHIP interpreter-exit condition has occurred.
+
+Both supported SUPER-CHIP instruction sets provide explicit `00FD` exit. Historical SUPER-CHIP 1.1 also exits for the targeted `00C0` interpretation and when the shared `Fx1E` index-overflow quirk selects interpreter exit. Modern SUPER-CHIP treats `00C0` as a zero-row scroll and selects continued `Fx1E` execution instead.
 
 It is ordinary resettable machine state:
 
 ```text
 running
-    ↓ 00FD / historical 00C0 / configured Fx1E overflow
+    ↓ 00FD / historical 00C0 / configured historical Fx1E overflow
 exited
     ↓ machine initialization/reset
 running
@@ -641,7 +663,7 @@ R0 R1 R2 R3 R4 R5 R6 R7
 
 The storage is machine state, but its lifecycle differs from ordinary resettable state.
 
-Historical SUPER-CHIP uses these flags as persistent/shared storage, so `MachineInitializer` deliberately does **not** clear them.
+The supported SUPER-CHIP profiles share the same eight-byte RPL capability and reset contract. `MachineInitializer` deliberately does **not** clear it; the host decides the outer lifetime of the concrete `RplFlags` instance.
 
 ```text
 ordinary resettable state
@@ -657,7 +679,7 @@ RplFlags
     preserved
 ```
 
-This is not a reason to create a generic persistent-state registry. `RplFlags` is a focused component because the historical machine demonstrates one concrete state resource with distinct lifetime semantics.
+This is not a reason to create a generic persistent-state registry. `RplFlags` is a focused component because SUPER-CHIP demonstrates one concrete state resource with distinct lifetime semantics.
 
 ## Focused Invariant Ownership
 
@@ -1177,7 +1199,7 @@ A large-font request is rejected because Classic CHIP-8 does not provide that ca
 
 ### `SuperChipFont` composes small and large layout rules
 
-SUPER-CHIP 1.1 retains the Classic-style small font and adds a ten-byte large decimal font.
+Both supported SUPER-CHIP targets use the Classic-style small font plus the same ten-byte large decimal font resource.
 
 `SuperChipFont` therefore composes the existing small-font behavior with a second base address for large glyphs:
 
@@ -1187,7 +1209,7 @@ small
 
 large
     → SUPER-CHIP 10-byte glyph mapping
-    → historical digits 0–9
+    → defined digits 0–9
 ```
 
 The capability remains small because the demonstrated variation is still address lookup, not font rendering or memory ownership.
@@ -1310,9 +1332,9 @@ profile.display.refreshFrequency
 
 `ExecutionContext` deliberately contains neither `Chip8Profile`, `Chip8InstructionSet`, nor `Chip8Quirks`. By the time instruction execution receives the context, composition has already selected and configured the machine.
 
-Runtime-driving policy is a different axis. `Chip8RuntimeConfiguration` currently carries CPU frequency because CPU throughput is chosen by the host rather than being a fixed characteristic of the emulated historical machine.
+Runtime-driving policy is a different axis. `Chip8RuntimeConfiguration` currently carries CPU frequency because CPU throughput is chosen by the host rather than being a fixed characteristic of the emulated machine target.
 
-The full profile model—including `instructionSet` vs `quirks`, built-in historical profiles, composition examples, and extension rules—now has one canonical home: [Machine profiles and variation](./machine-profiles-and-variation.md).
+The full profile model—including `instructionSet` vs `quirks`, built-in profiles, composition examples, and extension rules—now has one canonical home: [Machine profiles and variation](./machine-profiles-and-variation.md).
 
 ## Lifecycle Boundaries
 
