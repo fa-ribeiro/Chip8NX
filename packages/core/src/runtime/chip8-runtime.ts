@@ -37,6 +37,8 @@ export class Chip8Runtime {
    * @param configuration - Runtime execution-policy configuration.
    * @param timerFrequency - Frequency at which both CHIP-8 timers tick.
    * @param displayRefreshFrequency - Frequency of emulated display-frame boundaries.
+   * @param scheduledCpuExecutionGate - Decides whether each scheduled CPU attempt may execute.
+   *   Returning false pauses the runtime before the CPU executes. Manual stepping bypasses this gate.
    */
   public constructor(
     private readonly cpu: Cpu,
@@ -47,6 +49,7 @@ export class Chip8Runtime {
     configuration: Chip8RuntimeConfiguration,
     timerFrequency: Frequency,
     displayRefreshFrequency: Frequency,
+    private readonly scheduledCpuExecutionGate: () => boolean = () => true,
   ) {
     const instanceId = Chip8Runtime.nextInstanceId++;
 
@@ -72,6 +75,12 @@ export class Chip8Runtime {
     });
 
     this.scheduler.addTask(this.cpuTaskId, configuration.cpuFrequency, () => {
+      if (!this.scheduledCpuExecutionGate()) {
+        this.pause();
+
+        return;
+      }
+
       this.cpu.step();
     });
 
