@@ -12,6 +12,8 @@ During the `0.x` development phase:
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-09-19 - SUPER-CHIP Modern
+
 ### Added
 
 - Added `SUPERCHIP_MODERN_PROFILE`, a modern SUPER-CHIP compatibility target exposed through the Core public API and selectable in the Web host.
@@ -34,6 +36,20 @@ During the `0.x` development phase:
 - Kept Modern `Fx1E` overflow non-exiting through the shared `indexOverflow = "continue"` quirk.
 - Reused the existing SUPER-CHIP display structure, large decimal font resource, and eight-byte RPL capability without turning those resources into instruction-membership flags.
 - Generalized Timendus SUPER-CHIP conformance helpers to accept the selected `Chip8Profile`, allowing historical and Modern targets to run through the same machine pipeline.
+- Centralized Web machine-session lifecycle coordination behind an explicit host-local lifecycle state, keeping runtime control, interpreter exit, input activation, failure recovery, and reset transitions consistent without moving host policy into Core.
+- Simplified the public `duration()` and `timestamp()` factories so callers provide natural `bigint` values and the factories establish the branded timing types. Operation-specific validation, such as rejecting negative clock advances, remains with the operation that owns the constraint.
+- Made `InstructionExecutor` handling compile-time exhaustive while keeping decoded `0NNN` system calls explicitly unsupported at execution time.
+- Simplified the repository `validate` task to use Deno's built-in formatting/CI tasks plus the external conformance gate instead of relying on an undeclared Prettier executable.
+
+### Fixed
+
+- Fixed Web interpreter-exit handling so `00FD` transitions the host session to an explicit exited state instead of leaving the runtime/UI appearing to continue running.
+- Fixed Web recovery after execution failures so Reset restores physical and virtual keyboard input before the session can be started again.
+
+### Documentation
+
+- Reconciled the root README and third-party conformance notice with the implemented SUPER-CHIP Modern target.
+- Clarified public SUPER-CHIP display/font JSDoc so shared structural resources are not described as historical SUPER-CHIP 1.1 semantics.
 
 ### Architecture
 
