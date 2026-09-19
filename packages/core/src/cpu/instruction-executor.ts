@@ -342,8 +342,11 @@ export class InstructionExecutor {
         return;
       }
 
-      default:
+      case "system-call":
         throw new UnsupportedInstructionError(instruction);
+
+      default:
+        return assertNever(instruction);
     }
   }
 
