@@ -1,3 +1,6 @@
+import type { Address } from "@chip8nx/core";
+import { AddressBreakpoints } from "../debugger/address-breakpoints.ts";
+
 interface RuntimeControl {
   readonly isPaused: boolean;
 
@@ -16,9 +19,19 @@ interface InputLifecycle {
   stop(): void;
 }
 
+export type WebMachinePauseReason =
+  | { readonly kind: "user" }
+  | {
+    readonly kind: "breakpoint";
+    readonly address: Address;
+  };
+
 export type WebMachineLifecycleState =
   | { readonly kind: "inactive" }
-  | { readonly kind: "paused" }
+  | {
+    readonly kind: "paused";
+    readonly reason: WebMachinePauseReason;
+  }
   | { readonly kind: "running" }
   | { readonly kind: "exited" }
   | { readonly kind: "failed"; readonly error: unknown };
@@ -29,7 +42,8 @@ export type WebMachineLifecycleState =
  * @remarks
  * Core owns emulated machine and runtime semantics. This Web-local coordinator
  * owns the host policy that relates runtime scheduling, interpreter exit, input
- * activation, failure recovery, and reset for one browser session.
+ * activation, breakpoint pauses, failure recovery, and reset for one browser
+ * session.
  *
  * Browser frame scheduling and DOM presentation deliberately remain outside
  * this class.
@@ -46,6 +60,7 @@ export class WebMachineLifecycle {
     private readonly exitState: ExitStateReader,
     private readonly resetMachine: () => void,
     private readonly inputs: readonly InputLifecycle[],
+    private readonly breakpoints: AddressBreakpoints,
   ) {
     if (!runtime.isPaused) {
       throw new Error("Web machine lifecycle requires an initially paused runtime.");
@@ -76,7 +91,7 @@ export class WebMachineLifecycle {
 
     try {
       this.startInputs();
-      this.currentState = { kind: "paused" };
+      this.currentState = this.userPausedState();
     } catch (error) {
       this.fail(error);
       throw error;
@@ -85,6 +100,10 @@ export class WebMachineLifecycle {
 
   /**
    * Starts scheduled emulation for an active paused session.
+   *
+   * @remarks
+   * Continuing from a breakpoint suppresses that same address for one
+   * scheduled CPU attempt so execution can progress past the stop point.
    */
   public start(): WebMachineLifecycleState {
     if (this.currentState.kind !== "paused") {
@@ -95,6 +114,12 @@ export class WebMachineLifecycle {
       this.enterExitedState();
 
       return this.currentState;
+    }
+
+    const previousState = this.currentState;
+
+    if (previousState.reason.kind === "breakpoint") {
+      this.breakpoints.suppressOnce(previousState.reason.address);
     }
 
     try {
@@ -117,7 +142,8 @@ export class WebMachineLifecycle {
     }
 
     this.runtime.pause();
-    this.currentState = { kind: "paused" };
+    this.breakpoints.resetExecutionState();
+    this.currentState = this.userPausedState();
   }
 
   /**
@@ -132,11 +158,31 @@ export class WebMachineLifecycle {
       this.runtime.tick();
     });
 
+    if (this.currentState.kind === "running") {
+      const breakpointAddress = this.breakpoints.takeHit();
+
+      if (breakpointAddress !== undefined) {
+        this.currentState = {
+          kind: "paused",
+          reason: {
+            kind: "breakpoint",
+            address: breakpointAddress,
+          },
+        };
+      }
+    }
+
     return this.currentState;
   }
 
   /**
    * Executes one instruction while the session is paused.
+   *
+   * @remarks
+   * Manual runtime stepping bypasses the scheduled execution gate, so stepping
+   * from a breakpoint executes the stopped instruction directly. A successful
+   * step becomes an ordinary user pause rather than retaining the breakpoint
+   * pause reason.
    */
   public step(): WebMachineLifecycleState {
     if (this.currentState.kind !== "paused") {
@@ -147,6 +193,11 @@ export class WebMachineLifecycle {
       this.runtime.step();
     });
 
+    if (this.currentState.kind === "paused") {
+      this.breakpoints.resetExecutionState();
+      this.currentState = this.userPausedState();
+    }
+
     return this.currentState;
   }
 
@@ -156,7 +207,8 @@ export class WebMachineLifecycle {
    * @remarks
    * Reset is also the recovery path from interpreter exit or execution
    * failure. Input is reactivated in those cases only after the machine reset
-   * succeeds.
+   * succeeds. Configured breakpoints are preserved while transient breakpoint
+   * execution state is cleared.
    */
   public reset(): void {
     if (this.currentState.kind === "inactive") {
@@ -170,12 +222,13 @@ export class WebMachineLifecycle {
 
     try {
       this.resetMachine();
+      this.breakpoints.resetExecutionState();
 
       if (mustRestartInputs) {
         this.startInputs();
       }
 
-      this.currentState = { kind: "paused" };
+      this.currentState = this.userPausedState();
     } catch (error) {
       this.fail(error);
       throw error;
@@ -192,6 +245,7 @@ export class WebMachineLifecycle {
 
     this.runtime.pause();
     this.stopInputs();
+    this.breakpoints.resetExecutionState();
     this.currentState = { kind: "inactive" };
   }
 
@@ -211,13 +265,22 @@ export class WebMachineLifecycle {
   private enterExitedState(): void {
     this.runtime.pause();
     this.stopInputs();
+    this.breakpoints.resetExecutionState();
     this.currentState = { kind: "exited" };
   }
 
   private fail(error: unknown): void {
     this.runtime.pause();
     this.stopInputs();
+    this.breakpoints.resetExecutionState();
     this.currentState = { kind: "failed", error };
+  }
+
+  private userPausedState(): WebMachineLifecycleState {
+    return {
+      kind: "paused",
+      reason: { kind: "user" },
+    };
   }
 
   private startInputs(): void {

@@ -43,6 +43,7 @@ import {
   InstructionTraceBuffer,
 } from "@chip8nx/inspection";
 import { WebAudioBeeper } from "./audio/web-audio-beeper.ts";
+import { AddressBreakpoints } from "./debugger/address-breakpoints.ts";
 import { CanvasDisplay, type CanvasDisplayPalette } from "./display/canvas-display.ts";
 import {
   createWebInspectionViewModel,
@@ -127,6 +128,7 @@ const inspection = new WebInspectionRenderer(inspectionElement);
 const beeper = new WebAudioBeeper();
 
 const rplFlags = new RplFlags();
+const breakpoints = new AddressBreakpoints();
 
 let machine: WebMachineSession | undefined;
 
@@ -205,6 +207,7 @@ async function loadAndRun(rom: File): Promise<void> {
   machine?.lifecycle.deactivate();
 
   machine = undefined;
+  breakpoints.clear();
 
   updateControls();
 
@@ -333,6 +336,7 @@ function createMachine(
     },
     profile.timerFrequency,
     profile.display.refreshFrequency,
+    () => breakpoints.shouldExecute(context.programCounter.getValue()),
   );
 
   const lifecycle = new WebMachineLifecycle(
@@ -343,6 +347,7 @@ function createMachine(
       traceHistory.clear();
     },
     [browserKeyboard, virtualKeypad],
+    breakpoints,
   );
 
   const snapshotInspection = (): WebInspectionViewModel => {
@@ -548,6 +553,26 @@ function runHostLoop(session: WebMachineSession): void {
         return;
       }
 
+      if (lifecycleState.kind === "paused") {
+        animationFrameId = undefined;
+
+        if (lifecycleState.reason.kind === "breakpoint") {
+          setStatus(
+            `Paused ${session.romName} — breakpoint at ${
+              formatAddress(
+                lifecycleState.reason.address,
+              )
+            }.`,
+          );
+        } else {
+          setStatus(`Paused ${session.romName}`);
+        }
+
+        updateControls();
+
+        return;
+      }
+
       animationFrameId = requestAnimationFrame(frame);
     } catch (error) {
       animationFrameId = undefined;
@@ -594,7 +619,9 @@ function updateControls(): void {
     return;
   }
 
-  switch (machine.lifecycle.state.kind) {
+  const lifecycleState = machine.lifecycle.state;
+
+  switch (lifecycleState.kind) {
     case "inactive":
       runToggleButton.disabled = true;
       runToggleButton.dataset.action = "start";
@@ -610,7 +637,9 @@ function updateControls(): void {
       cpuStateIndicatorLabel.textContent = "Idle";
       return;
 
-    case "paused":
+    case "paused": {
+      const isBreakpoint = lifecycleState.reason.kind === "breakpoint";
+
       runToggleButton.disabled = false;
       runToggleButton.dataset.action = "start";
       runToggleLabel.textContent = "Start";
@@ -619,11 +648,12 @@ function updateControls(): void {
       resetButton.disabled = false;
 
       machineState.dataset.state = "paused";
-      machineStateLabel.textContent = "Paused";
+      machineStateLabel.textContent = isBreakpoint ? "Breakpoint" : "Paused";
 
       cpuStateIndicator.dataset.state = "paused";
-      cpuStateIndicatorLabel.textContent = "Ready";
+      cpuStateIndicatorLabel.textContent = isBreakpoint ? "Paused" : "Ready";
       return;
+    }
 
     case "running":
       runToggleButton.disabled = false;
@@ -726,6 +756,10 @@ function describeProfile(profile: Chip8Profile): string {
   }
 
   return "Custom";
+}
+
+function formatAddress(value: Address): string {
+  return `0x${value.toString(16).padStart(3, "0").toUpperCase()}`;
 }
 
 function formatFrequency(frequency: Frequency): string {

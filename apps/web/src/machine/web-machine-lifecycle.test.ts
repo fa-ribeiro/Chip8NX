@@ -1,27 +1,39 @@
 import { assertEquals, assertStrictEquals } from "@std/assert";
-import { ExitState } from "@chip8nx/core";
+import { address, ExitState } from "@chip8nx/core";
+import { AddressBreakpoints } from "../debugger/address-breakpoints.ts";
 import { WebMachineLifecycle } from "./web-machine-lifecycle.ts";
 
-Deno.test("WebMachineLifecycle activates input and starts paused", () => {
+Deno.test("WebMachineLifecycle activates input and starts user-paused", () => {
   const runtime = new FakeRuntime();
   const exitState = new ExitState();
   const input = new FakeInput();
-  const lifecycle = new WebMachineLifecycle(runtime, exitState, () => {}, [input]);
+  const breakpoints = new AddressBreakpoints();
+  const lifecycle = new WebMachineLifecycle(runtime, exitState, () => {}, [input], breakpoints);
 
   lifecycle.activate();
 
-  assertEquals(lifecycle.state.kind, "paused");
+  assertEquals(lifecycle.state, {
+    kind: "paused",
+    reason: { kind: "user" },
+  });
   assertEquals(runtime.isPaused, true);
   assertEquals(input.started, true);
 });
 
 Deno.test(
-  "WebMachineLifecycle starts and pauses scheduled execution without stopping input",
+  "WebMachineLifecycle starts and user-pauses scheduled execution without stopping input",
   () => {
     const runtime = new FakeRuntime();
     const exitState = new ExitState();
     const input = new FakeInput();
-    const lifecycle = new WebMachineLifecycle(runtime, exitState, () => {}, [input]);
+    const breakpoints = new AddressBreakpoints();
+    const lifecycle = new WebMachineLifecycle(
+      runtime,
+      exitState,
+      () => {},
+      [input],
+      breakpoints,
+    );
 
     lifecycle.activate();
     const startState = lifecycle.start();
@@ -33,11 +45,163 @@ Deno.test(
 
     lifecycle.pause();
 
-    assertEquals(lifecycle.state.kind, "paused");
+    assertEquals(lifecycle.state, {
+      kind: "paused",
+      reason: { kind: "user" },
+    });
     assertEquals(runtime.isPaused, true);
     assertEquals(input.started, true);
   },
 );
+
+Deno.test("WebMachineLifecycle records a breakpoint pause after a denied runtime tick", () => {
+  const runtime = new FakeRuntime();
+  const exitState = new ExitState();
+  const input = new FakeInput();
+  const breakpoints = new AddressBreakpoints();
+  const breakpointAddress = address(0x204);
+  const lifecycle = new WebMachineLifecycle(runtime, exitState, () => {}, [input], breakpoints);
+
+  breakpoints.add(breakpointAddress);
+
+  runtime.onTick = () => {
+    if (!breakpoints.shouldExecute(breakpointAddress)) {
+      runtime.pause();
+    }
+  };
+
+  lifecycle.activate();
+  lifecycle.start();
+  const tickState = lifecycle.tick();
+
+  assertEquals(tickState, {
+    kind: "paused",
+    reason: {
+      kind: "breakpoint",
+      address: breakpointAddress,
+    },
+  });
+  assertEquals(runtime.isPaused, true);
+  assertEquals(input.started, true);
+});
+
+Deno.test(
+  "WebMachineLifecycle continue from breakpoint suppresses one matching scheduled attempt",
+  () => {
+    const runtime = new FakeRuntime();
+    const exitState = new ExitState();
+    const input = new FakeInput();
+    const breakpoints = new AddressBreakpoints();
+    const breakpointAddress = address(0x204);
+    const lifecycle = new WebMachineLifecycle(
+      runtime,
+      exitState,
+      () => {},
+      [input],
+      breakpoints,
+    );
+
+    breakpoints.add(breakpointAddress);
+
+    runtime.onTick = () => {
+      if (!breakpoints.shouldExecute(breakpointAddress)) {
+        runtime.pause();
+      }
+    };
+
+    lifecycle.activate();
+    lifecycle.start();
+    lifecycle.tick();
+
+    const continueState = lifecycle.start();
+
+    assertEquals(continueState.kind, "running");
+
+    const firstTickState = lifecycle.tick();
+
+    assertEquals(firstTickState.kind, "running");
+    assertEquals(runtime.isPaused, false);
+
+    const secondTickState = lifecycle.tick();
+
+    assertEquals(secondTickState, {
+      kind: "paused",
+      reason: {
+        kind: "breakpoint",
+        address: breakpointAddress,
+      },
+    });
+    assertEquals(runtime.isPaused, true);
+  },
+);
+
+Deno.test(
+  "WebMachineLifecycle manual step from breakpoint becomes a user pause without suppression",
+  () => {
+    const runtime = new FakeRuntime();
+    const exitState = new ExitState();
+    const input = new FakeInput();
+    const breakpoints = new AddressBreakpoints();
+    const breakpointAddress = address(0x204);
+    const lifecycle = new WebMachineLifecycle(
+      runtime,
+      exitState,
+      () => {},
+      [input],
+      breakpoints,
+    );
+    let stepCount = 0;
+
+    breakpoints.add(breakpointAddress);
+
+    runtime.onTick = () => {
+      if (!breakpoints.shouldExecute(breakpointAddress)) {
+        runtime.pause();
+      }
+    };
+    runtime.onStep = () => {
+      stepCount++;
+    };
+
+    lifecycle.activate();
+    lifecycle.start();
+    lifecycle.tick();
+
+    const stepState = lifecycle.step();
+
+    assertEquals(stepCount, 1);
+    assertEquals(stepState, {
+      kind: "paused",
+      reason: { kind: "user" },
+    });
+    assertEquals(breakpoints.shouldExecute(breakpointAddress), false);
+  },
+);
+
+Deno.test("WebMachineLifecycle user pause clears pending breakpoint resume suppression", () => {
+  const runtime = new FakeRuntime();
+  const exitState = new ExitState();
+  const input = new FakeInput();
+  const breakpoints = new AddressBreakpoints();
+  const breakpointAddress = address(0x204);
+  const lifecycle = new WebMachineLifecycle(runtime, exitState, () => {}, [input], breakpoints);
+
+  breakpoints.add(breakpointAddress);
+
+  runtime.onTick = () => {
+    if (!breakpoints.shouldExecute(breakpointAddress)) {
+      runtime.pause();
+    }
+  };
+
+  lifecycle.activate();
+  lifecycle.start();
+  lifecycle.tick();
+  lifecycle.start();
+  lifecycle.pause();
+
+  assertEquals(breakpoints.shouldExecute(breakpointAddress), false);
+});
 
 Deno.test(
   "WebMachineLifecycle enters exited state when a runtime tick exits the interpreter",
@@ -45,7 +209,14 @@ Deno.test(
     const runtime = new FakeRuntime();
     const exitState = new ExitState();
     const input = new FakeInput();
-    const lifecycle = new WebMachineLifecycle(runtime, exitState, () => {}, [input]);
+    const breakpoints = new AddressBreakpoints();
+    const lifecycle = new WebMachineLifecycle(
+      runtime,
+      exitState,
+      () => {},
+      [input],
+      breakpoints,
+    );
 
     runtime.onTick = () => {
       exitState.exit();
@@ -68,7 +239,14 @@ Deno.test(
     const runtime = new FakeRuntime();
     const exitState = new ExitState();
     const input = new FakeInput();
-    const lifecycle = new WebMachineLifecycle(runtime, exitState, () => {}, [input]);
+    const breakpoints = new AddressBreakpoints();
+    const lifecycle = new WebMachineLifecycle(
+      runtime,
+      exitState,
+      () => {},
+      [input],
+      breakpoints,
+    );
 
     runtime.onStep = () => {
       exitState.exit();
@@ -88,8 +266,9 @@ Deno.test("WebMachineLifecycle stops input and records a runtime tick failure", 
   const runtime = new FakeRuntime();
   const exitState = new ExitState();
   const input = new FakeInput();
+  const breakpoints = new AddressBreakpoints();
   const expectedError = new Error("tick failed");
-  const lifecycle = new WebMachineLifecycle(runtime, exitState, () => {}, [input]);
+  const lifecycle = new WebMachineLifecycle(runtime, exitState, () => {}, [input], breakpoints);
 
   runtime.onTick = () => {
     throw expectedError;
@@ -122,8 +301,9 @@ Deno.test("WebMachineLifecycle stops input and records a manual step failure", (
   const runtime = new FakeRuntime();
   const exitState = new ExitState();
   const input = new FakeInput();
+  const breakpoints = new AddressBreakpoints();
   const expectedError = new Error("step failed");
-  const lifecycle = new WebMachineLifecycle(runtime, exitState, () => {}, [input]);
+  const lifecycle = new WebMachineLifecycle(runtime, exitState, () => {}, [input], breakpoints);
 
   runtime.onStep = () => {
     throw expectedError;
@@ -145,48 +325,57 @@ Deno.test("WebMachineLifecycle stops input and records a manual step failure", (
   assertEquals(input.started, false);
 });
 
-Deno.test("WebMachineLifecycle reset after failure restarts input and returns paused", () => {
-  const runtime = new FakeRuntime();
-  const exitState = new ExitState();
-  const input = new FakeInput();
-  let resetCount = 0;
-  const lifecycle = new WebMachineLifecycle(
-    runtime,
-    exitState,
-    () => {
-      resetCount++;
-      exitState.reset();
-    },
-    [input],
-  );
-
-  runtime.onTick = () => {
-    throw new Error("tick failed");
-  };
-
-  lifecycle.activate();
-  lifecycle.start();
-
-  try {
-    lifecycle.tick();
-  } catch {
-    // Expected failure establishes the recovery scenario under test.
-  }
-
-  lifecycle.reset();
-
-  assertEquals(resetCount, 1);
-  assertEquals(lifecycle.state.kind, "paused");
-  assertEquals(runtime.isPaused, true);
-  assertEquals(input.started, true);
-});
-
 Deno.test(
-  "WebMachineLifecycle reset after interpreter exit restarts input and returns paused",
+  "WebMachineLifecycle reset after failure restarts input and returns user-paused",
   () => {
     const runtime = new FakeRuntime();
     const exitState = new ExitState();
     const input = new FakeInput();
+    const breakpoints = new AddressBreakpoints();
+    let resetCount = 0;
+    const lifecycle = new WebMachineLifecycle(
+      runtime,
+      exitState,
+      () => {
+        resetCount++;
+        exitState.reset();
+      },
+      [input],
+      breakpoints,
+    );
+
+    runtime.onTick = () => {
+      throw new Error("tick failed");
+    };
+
+    lifecycle.activate();
+    lifecycle.start();
+
+    try {
+      lifecycle.tick();
+    } catch {
+      // Expected failure establishes the recovery scenario under test.
+    }
+
+    lifecycle.reset();
+
+    assertEquals(resetCount, 1);
+    assertEquals(lifecycle.state, {
+      kind: "paused",
+      reason: { kind: "user" },
+    });
+    assertEquals(runtime.isPaused, true);
+    assertEquals(input.started, true);
+  },
+);
+
+Deno.test(
+  "WebMachineLifecycle reset after interpreter exit restarts input and returns user-paused",
+  () => {
+    const runtime = new FakeRuntime();
+    const exitState = new ExitState();
+    const input = new FakeInput();
+    const breakpoints = new AddressBreakpoints();
     const lifecycle = new WebMachineLifecycle(
       runtime,
       exitState,
@@ -194,6 +383,7 @@ Deno.test(
         exitState.reset();
       },
       [input],
+      breakpoints,
     );
 
     runtime.onStep = () => {
@@ -205,26 +395,83 @@ Deno.test(
     lifecycle.reset();
 
     assertEquals(exitState.isExited, false);
-    assertEquals(lifecycle.state.kind, "paused");
+    assertEquals(lifecycle.state, {
+      kind: "paused",
+      reason: { kind: "user" },
+    });
     assertEquals(runtime.isPaused, true);
     assertEquals(input.started, true);
   },
 );
 
-Deno.test("WebMachineLifecycle deactivate pauses runtime and stops input", () => {
-  const runtime = new FakeRuntime();
-  const exitState = new ExitState();
-  const input = new FakeInput();
-  const lifecycle = new WebMachineLifecycle(runtime, exitState, () => {}, [input]);
+Deno.test(
+  "WebMachineLifecycle reset preserves configured breakpoints and clears transient execution state",
+  () => {
+    const runtime = new FakeRuntime();
+    const exitState = new ExitState();
+    const input = new FakeInput();
+    const breakpoints = new AddressBreakpoints();
+    const breakpointAddress = address(0x204);
+    const lifecycle = new WebMachineLifecycle(
+      runtime,
+      exitState,
+      () => {},
+      [input],
+      breakpoints,
+    );
 
-  lifecycle.activate();
-  lifecycle.start();
-  lifecycle.deactivate();
+    breakpoints.add(breakpointAddress);
 
-  assertEquals(lifecycle.state.kind, "inactive");
-  assertEquals(runtime.isPaused, true);
-  assertEquals(input.started, false);
-});
+    runtime.onTick = () => {
+      if (!breakpoints.shouldExecute(breakpointAddress)) {
+        runtime.pause();
+      }
+    };
+
+    lifecycle.activate();
+    lifecycle.start();
+    lifecycle.tick();
+    lifecycle.start();
+    lifecycle.reset();
+
+    assertEquals(lifecycle.state, {
+      kind: "paused",
+      reason: { kind: "user" },
+    });
+    assertEquals(breakpoints.snapshot(), [{ address: breakpointAddress, enabled: true }]);
+    assertEquals(breakpoints.shouldExecute(breakpointAddress), false);
+  },
+);
+
+Deno.test(
+  "WebMachineLifecycle deactivate pauses runtime, stops input, and clears transient breakpoint state",
+  () => {
+    const runtime = new FakeRuntime();
+    const exitState = new ExitState();
+    const input = new FakeInput();
+    const breakpoints = new AddressBreakpoints();
+    const breakpointAddress = address(0x204);
+    const lifecycle = new WebMachineLifecycle(
+      runtime,
+      exitState,
+      () => {},
+      [input],
+      breakpoints,
+    );
+
+    breakpoints.add(breakpointAddress);
+    breakpoints.suppressOnce(breakpointAddress);
+
+    lifecycle.activate();
+    lifecycle.start();
+    lifecycle.deactivate();
+
+    assertEquals(lifecycle.state.kind, "inactive");
+    assertEquals(runtime.isPaused, true);
+    assertEquals(input.started, false);
+    assertEquals(breakpoints.shouldExecute(breakpointAddress), false);
+  },
+);
 
 class FakeRuntime {
   public isPaused = true;
