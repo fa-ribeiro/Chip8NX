@@ -65,7 +65,7 @@ The Timendus CHIP-8 test suite is not included in this repository.
   - Expected size: `1330` bytes
   - Expected SHA-256: `3f43507c45a949e5b014445853205dd1f36bb532cf25baa22209b7c300c596d7`
 
-Chip8NX uses selected tests from this pinned suite release as external conformance fixtures for Classic CHIP-8 and historical SUPER-CHIP behavior.
+Chip8NX uses selected tests from this pinned suite release as external conformance fixtures for Classic CHIP-8, historical SUPER-CHIP 1.1, and SUPER-CHIP Modern behavior.
 
 ## Gulrak Variant Detection Test
 

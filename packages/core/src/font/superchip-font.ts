@@ -5,10 +5,12 @@ import type { Font, FontSize } from "./font.ts";
 import { SUPERCHIP_LARGE_FONT_GLYPH_SIZE } from "./superchip-large-font-image.ts";
 
 /**
- * Resolves addresses within the SUPER-CHIP font sets.
+ * Resolves addresses within the SUPER-CHIP font resources shared by the
+ * supported historical and Modern profiles.
  *
- * SUPER-CHIP 1.1 retains the classic five-byte hexadecimal font for `Fx29`
- * and adds a ten-byte decimal font for `Fx30`.
+ * Both profiles retain the classic five-byte hexadecimal font for `Fx29`
+ * and use the ten-byte decimal font resource for `Fx30`. Instruction-set
+ * semantics determine how those resources are used.
  *
  * Loading the corresponding font images into memory remains the
  * responsibility of machine initialization.
@@ -17,7 +19,7 @@ export class SuperChipFont implements Font {
   private readonly smallFont: ClassicFont;
 
   /**
-   * Creates a SUPER-CHIP font layout.
+   * Creates the shared SUPER-CHIP font layout.
    *
    * @param smallFontBaseAddress - Address of the classic five-byte font.
    * @param largeFontBaseAddress - Address of the SUPER-CHIP ten-byte font.

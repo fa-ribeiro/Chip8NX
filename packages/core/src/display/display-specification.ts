@@ -20,11 +20,13 @@ export interface FixedDisplaySpecification {
 }
 
 /**
- * Describes the historical SUPER-CHIP 1.1 display model.
+ * Describes the SUPER-CHIP display geometry shared by the supported
+ * historical and Modern profiles.
  *
  * SUPER-CHIP uses one fixed backing framebuffer while the active logical
  * resolution may change at runtime. A freshly initialized machine starts
- * in low-resolution mode.
+ * in low-resolution mode. Profile-specific instruction semantics remain
+ * outside this immutable geometry description.
  */
 export interface SuperChipDisplaySpecification {
   readonly kind: "superchip";

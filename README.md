@@ -6,7 +6,7 @@ A modular, profile-driven CHIP-8 emulator in TypeScript.
 
 Chip8NX is a CHIP-8 emulator/interpreter built as a hands-on exercise in TypeScript, object-oriented design, emulator architecture, testing, and software engineering.
 
-The project supports **Classic CHIP-8**, **CHIP-48 2.25**, and **SUPER-CHIP 1.1** through explicit machine profiles, while keeping reusable emulator semantics separate from host-specific applications and inspection tooling.
+The project supports **Classic CHIP-8**, **CHIP-48 2.25**, **SUPER-CHIP 1.1**, and **SUPER-CHIP Modern** through explicit machine profiles, while keeping reusable emulator semantics separate from host-specific applications and inspection tooling.
 
 ## Status
 
@@ -202,7 +202,7 @@ Open the URL reported by Vite in a browser, load a CHIP-8 ROM file, and the Web 
 The Web host provides:
 
 - Canvas framebuffer presentation for Classic and SUPER-CHIP display geometry;
-- selectable Classic CHIP-8, CHIP-48, and SUPER-CHIP 1.1 machine profiles;
+- selectable Classic CHIP-8, CHIP-48, SUPER-CHIP 1.1, and SUPER-CHIP Modern machine profiles;
 - physical and virtual CHIP-8 keyboard input;
 - Start/Pause, Step, and Reset execution controls;
 - Web Audio sound presentation;
@@ -496,7 +496,7 @@ Post-`v0.10.0` development can proceed across areas such as:
 
 - active debugger behavior built on the existing passive inspection foundation, when concrete needs such as breakpoints, watchpoints, or richer stepping semantics are demonstrated;
 - richer memory or static-analysis inspection when concrete workflows justify it;
-- additional CHIP-8-family profiles such as SCHIP-MODERN or XO-CHIP when their architectural differences are ready to be modeled explicitly;
+- XO-CHIP remains intentionally outside the project completion scope; its larger architectural extensions should be treated as separate future work rather than a prerequisite for `v1.0.0`;
 - further public reusable-package API and composition refinement when additional consumers create demonstrated pressure for change;
 - desktop hosts;
 - additional SUPER-CHIP historical/conformance evidence where external tests expose meaningful behavior not already represented.
