@@ -1,6 +1,6 @@
 import { assertEquals, assertThrows } from "@std/assert";
 
-import { Duration, duration } from "../core/types/duration.ts";
+import { duration } from "../core/types/duration.ts";
 import { TestClock } from "./test-clock.ts";
 
 Deno.test("TestClock starts at timestamp zero", () => {
@@ -12,7 +12,7 @@ Deno.test("TestClock starts at timestamp zero", () => {
 Deno.test("TestClock advances by the requested duration", () => {
   const clock = new TestClock();
 
-  clock.advance(duration(1_000_000_000n as Duration));
+  clock.advance(duration(1_000_000_000n));
 
   assertEquals(clock.now(), 1_000_000_000n);
 });
@@ -20,8 +20,8 @@ Deno.test("TestClock advances by the requested duration", () => {
 Deno.test("TestClock can be advanced multiple times", () => {
   const clock = new TestClock();
 
-  clock.advance(duration(1_000_000_000n as Duration));
-  clock.advance(duration(500_000_000n as Duration));
+  clock.advance(duration(1_000_000_000n));
+  clock.advance(duration(500_000_000n));
 
   assertEquals(clock.now(), 1_500_000_000n);
 });
@@ -29,7 +29,7 @@ Deno.test("TestClock can be advanced multiple times", () => {
 Deno.test("TestClock accepts a zero duration", () => {
   const clock = new TestClock();
 
-  clock.advance(duration(0n as Duration));
+  clock.advance(duration(0n));
 
   assertEquals(clock.now(), 0n);
 });
@@ -37,15 +37,15 @@ Deno.test("TestClock accepts a zero duration", () => {
 Deno.test("TestClock rejects a negative duration", () => {
   const clock = new TestClock();
 
-  assertThrows(() => clock.advance(duration(-1n as Duration)), RangeError);
+  assertThrows(() => clock.advance(duration(-1n)), RangeError);
 });
 
 Deno.test("TestClock remains unchanged when advance throws", () => {
   const clock = new TestClock();
 
-  clock.advance(duration(1_000_000_000n as Duration));
+  clock.advance(duration(1_000_000_000n));
 
-  assertThrows(() => clock.advance(duration(-1n as Duration)), RangeError);
+  assertThrows(() => clock.advance(duration(-1n)), RangeError);
 
   assertEquals(clock.now(), 1_000_000_000n);
 });
@@ -55,11 +55,11 @@ Deno.test("TestClock is monotonic", () => {
 
   const first = clock.now();
 
-  clock.advance(duration(100n as Duration));
+  clock.advance(duration(100n));
 
   const second = clock.now();
 
-  clock.advance(duration(200n as Duration));
+  clock.advance(duration(200n));
 
   const third = clock.now();
 

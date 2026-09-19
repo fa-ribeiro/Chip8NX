@@ -1,5 +1,5 @@
 import type { Clock } from "./clock.ts";
-import type { Timestamp } from "../core/types/timestamp.ts";
+import { type Timestamp, timestamp } from "../core/types/timestamp.ts";
 
 /**
  * Clock implementation backed by the platform's monotonic Performance API.
@@ -14,6 +14,6 @@ export class PerformanceClock implements Clock {
    * {@inheritDoc Clock.now}
    */
   public now(): Timestamp {
-    return BigInt(Math.floor(performance.now() * 1_000_000)) as Timestamp;
+    return timestamp(BigInt(Math.floor(performance.now() * 1_000_000)));
   }
 }

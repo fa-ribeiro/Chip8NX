@@ -8,7 +8,6 @@ import {
   Cpu,
   Decoder,
   DisplayBuffer,
-  type Duration,
   duration,
   ExecutionContext,
   ExitState,
@@ -41,7 +40,7 @@ const TIMENDUS_FLAGS_CPU_FREQUENCY = Frequency.fromInteger(500n);
  * so the acceptance criterion is the rendered result glyphs rather than an
  * exact completion cycle.
  */
-const TIMENDUS_FLAGS_EXECUTION_TIME = duration(2_000_000_000n as Duration);
+const TIMENDUS_FLAGS_EXECUTION_TIME = duration(2_000_000_000n);
 
 /**
  * Timendus' three-row success glyph, cropped to the three significant columns.

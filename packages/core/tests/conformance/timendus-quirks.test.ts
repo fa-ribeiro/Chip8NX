@@ -11,7 +11,6 @@ import {
   Cpu,
   Decoder,
   DisplayBuffer,
-  type Duration,
   duration,
   ExecutionContext,
   ExitState,
@@ -54,7 +53,7 @@ const TIMENDUS_QUIRKS_CPU_FREQUENCY = Frequency.fromInteger(2_000n);
  * deterministic time to finish even when low-resolution v-blank waiting is
  * enabled.
  */
-const TIMENDUS_QUIRKS_EXECUTION_TIME = duration(5_000_000_000n as Duration);
+const TIMENDUS_QUIRKS_EXECUTION_TIME = duration(5_000_000_000n);
 
 /**
  * The Timendus quirks ROM supports automated platform selection through the

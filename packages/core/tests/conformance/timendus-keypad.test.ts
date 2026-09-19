@@ -45,7 +45,7 @@ const TIMENDUS_KEYPAD_CPU_FREQUENCY = Frequency.fromInteger(500n);
  * frame, so the budget is intentionally based on emulated time rather than a
  * fixed number of CPU cycles.
  */
-const TIMENDUS_KEYPAD_INITIALIZATION_TIME = duration(2_000_000_000n as Duration);
+const TIMENDUS_KEYPAD_INITIALIZATION_TIME = duration(2_000_000_000n);
 
 /**
  * Gives the keypad polling loop enough emulated time to complete at least one
@@ -56,7 +56,7 @@ const TIMENDUS_KEYPAD_INITIALIZATION_TIME = duration(2_000_000_000n as Duration)
  * to guarantee that a changed key will be revisited from every possible loop
  * position.
  */
-const TIMENDUS_KEYPAD_INPUT_SETTLE_TIME = duration(500_000_000n as Duration);
+const TIMENDUS_KEYPAD_INPUT_SETTLE_TIME = duration(500_000_000n);
 
 /**
  * Timendus uses the byte immediately before the normal CHIP-8 program start
@@ -88,7 +88,7 @@ const TIMENDUS_KEYPAD_FX0A = byte(3);
  * Small deterministic time increment used to detect when the Keypad ROM has
  * armed its delay timer immediately before executing FX0A.
  */
-const TIMENDUS_KEYPAD_WAIT_ENTRY_POLL_TIME = duration(1_000_000n as Duration);
+const TIMENDUS_KEYPAD_WAIT_ENTRY_POLL_TIME = duration(1_000_000n);
 
 /**
  * Maximum number of polling iterations allowed while waiting for the Keypad
@@ -103,14 +103,14 @@ const TIMENDUS_KEYPAD_WAIT_ENTRY_MAX_POLLS = 2_000;
  * Keeps the selected key pressed long enough for the three-tick delay timer to
  * reach zero while FX0A remains blocked.
  */
-const TIMENDUS_KEYPAD_KEY_HOLD_TIME = duration(100_000_000n as Duration);
+const TIMENDUS_KEYPAD_KEY_HOLD_TIME = duration(100_000_000n);
 
 /**
  * Gives the ROM enough time after key release to validate FX0A, render its
  * successful result, scan the keypad for released keys, and settle into its
  * next input wait.
  */
-const TIMENDUS_KEYPAD_RESULT_SETTLE_TIME = duration(1_000_000_000n as Duration);
+const TIMENDUS_KEYPAD_RESULT_SETTLE_TIME = duration(1_000_000_000n);
 
 const TIMENDUS_KEYPAD_SUCCESS_REGION = {
   x: 16,

@@ -1,6 +1,6 @@
 import type { Clock } from "./clock.ts";
 import type { Duration } from "../core/types/duration.ts";
-import type { Timestamp } from "../core/types/timestamp.ts";
+import { type Timestamp, timestamp } from "../core/types/timestamp.ts";
 
 /**
  * Deterministic Clock implementation intended for tests.
@@ -9,7 +9,7 @@ import type { Timestamp } from "../core/types/timestamp.ts";
  * when explicitly instructed to do so.
  */
 export class TestClock implements Clock {
-  private currentTime: Timestamp = 0n as Timestamp;
+  private currentTime: Timestamp = timestamp(0n);
 
   /**
    * {@inheritDoc Clock.now}
@@ -31,6 +31,6 @@ export class TestClock implements Clock {
       throw new RangeError("TestClock cannot be advanced by a negative duration.");
     }
 
-    this.currentTime = (this.currentTime + amount) as Timestamp;
+    this.currentTime = timestamp(this.currentTime + amount);
   }
 }

@@ -8,7 +8,6 @@ import {
   Cpu,
   Decoder,
   DisplayBuffer,
-  type Duration,
   duration,
   ExecutionContext,
   ExitState,
@@ -43,7 +42,7 @@ const TIMENDUS_CORAX_PLUS_CPU_FREQUENCY = Frequency.fromInteger(500n);
  * modeled correctly. Two seconds provides ample deterministic time for the
  * ROM to reach its stable result loop.
  */
-const TIMENDUS_CORAX_PLUS_EXECUTION_TIME = duration(2_000_000_000n as Duration);
+const TIMENDUS_CORAX_PLUS_EXECUTION_TIME = duration(2_000_000_000n);
 
 /**
  * Successful Corax+ result screen.

@@ -10,7 +10,6 @@ import {
   Cpu,
   Decoder,
   DisplayBuffer,
-  type Duration,
   duration,
   ExecutionContext,
   ExitState,
@@ -36,7 +35,7 @@ import { TestRandomNumberGenerator } from "../../src/random/test-random-number-g
 
 const CPU_FREQUENCY = Frequency.fromInteger(2_000n);
 
-const SETTLE_TIME = duration(5_000_000_000n as Duration);
+const SETTLE_TIME = duration(5_000_000_000n);
 
 const CLASSIC_EXPECTED = `................................................................
 ................................................................

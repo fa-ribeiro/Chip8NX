@@ -8,7 +8,6 @@ import {
   Cpu,
   Decoder,
   DisplayBuffer,
-  type Duration,
   duration,
   ExecutionContext,
   ExitState,
@@ -41,7 +40,7 @@ const CORAX89_CPU_FREQUENCY = Frequency.fromInteger(500n);
  * modifying the framebuffer, so the conformance criterion is the final
  * observable display rather than an exact completion cycle.
  */
-const CORAX89_EXECUTION_TIME = duration(1_000_000_000n as Duration);
+const CORAX89_EXECUTION_TIME = duration(1_000_000_000n);
 
 const EXPECTED_CORAX89_RESULT = [
   "................................................................",

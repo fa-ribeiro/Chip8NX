@@ -9,7 +9,6 @@ import {
   Cpu,
   Decoder,
   DisplayBuffer,
-  type Duration,
   duration,
   type ExecutionContext,
   ExitState,
@@ -41,7 +40,7 @@ import { TestRandomNumberGenerator } from "../../src/random/test-random-number-g
  * SUPER-CHIP waits for vertical blank in low-resolution mode, so the test must
  * run long enough for those draws to complete.
  */
-const TIMENDUS_SCROLLING_EXECUTION_TIME = duration(3_000_000_000n as Duration);
+const TIMENDUS_SCROLLING_EXECUTION_TIME = duration(3_000_000_000n);
 
 const TIMENDUS_SCROLLING_CPU_FREQUENCY = Frequency.fromInteger(2_000n);
 

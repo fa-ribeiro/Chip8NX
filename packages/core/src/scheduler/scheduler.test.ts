@@ -1,12 +1,12 @@
 import { assertEquals, assertThrows } from "@std/assert";
 
 import { TestClock } from "../clock/test-clock.ts";
-import { type Duration, duration } from "../core/types/duration.ts";
+import { duration } from "../core/types/duration.ts";
 import { Frequency } from "../core/types/frequency.ts";
 import { Scheduler } from "./scheduler.ts";
 
 function advanceClock(clock: TestClock, nanoseconds: bigint): void {
-  clock.advance(duration(nanoseconds as Duration));
+  clock.advance(duration(nanoseconds));
 }
 
 Deno.test("Scheduler does not execute a task before its deadline", () => {

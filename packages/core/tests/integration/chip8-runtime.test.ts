@@ -9,7 +9,6 @@ import {
   Cpu,
   Decoder,
   DisplayBuffer,
-  type Duration,
   duration,
   type ExecutionContext,
   ExitState,
@@ -104,7 +103,7 @@ function createRuntime(cpuFrequency: Frequency = Frequency.fromInteger(500n)): R
 }
 
 function advanceClock(clock: TestClock, nanoseconds: bigint): void {
-  clock.advance(duration(nanoseconds as Duration));
+  clock.advance(duration(nanoseconds));
 }
 
 Deno.test("Chip8Runtime starts paused", () => {

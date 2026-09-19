@@ -17,6 +17,6 @@ export type Duration = bigint & { readonly __brand: "Duration" };
  * @param nanoseconds - Number of nanoseconds.
  * @returns The corresponding Duration.
  */
-export function duration(nanoseconds: Duration): Duration {
-  return nanoseconds;
+export function duration(nanoseconds: bigint): Duration {
+  return nanoseconds as Duration;
 }

@@ -19,6 +19,6 @@ export type Timestamp = bigint & {
  * @param nanoseconds - Number of nanoseconds since the clock's origin.
  * @returns The corresponding Timestamp.
  */
-export function timestamp(nanoseconds: Timestamp): Timestamp {
-  return nanoseconds;
+export function timestamp(nanoseconds: bigint): Timestamp {
+  return nanoseconds as Timestamp;
 }

@@ -8,7 +8,6 @@ import {
   Cpu,
   Decoder,
   DisplayBuffer,
-  type Duration,
   duration,
   ExecutionContext,
   ExitState,
@@ -42,7 +41,7 @@ const IBM_LOGO_CPU_FREQUENCY = Frequency.fromInteger(500n);
  * 120 ms provides seven display intervals, enough for all six draws and the
  * intervening instructions to complete.
  */
-const IBM_LOGO_EXECUTION_TIME = duration(120_000_000n as Duration);
+const IBM_LOGO_EXECUTION_TIME = duration(120_000_000n);
 
 const EXPECTED_IBM_LOGO = [
   "................................................................",
