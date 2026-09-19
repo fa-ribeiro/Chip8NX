@@ -30,9 +30,12 @@ export interface InstructionTraceRowViewModel {
   readonly text: string;
 }
 
+export type NearbyInstructionBreakpointState = "none" | "enabled" | "disabled";
+
 export interface NearbyInstructionInspection {
   readonly address: Address;
   readonly current: boolean;
+  readonly breakpoint: NearbyInstructionBreakpointState;
   readonly result:
     | SuccessfulNearbyInstructionInspectionResult
     | FailedNearbyInstructionInspectionResult;
@@ -51,6 +54,7 @@ export interface FailedNearbyInstructionInspectionResult {
 export interface NearbyInstructionViewModel {
   readonly address: string;
   readonly current: boolean;
+  readonly breakpoint: NearbyInstructionBreakpointState;
   readonly content: AvailableNearbyInstructionViewModel | UnavailableNearbyInstructionViewModel;
 }
 
@@ -115,6 +119,7 @@ function createNearbyInstructionViewModel(
     return {
       address: formatAddress(inspection.address),
       current: inspection.current,
+      breakpoint: inspection.breakpoint,
       content: {
         availability: "unavailable",
         reason: formatInspectionError(inspection.result.error),
@@ -125,6 +130,7 @@ function createNearbyInstructionViewModel(
   return {
     address: formatAddress(inspection.address),
     current: inspection.current,
+    breakpoint: inspection.breakpoint,
     content: {
       availability: "available",
       opcode: formatOpcode(inspection.result.instruction.instruction.opcode),

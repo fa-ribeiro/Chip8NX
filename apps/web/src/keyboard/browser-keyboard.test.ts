@@ -51,6 +51,42 @@ Deno.test("BrowserKeyboard preserves browser shortcuts", () => {
   assertEquals(event.defaultPrevented, false);
 });
 
+Deno.test("BrowserKeyboard ignores CHIP-8 presses from host form controls", () => {
+  const state = new KeyboardState();
+  const target = new FakeWindow();
+
+  const keyboard = new BrowserKeyboard(state, target as unknown as Window);
+
+  keyboard.start();
+
+  const event = target.keyDown("KeyQ", {
+    target: fakeElement("input"),
+  });
+
+  assertEquals(state.isPressed(key(0x4)), false);
+  assertEquals(event.defaultPrevented, false);
+});
+
+Deno.test("BrowserKeyboard releases a CHIP-8 key after focus moves into a host control", () => {
+  const state = new KeyboardState();
+  const target = new FakeWindow();
+
+  const keyboard = new BrowserKeyboard(state, target as unknown as Window);
+
+  keyboard.start();
+
+  target.keyDown("KeyQ");
+
+  assertEquals(state.isPressed(key(0x4)), true);
+
+  const event = target.keyUp("KeyQ", {
+    target: fakeElement("input"),
+  });
+
+  assertEquals(state.isPressed(key(0x4)), false);
+  assertEquals(event.defaultPrevented, false);
+});
+
 Deno.test("BrowserKeyboard releases pressed keys when the window loses focus", () => {
   const state = new KeyboardState();
   const target = new FakeWindow();
@@ -92,6 +128,7 @@ interface FakeKeyboardEventOptions {
   readonly altKey?: boolean;
   readonly ctrlKey?: boolean;
   readonly metaKey?: boolean;
+  readonly target?: EventTarget;
 }
 
 class FakeKeyboardEvent {
@@ -101,6 +138,7 @@ class FakeKeyboardEvent {
   public readonly altKey: boolean;
   public readonly ctrlKey: boolean;
   public readonly metaKey: boolean;
+  public readonly target: EventTarget | null;
 
   public constructor(
     public readonly code: string,
@@ -110,6 +148,7 @@ class FakeKeyboardEvent {
     this.altKey = options.altKey ?? false;
     this.ctrlKey = options.ctrlKey ?? false;
     this.metaKey = options.metaKey ?? false;
+    this.target = options.target ?? null;
   }
 
   public preventDefault(): void {
@@ -170,8 +209,8 @@ class FakeWindow {
     return event;
   }
 
-  public keyUp(code: string): FakeKeyboardEvent {
-    const event = new FakeKeyboardEvent(code);
+  public keyUp(code: string, options: FakeKeyboardEventOptions = {}): FakeKeyboardEvent {
+    const event = new FakeKeyboardEvent(code, options);
 
     for (const listener of this.keyUpListeners) {
       listener(event as unknown as KeyboardEvent);
@@ -185,4 +224,11 @@ class FakeWindow {
       listener();
     }
   }
+}
+
+function fakeElement(tagName: string): EventTarget {
+  return Object.assign(new EventTarget(), {
+    tagName,
+    isContentEditable: false,
+  });
 }

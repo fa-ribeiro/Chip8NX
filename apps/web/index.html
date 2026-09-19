@@ -57,6 +57,10 @@
         <path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z" />
       </symbol>
 
+      <symbol id="icon-breakpoint" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="7" />
+        <circle cx="12" cy="12" r="2" />
+      </symbol>
       <symbol id="icon-cpu" viewBox="0 0 24 24">
         <rect x="7" y="7" width="10" height="10" rx="2" />
         <path d="M9 2v3M15 2v3M9 19v3M15 19v3" />
@@ -351,6 +355,61 @@
                     <span>Reset</span>
                   </button>
                 </div>
+              </div>
+            </section>
+
+            <section
+              id="breakpoint-panel"
+              class="breakpoint-panel standard-panel"
+              aria-labelledby="breakpoint-heading"
+            >
+              <header class="standard-panel-header">
+                <h2 id="breakpoint-heading" class="standard-panel-title">
+                  <svg class="icon" width="16" height="16" aria-hidden="true" focusable="false">
+                    <use href="#icon-breakpoint"></use>
+                  </svg>
+
+                  <span>Breakpoints</span>
+                </h2>
+
+                <span
+                  id="breakpoint-count"
+                  class="standard-panel-indicator code-text"
+                  aria-label="Configured breakpoints"
+                >0</span>
+              </header>
+
+              <div class="standard-panel-body breakpoint-panel-body">
+                <form id="breakpoint-form" class="breakpoint-form" novalidate>
+                  <label for="breakpoint-address">Address</label>
+
+                  <div class="breakpoint-entry">
+                    <input
+                      id="breakpoint-address"
+                      class="code-text"
+                      type="text"
+                      inputmode="text"
+                      autocomplete="off"
+                      spellcheck="false"
+                      placeholder="0x200"
+                      aria-describedby="breakpoint-validation"
+                      disabled
+                    />
+
+                    <button id="breakpoint-add-button" type="submit" disabled>Add</button>
+                  </div>
+
+                  <p
+                    id="breakpoint-validation"
+                    class="breakpoint-validation"
+                    role="status"
+                    aria-live="polite"
+                    hidden
+                  ></p>
+                </form>
+
+                <p id="breakpoints-empty">Load a ROM to add breakpoints.</p>
+                <ul id="breakpoints-list" aria-label="Configured breakpoints"></ul>
               </div>
             </section>
 

@@ -18,6 +18,19 @@ Deno.test(
   },
 );
 
+Deno.test("AddressBreakpoints reads configured breakpoint state by address", () => {
+  const breakpoints = new AddressBreakpoints();
+
+  breakpoints.add(address(0x204));
+  breakpoints.setEnabled(address(0x204), false);
+
+  assertEquals(breakpoints.get(address(0x204)), {
+    address: address(0x204),
+    enabled: false,
+  });
+  assertEquals(breakpoints.get(address(0x206)), undefined);
+});
+
 Deno.test("AddressBreakpoints removes an existing breakpoint", () => {
   const breakpoints = new AddressBreakpoints();
 

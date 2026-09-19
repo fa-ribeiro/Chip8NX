@@ -67,6 +67,19 @@ export class AddressBreakpoints {
   }
 
   /**
+   * Returns the configured breakpoint at the supplied address.
+   */
+  public get(address: Address): AddressBreakpoint | undefined {
+    const enabled = this.breakpoints.get(address);
+
+    if (enabled === undefined) {
+      return undefined;
+    }
+
+    return { address, enabled };
+  }
+
+  /**
    * Returns configured breakpoints ordered by ascending address.
    */
   public snapshot(): readonly AddressBreakpoint[] {

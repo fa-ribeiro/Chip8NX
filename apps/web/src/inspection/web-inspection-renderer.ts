@@ -133,16 +133,30 @@ export class WebInspectionRenderer {
         item.setAttribute("aria-current", "true");
       }
 
-      const marker = this.document.createElement("span");
-      marker.className = "nearby-instruction-marker";
-      marker.textContent = instruction.current ? "▶" : "";
-      marker.setAttribute("aria-hidden", "true");
+      const breakpointMarker = this.document.createElement("span");
+      breakpointMarker.className = "nearby-instruction-breakpoint-marker";
+      breakpointMarker.dataset.breakpoint = instruction.breakpoint;
+
+      if (instruction.breakpoint === "none") {
+        breakpointMarker.setAttribute("aria-hidden", "true");
+      } else {
+        breakpointMarker.setAttribute("role", "img");
+        breakpointMarker.setAttribute(
+          "aria-label",
+          `${instruction.breakpoint === "enabled" ? "Enabled" : "Disabled"} breakpoint`,
+        );
+      }
+
+      const currentMarker = this.document.createElement("span");
+      currentMarker.className = "nearby-instruction-current-marker";
+      currentMarker.textContent = instruction.current ? "▶" : "";
+      currentMarker.setAttribute("aria-hidden", "true");
 
       const instructionAddress = this.document.createElement("span");
       instructionAddress.className = "nearby-instruction-address";
       instructionAddress.textContent = instruction.address;
 
-      item.append(marker, instructionAddress);
+      item.append(breakpointMarker, currentMarker, instructionAddress);
 
       if (instruction.content.availability === "available") {
         const opcode = this.document.createElement("span");

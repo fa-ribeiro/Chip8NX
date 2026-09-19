@@ -134,11 +134,12 @@ Deno.test("preserves trace order and delegates trace text formatting", () => {
   ]);
 });
 
-Deno.test("creates nearby instruction views preserving order and current marker", () => {
+Deno.test("creates nearby instruction views preserving current and breakpoint markers", () => {
   const inspections: readonly NearbyInstructionInspection[] = [
     {
       address: address(0x25e),
       current: false,
+      breakpoint: "enabled",
       result: {
         outcome: "success",
         instruction: {
@@ -154,6 +155,7 @@ Deno.test("creates nearby instruction views preserving order and current marker"
     {
       address: address(0x260),
       current: true,
+      breakpoint: "disabled",
       result: {
         outcome: "success",
         instruction: {
@@ -174,6 +176,7 @@ Deno.test("creates nearby instruction views preserving order and current marker"
     {
       address: "0x25E",
       current: false,
+      breakpoint: "enabled",
       content: {
         availability: "available",
         opcode: "00E0",
@@ -183,6 +186,7 @@ Deno.test("creates nearby instruction views preserving order and current marker"
     {
       address: "0x260",
       current: true,
+      breakpoint: "disabled",
       content: {
         availability: "available",
         opcode: "00EE",
@@ -197,6 +201,7 @@ Deno.test("creates an unavailable nearby instruction view without losing its add
     {
       address: address(0x25e),
       current: false,
+      breakpoint: "none",
       result: {
         outcome: "failure",
         error: new Error("Invalid opcode: 0xFFFF"),
@@ -210,6 +215,7 @@ Deno.test("creates an unavailable nearby instruction view without losing its add
     {
       address: "0x25E",
       current: false,
+      breakpoint: "none",
       content: {
         availability: "unavailable",
         reason: "Invalid opcode: 0xFFFF",
@@ -227,6 +233,7 @@ Deno.test("includes nearby instructions in the Web inspection view", () => {
     {
       address: address(0x200),
       current: false,
+      breakpoint: "none",
       result: {
         outcome: "success",
         instruction: {
@@ -242,6 +249,7 @@ Deno.test("includes nearby instructions in the Web inspection view", () => {
     {
       address: address(0x202),
       current: true,
+      breakpoint: "none",
       result: {
         outcome: "success",
         instruction: {
@@ -273,6 +281,7 @@ Deno.test("includes nearby instructions in the Web inspection view", () => {
     {
       address: "0x200",
       current: false,
+      breakpoint: "none",
       content: {
         availability: "available",
         opcode: "00E0",
@@ -282,6 +291,7 @@ Deno.test("includes nearby instructions in the Web inspection view", () => {
     {
       address: "0x202",
       current: true,
+      breakpoint: "none",
       content: {
         availability: "available",
         opcode: "00EE",

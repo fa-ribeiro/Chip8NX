@@ -212,6 +212,7 @@ select {
 .register-grid dd,
 .cpu-stack-state dd,
 .nearby-instruction-row,
+.breakpoint-row,
 #instruction-history-list code,
 .keypad-mapping kbd,
 .keypad-mapping code {
@@ -768,6 +769,154 @@ select {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Breakpoints                                                                */
+/* -------------------------------------------------------------------------- */
+
+.breakpoint-panel-body {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.breakpoint-form {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.breakpoint-form > label {
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.breakpoint-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem;
+}
+
+#breakpoint-address {
+  min-width: 0;
+  padding: 0.5rem 0.6rem;
+
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-control);
+}
+
+#breakpoint-address::placeholder {
+  color: var(--color-text-muted);
+}
+
+#breakpoint-address[aria-invalid="true"] {
+  border-color: var(--color-danger);
+}
+
+#breakpoint-address:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+#breakpoint-add-button,
+.breakpoint-remove-button {
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-control);
+
+  cursor: pointer;
+}
+
+#breakpoint-add-button {
+  padding: 0.5rem 0.8rem;
+  font-weight: 600;
+}
+
+.breakpoint-remove-button {
+  padding: 0.3rem 0.55rem;
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+}
+
+#breakpoint-add-button:hover:not(:disabled),
+.breakpoint-remove-button:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+  border-color: var(--color-accent-strong);
+}
+
+#breakpoint-add-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.breakpoint-validation {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: 0.74rem;
+}
+
+#breakpoints-empty {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+#breakpoints-list {
+  display: grid;
+  gap: 0.35rem;
+
+  margin: 0;
+  padding: 0;
+
+  list-style: none;
+}
+
+.breakpoint-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+
+  padding: 0.4rem 0.5rem;
+
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-compact);
+}
+
+.breakpoint-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+
+  min-width: 0;
+
+  cursor: pointer;
+}
+
+.breakpoint-toggle input {
+  margin: 0;
+}
+
+.breakpoint-list-marker {
+  width: 0.58rem;
+  height: 0.58rem;
+  flex: 0 0 auto;
+
+  background: var(--color-danger);
+  border: 1px solid var(--color-danger);
+  border-radius: 50%;
+}
+
+.breakpoint-row[data-enabled="false"] .breakpoint-list-marker {
+  background: transparent;
+}
+
+.breakpoint-row[data-enabled="false"] code {
+  color: var(--color-text-muted);
+}
+
+/* -------------------------------------------------------------------------- */
 /* CPU state                                                                  */
 /* -------------------------------------------------------------------------- */
 
@@ -889,7 +1038,7 @@ select {
 
 .nearby-instruction-row {
   display: grid;
-  grid-template-columns: 1rem max-content max-content minmax(0, 1fr);
+  grid-template-columns: 0.75rem 1rem max-content max-content minmax(0, 1fr);
   align-items: baseline;
   gap: 0.5rem;
 
@@ -899,7 +1048,35 @@ select {
   border-radius: 0.25rem;
 }
 
-.nearby-instruction-marker {
+.nearby-instruction-breakpoint-marker,
+.nearby-instruction-current-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  min-height: 1em;
+}
+
+.nearby-instruction-breakpoint-marker::before {
+  width: 0.5rem;
+  height: 0.5rem;
+
+  border-radius: 50%;
+
+  content: "";
+}
+
+.nearby-instruction-breakpoint-marker[data-breakpoint="enabled"]::before {
+  background: var(--color-danger);
+  border: 1px solid var(--color-danger);
+}
+
+.nearby-instruction-breakpoint-marker[data-breakpoint="disabled"]::before {
+  background: transparent;
+  border: 1px solid var(--color-text-muted);
+}
+
+.nearby-instruction-current-marker {
   text-align: center;
 }
 
@@ -920,7 +1097,7 @@ select {
   font-weight: 600;
 }
 
-.nearby-instruction-row[data-current="true"] .nearby-instruction-marker {
+.nearby-instruction-row[data-current="true"] .nearby-instruction-current-marker {
   color: var(--color-accent-strong);
 }
 
@@ -930,7 +1107,7 @@ select {
 }
 
 .nearby-instruction-row[data-availability="unavailable"] .nearby-instruction-text {
-  grid-column: 3 / -1;
+  grid-column: 4 / -1;
 }
 
 .instruction-history {
@@ -1111,6 +1288,7 @@ select {
 /* -------------------------------------------------------------------------- */
 
 button:focus-visible,
+input:focus-visible,
 select:focus-visible {
   outline: 2px solid var(--color-accent-strong);
   outline-offset: 2px;

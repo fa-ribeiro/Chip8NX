@@ -44,6 +44,7 @@ import {
 } from "@chip8nx/inspection";
 import { WebAudioBeeper } from "./audio/web-audio-beeper.ts";
 import { AddressBreakpoints } from "./debugger/address-breakpoints.ts";
+import { WebBreakpointPanel } from "./debugger/web-breakpoint-panel.ts";
 import { CanvasDisplay, type CanvasDisplayPalette } from "./display/canvas-display.ts";
 import {
   createWebInspectionViewModel,
@@ -125,6 +126,8 @@ const display = new CanvasDisplay(canvas, readCanvasDisplayPalette());
 const inspectionElement = requireElement<HTMLElement>(".inspection");
 const inspection = new WebInspectionRenderer(inspectionElement);
 
+const breakpointPanelElement = requireElement<HTMLElement>("#breakpoint-panel");
+
 const beeper = new WebAudioBeeper();
 
 const rplFlags = new RplFlags();
@@ -132,11 +135,18 @@ const breakpoints = new AddressBreakpoints();
 
 let machine: WebMachineSession | undefined;
 
+const breakpointPanel = new WebBreakpointPanel(breakpointPanelElement, breakpoints, () => {
+  if (machine !== undefined) {
+    renderMachine(machine);
+  }
+});
+
 let animationFrameId: number | undefined;
 
 updateControls();
 updateStatusDetails();
 inspection.render(undefined);
+breakpointPanel.setMemorySize(undefined);
 
 romLoadButton.addEventListener("click", () => {
   /*
@@ -208,6 +218,7 @@ async function loadAndRun(rom: File): Promise<void> {
 
   machine = undefined;
   breakpoints.clear();
+  breakpointPanel.setMemorySize(undefined);
 
   updateControls();
 
@@ -221,6 +232,7 @@ async function loadAndRun(rom: File): Promise<void> {
     const program = new MemoryImage(new Uint8Array(await rom.arrayBuffer()));
 
     machine = createMachine(rom.name, program, readSelectedProfile());
+    breakpointPanel.setMemorySize(machine.profile.memorySize);
 
     machine.lifecycle.activate();
     machine.lifecycle.start();
@@ -237,6 +249,7 @@ async function loadAndRun(rom: File): Promise<void> {
   } catch (error) {
     machine?.lifecycle.deactivate();
     machine = undefined;
+    breakpointPanel.setMemorySize(undefined);
 
     updateControls();
 
@@ -357,6 +370,7 @@ function createMachine(
       context.memory,
       cpuState.programCounter,
       disassembler,
+      breakpoints,
     );
 
     return createWebInspectionViewModel(
@@ -642,7 +656,7 @@ function updateControls(): void {
 
       runToggleButton.disabled = false;
       runToggleButton.dataset.action = "start";
-      runToggleLabel.textContent = "Start";
+      runToggleLabel.textContent = isBreakpoint ? "Continue" : "Start";
 
       stepButton.disabled = false;
       resetButton.disabled = false;
@@ -865,6 +879,7 @@ function inspectNearbyInstructions(
   memory: Memory,
   programCounter: Address,
   disassembler: Disassembler,
+  breakpoints: AddressBreakpoints,
 ): readonly NearbyInstructionInspection[] {
   const inspections: NearbyInstructionInspection[] = [];
 
@@ -889,6 +904,7 @@ function inspectNearbyInstructions(
       inspections.push({
         address: sourceAddress,
         current: sourceAddress === programCounter,
+        breakpoint: describeBreakpointAt(breakpoints, sourceAddress),
         result: {
           outcome: "success",
           instruction: disassembler.disassembleAt(memory, sourceAddress),
@@ -898,6 +914,7 @@ function inspectNearbyInstructions(
       inspections.push({
         address: sourceAddress,
         current: sourceAddress === programCounter,
+        breakpoint: describeBreakpointAt(breakpoints, sourceAddress),
         result: {
           outcome: "failure",
           error,
@@ -907,6 +924,19 @@ function inspectNearbyInstructions(
   }
 
   return inspections;
+}
+
+function describeBreakpointAt(
+  breakpoints: AddressBreakpoints,
+  targetAddress: Address,
+): NearbyInstructionInspection["breakpoint"] {
+  const breakpoint = breakpoints.get(targetAddress);
+
+  if (breakpoint === undefined) {
+    return "none";
+  }
+
+  return breakpoint.enabled ? "enabled" : "disabled";
 }
 
 function readSelectedProfile(): Chip8Profile {
@@ -970,6 +1000,7 @@ function recomposeMachineForSelectedProfile(): void {
     beeper.setActive(false);
 
     machine = replacement;
+    breakpointPanel.setMemorySize(replacement.profile.memorySize);
 
     replacement.lifecycle.activate();
 
