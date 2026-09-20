@@ -921,6 +921,7 @@ select {
 /* -------------------------------------------------------------------------- */
 
 #cpu-state-empty,
+#memory-empty,
 #nearby-instructions-empty,
 #instruction-history-empty {
   margin: 0;
@@ -1012,6 +1013,140 @@ select {
   white-space: nowrap;
 
   text-align: left;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Memory inspection                                                          */
+/* -------------------------------------------------------------------------- */
+
+.memory-panel-body {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.memory-form {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.memory-form > label {
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.memory-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem;
+}
+
+#memory-address {
+  min-width: 0;
+  padding: 0.5rem 0.6rem;
+
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-control);
+}
+
+#memory-address::placeholder {
+  color: var(--color-text-muted);
+}
+
+#memory-address[aria-invalid="true"] {
+  border-color: var(--color-danger);
+}
+
+#memory-address:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+#memory-go-button,
+.memory-navigation button {
+  padding: 0.5rem 0.8rem;
+
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-control);
+
+  font-weight: 600;
+  cursor: pointer;
+}
+
+#memory-go-button:hover:not(:disabled),
+.memory-navigation button:hover:not(:disabled) {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+  border-color: var(--color-accent-strong);
+}
+
+#memory-go-button:disabled,
+.memory-navigation button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.memory-validation {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: 0.74rem;
+}
+
+.memory-table-wrapper {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.memory-table {
+  width: 100%;
+  border-collapse: collapse;
+
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-code);
+  font-variant-numeric: tabular-nums;
+}
+
+.memory-table th,
+.memory-table td {
+  padding: 0.28rem 0.34rem;
+  border-bottom: 1px solid var(--color-border);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.memory-table thead th {
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.memory-table thead th:first-child,
+.memory-row-address {
+  text-align: left;
+}
+
+.memory-row-address {
+  color: var(--color-accent-strong);
+  font-weight: 600;
+}
+
+.memory-byte {
+  color: var(--color-text);
+}
+
+.memory-byte[data-empty="true"] {
+  color: transparent;
+}
+
+.memory-navigation {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
 }
 
 /* -------------------------------------------------------------------------- */

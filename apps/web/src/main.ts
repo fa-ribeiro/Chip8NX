@@ -52,6 +52,7 @@ import {
   type WebInspectionViewModel,
 } from "./inspection/web-inspection-view-model.ts";
 import { WebInspectionRenderer } from "./inspection/web-inspection-renderer.ts";
+import { WebMemoryPanel } from "./inspection/web-memory-panel.ts";
 import { BrowserKeyboard } from "./keyboard/browser-keyboard.ts";
 import { KeyboardInputHub } from "./keyboard/keyboard-input-hub.ts";
 import { VirtualKeypad } from "./keyboard/virtual-keypad.ts";
@@ -79,6 +80,7 @@ interface WebMachineSession {
   readonly lifecycle: WebMachineLifecycle;
   readonly snapshotInspection: () => WebInspectionViewModel;
 
+  readonly memory: Memory;
   readonly displayBuffer: DisplayBuffer;
   readonly soundTimer: Timer;
 }
@@ -127,6 +129,7 @@ const inspectionElement = requireElement<HTMLElement>(".inspection");
 const inspection = new WebInspectionRenderer(inspectionElement);
 
 const breakpointPanelElement = requireElement<HTMLElement>("#breakpoint-panel");
+const memoryPanelElement = requireElement<HTMLElement>("#memory-panel");
 
 const beeper = new WebAudioBeeper();
 
@@ -141,12 +144,15 @@ const breakpointPanel = new WebBreakpointPanel(breakpointPanelElement, breakpoin
   }
 });
 
+const memoryPanel = new WebMemoryPanel(memoryPanelElement);
+
 let animationFrameId: number | undefined;
 
 updateControls();
 updateStatusDetails();
 inspection.render(undefined);
 breakpointPanel.setMemorySize(undefined);
+memoryPanel.setMemory(undefined);
 
 romLoadButton.addEventListener("click", () => {
   /*
@@ -219,6 +225,7 @@ async function loadAndRun(rom: File): Promise<void> {
   machine = undefined;
   breakpoints.clear();
   breakpointPanel.setMemorySize(undefined);
+  memoryPanel.setMemory(undefined);
 
   updateControls();
 
@@ -233,6 +240,7 @@ async function loadAndRun(rom: File): Promise<void> {
 
     machine = createMachine(rom.name, program, readSelectedProfile());
     breakpointPanel.setMemorySize(machine.profile.memorySize);
+    memoryPanel.setMemory(machine.memory, machine.profile.programStartAddress);
 
     machine.lifecycle.activate();
     machine.lifecycle.start();
@@ -250,6 +258,7 @@ async function loadAndRun(rom: File): Promise<void> {
     machine?.lifecycle.deactivate();
     machine = undefined;
     breakpointPanel.setMemorySize(undefined);
+    memoryPanel.setMemory(undefined);
 
     updateControls();
 
@@ -389,6 +398,7 @@ function createMachine(
     lifecycle,
     snapshotInspection,
 
+    memory: context.memory,
     displayBuffer,
     soundTimer,
   };
@@ -738,6 +748,7 @@ function renderMachine(session: WebMachineSession): void {
     `${session.displayBuffer.width} × ${session.displayBuffer.height}`;
   updateStatusDetails(session);
   inspection.render(session.snapshotInspection());
+  memoryPanel.render();
 }
 
 function updateStatusDetails(session: WebMachineSession | undefined = machine): void {
@@ -1001,6 +1012,7 @@ function recomposeMachineForSelectedProfile(): void {
 
     machine = replacement;
     breakpointPanel.setMemorySize(replacement.profile.memorySize);
+    memoryPanel.setMemory(replacement.memory);
 
     replacement.lifecycle.activate();
 

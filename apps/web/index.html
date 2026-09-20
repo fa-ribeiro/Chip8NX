@@ -67,6 +67,12 @@
         <path d="M2 9h3M2 15h3M19 9h3M19 15h3" />
       </symbol>
 
+      <symbol id="icon-memory" viewBox="0 0 24 24">
+        <rect x="5" y="6" width="14" height="12" rx="2" />
+        <path d="M8 9h8M8 12h8M8 15h5" />
+        <path d="M8 3v3M12 3v3M16 3v3M8 18v3M12 18v3M16 18v3" />
+      </symbol>
+
       <symbol id="icon-nearby" viewBox="0 0 24 24">
         <circle cx="5" cy="6" r="1" />
         <circle cx="5" cy="12" r="1" />
@@ -538,6 +544,89 @@
                       <dd data-register="VF">0x00</dd>
                     </div>
                   </dl>
+                </div>
+              </div>
+            </section>
+
+            <section
+              id="memory-panel"
+              class="memory-panel standard-panel"
+              aria-labelledby="memory-heading"
+            >
+              <header class="standard-panel-header">
+                <h2 id="memory-heading" class="standard-panel-title">
+                  <svg class="icon" width="16" height="16" aria-hidden="true" focusable="false">
+                    <use href="#icon-memory"></use>
+                  </svg>
+
+                  <span>Memory</span>
+                </h2>
+
+                <span
+                  id="memory-range"
+                  class="standard-panel-indicator code-text"
+                  aria-label="Visible memory range"
+                >—</span>
+              </header>
+
+              <div class="standard-panel-body memory-panel-body">
+                <form id="memory-form" class="memory-form" novalidate>
+                  <label for="memory-address">Start address</label>
+
+                  <div class="memory-entry">
+                    <input
+                      id="memory-address"
+                      class="code-text"
+                      type="text"
+                      inputmode="text"
+                      autocomplete="off"
+                      spellcheck="false"
+                      placeholder="0x200"
+                      aria-describedby="memory-validation"
+                      disabled
+                    />
+
+                    <button id="memory-go-button" type="submit" disabled>Go</button>
+                  </div>
+
+                  <p
+                    id="memory-validation"
+                    class="memory-validation"
+                    role="status"
+                    aria-live="polite"
+                    hidden
+                  ></p>
+                </form>
+
+                <p id="memory-empty">Load a ROM to inspect memory.</p>
+
+                <div class="memory-table-wrapper">
+                  <table
+                    id="memory-table"
+                    class="memory-table"
+                    aria-label="Memory bytes"
+                    hidden
+                  >
+                    <thead>
+                      <tr>
+                        <th scope="col">Address</th>
+                        <th scope="col">+0</th>
+                        <th scope="col">+1</th>
+                        <th scope="col">+2</th>
+                        <th scope="col">+3</th>
+                        <th scope="col">+4</th>
+                        <th scope="col">+5</th>
+                        <th scope="col">+6</th>
+                        <th scope="col">+7</th>
+                      </tr>
+                    </thead>
+                    <tbody id="memory-table-body"></tbody>
+                  </table>
+                </div>
+
+                <div class="memory-navigation" aria-label="Memory page navigation">
+                  <button id="memory-previous-button" type="button" disabled>Previous</button>
+                  <button id="memory-next-button" type="button" disabled>Next</button>
                 </div>
               </div>
             </section>
