@@ -1,62 +1,12 @@
-import { type Address, address } from "@chip8nx/core";
+import {
+  formatWebAddress,
+  parseWebAddress,
+  type WebAddressParseResult,
+} from "../address/web-address.ts";
+export { parseWebAddress as parseBreakpointAddress } from "../address/web-address.ts";
+export type BreakpointAddressParseResult = WebAddressParseResult;
 
 import { AddressBreakpoints } from "./address-breakpoints.ts";
-
-export type BreakpointAddressParseResult =
-  | {
-    readonly outcome: "success";
-    readonly address: Address;
-  }
-  | {
-    readonly outcome: "failure";
-    readonly message: string;
-  };
-
-/**
- * Parses one hexadecimal breakpoint address for the active machine.
- *
- * @remarks
- * Bare values are interpreted as hexadecimal so debugger input matches the
- * address notation used throughout the Web inspection UI.
- */
-export function parseBreakpointAddress(
-  text: string,
-  memorySize: number,
-): BreakpointAddressParseResult {
-  const normalized = text.trim();
-
-  if (normalized.length === 0) {
-    return {
-      outcome: "failure",
-      message: "Enter a hexadecimal address such as 0x200.",
-    };
-  }
-
-  const hexadecimal = normalized.toLowerCase().startsWith("0x")
-    ? normalized.slice(2)
-    : normalized;
-
-  if (!/^[0-9a-f]+$/i.test(hexadecimal)) {
-    return {
-      outcome: "failure",
-      message: "Enter a hexadecimal address such as 0x200.",
-    };
-  }
-
-  const value = Number.parseInt(hexadecimal, 16);
-
-  if (!Number.isSafeInteger(value) || value >= memorySize) {
-    return {
-      outcome: "failure",
-      message: `Address must be between 0x000 and ${formatAddress(address(memorySize - 1))}.`,
-    };
-  }
-
-  return {
-    outcome: "success",
-    address: address(value),
-  };
-}
 
 /**
  * Presents and edits the Web debugger's configured address breakpoints.
@@ -163,7 +113,7 @@ export class WebBreakpointPanel {
       toggle.setAttribute(
         "aria-label",
         `${breakpoint.enabled ? "Disable" : "Enable"} breakpoint at ${
-          formatAddress(
+          formatWebAddress(
             breakpoint.address,
           )
         }`,
@@ -181,7 +131,7 @@ export class WebBreakpointPanel {
       marker.setAttribute("aria-hidden", "true");
 
       const breakpointAddress = this.document.createElement("code");
-      breakpointAddress.textContent = formatAddress(breakpoint.address);
+      breakpointAddress.textContent = formatWebAddress(breakpoint.address);
 
       toggleLabel.append(toggle, marker, breakpointAddress);
 
@@ -191,7 +141,7 @@ export class WebBreakpointPanel {
       removeButton.textContent = "Remove";
       removeButton.setAttribute(
         "aria-label",
-        `Remove breakpoint at ${formatAddress(breakpoint.address)}`,
+        `Remove breakpoint at ${formatWebAddress(breakpoint.address)}`,
       );
 
       removeButton.addEventListener("click", () => {
@@ -213,7 +163,7 @@ export class WebBreakpointPanel {
       return;
     }
 
-    const parsed = parseBreakpointAddress(this.addressInput.value, this.memorySize);
+    const parsed = parseWebAddress(this.addressInput.value, this.memorySize);
 
     if (parsed.outcome === "failure") {
       this.showValidation(parsed.message);
@@ -222,7 +172,7 @@ export class WebBreakpointPanel {
     }
 
     if (!this.breakpoints.add(parsed.address)) {
-      this.showValidation(`Breakpoint already exists at ${formatAddress(parsed.address)}.`);
+      this.showValidation(`Breakpoint already exists at ${formatWebAddress(parsed.address)}.`);
 
       return;
     }
@@ -244,10 +194,6 @@ export class WebBreakpointPanel {
     this.validation.hidden = true;
     this.addressInput.removeAttribute("aria-invalid");
   }
-}
-
-function formatAddress(value: Address): string {
-  return `0x${value.toString(16).toUpperCase().padStart(3, "0")}`;
 }
 
 function requireDescendant<T extends Element = HTMLElement>(

@@ -1,17 +1,15 @@
 import { type Address, address, type Byte, type Memory } from "@chip8nx/core";
 
+import {
+  formatWebAddress,
+  parseWebAddress,
+  type WebAddressParseResult,
+} from "../address/web-address.ts";
+export { parseWebAddress as parseMemoryAddress } from "../address/web-address.ts";
+export type MemoryAddressParseResult = WebAddressParseResult;
+
 export const MEMORY_PAGE_SIZE = 0x40;
 export const MEMORY_ROW_SIZE = 0x08;
-
-export type MemoryAddressParseResult =
-  | {
-    readonly outcome: "success";
-    readonly address: Address;
-  }
-  | {
-    readonly outcome: "failure";
-    readonly message: string;
-  };
 
 export interface MemoryInspectionRow {
   readonly address: Address;
@@ -52,49 +50,6 @@ export function formatMemoryCharacters(bytes: readonly Byte[]): string {
 }
 
 /**
- * Parses one hexadecimal address for the Web memory inspector.
- *
- * @remarks
- * Bare values are interpreted as hexadecimal so memory input matches the
- * address notation used throughout the Web inspection UI.
- */
-export function parseMemoryAddress(text: string, memorySize: number): MemoryAddressParseResult {
-  const normalized = text.trim();
-
-  if (normalized.length === 0) {
-    return {
-      outcome: "failure",
-      message: "Enter a hexadecimal address such as 0x200.",
-    };
-  }
-
-  const hexadecimal = normalized.toLowerCase().startsWith("0x")
-    ? normalized.slice(2)
-    : normalized;
-
-  if (!/^[0-9a-f]+$/i.test(hexadecimal)) {
-    return {
-      outcome: "failure",
-      message: "Enter a hexadecimal address such as 0x200.",
-    };
-  }
-
-  const value = Number.parseInt(hexadecimal, 16);
-
-  if (!Number.isSafeInteger(value) || value >= memorySize) {
-    return {
-      outcome: "failure",
-      message: `Address must be between 0x000 and ${formatAddress(address(memorySize - 1))}.`,
-    };
-  }
-
-  return {
-    outcome: "success",
-    address: address(value),
-  };
-}
-
-/**
  * Reads at most one 64-byte memory page beginning exactly at `startAddress`.
  *
  * @remarks
@@ -105,7 +60,7 @@ export function parseMemoryAddress(text: string, memorySize: number): MemoryAddr
 export function inspectMemoryPage(memory: Memory, startAddress: Address): MemoryInspectionPage {
   if (startAddress >= memory.size) {
     throw new RangeError(
-      `Memory inspection start ${formatAddress(startAddress)} is outside the address space.`,
+      `Memory inspection start ${formatWebAddress(startAddress)} is outside the address space.`,
     );
   }
 
@@ -284,7 +239,7 @@ export class WebMemoryPanel {
     if (initialAddress !== undefined) {
       if (initialAddress >= memory.size) {
         throw new RangeError(
-          `Memory inspection start ${formatAddress(initialAddress)} is outside ` +
+          `Memory inspection start ${formatWebAddress(initialAddress)} is outside ` +
             "the address space.",
         );
       }
@@ -321,7 +276,11 @@ export class WebMemoryPanel {
 
     if (targetAddress >= this.memory.size) {
       throw new RangeError(
-        `Memory inspection start ${formatAddress(targetAddress)} is outside the address space.`,
+        `Memory inspection start ${
+          formatWebAddress(
+            targetAddress,
+          )
+        } is outside the address space.`,
       );
     }
 
@@ -357,8 +316,8 @@ export class WebMemoryPanel {
 
     const page = inspectMemoryPage(memory, this.startAddress);
 
-    this.range.textContent = `${formatAddress(page.startAddress)}–${
-      formatAddress(
+    this.range.textContent = `${formatWebAddress(page.startAddress)}–${
+      formatWebAddress(
         page.endAddress,
       )
     }`;
@@ -374,7 +333,7 @@ export class WebMemoryPanel {
       const addressCell = this.document.createElement("th");
       addressCell.scope = "row";
       addressCell.className = "memory-row-address code-text";
-      addressCell.textContent = formatAddress(row.address);
+      addressCell.textContent = formatWebAddress(row.address);
       tableRow.append(addressCell);
 
       for (let column = 0; column < MEMORY_ROW_SIZE; column++) {
@@ -433,7 +392,7 @@ export class WebMemoryPanel {
       return;
     }
 
-    const formatted = formatAddress(target);
+    const formatted = formatWebAddress(target);
     const suffix = available ? "" : " (outside memory)";
     const description = `Jump to ${label} ${formatted}${suffix}`;
 
@@ -450,7 +409,7 @@ export class WebMemoryPanel {
       return;
     }
 
-    const parsed = parseMemoryAddress(this.addressInput.value, this.memory.size);
+    const parsed = parseWebAddress(this.addressInput.value, this.memory.size);
 
     if (parsed.outcome === "failure") {
       this.showValidation(parsed.message);
@@ -465,7 +424,7 @@ export class WebMemoryPanel {
   }
 
   private syncAddressInput(): void {
-    this.addressInput.value = formatAddress(this.startAddress);
+    this.addressInput.value = formatWebAddress(this.startAddress);
   }
 
   private showValidation(message: string): void {
@@ -479,10 +438,6 @@ export class WebMemoryPanel {
     this.validation.hidden = true;
     this.addressInput.removeAttribute("aria-invalid");
   }
-}
-
-function formatAddress(value: Address): string {
-  return `0x${value.toString(16).toUpperCase().padStart(3, "0")}`;
 }
 
 function requireDescendant<T extends Element = HTMLElement>(
