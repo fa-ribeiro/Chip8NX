@@ -12,6 +12,26 @@ During the `0.x` development phase:
 
 ## [Unreleased]
 
+### Added
+
+- Added Web-local address breakpoints with add/remove, enable/disable, nearby-instruction gutter toggles, pause-before-execute behavior, and explicit breakpoint pause reasons.
+- Added a passive Web memory inspector with exact hexadecimal start addresses, bounded 64-byte pages, eight-byte rows, end-of-memory truncation, and quick jumps to the current PC and I register.
+- Added profile-derived stack-capacity presentation to the Web CPU-state inspector.
+
+### Changed
+
+- Redesigned the Web inspection workbench into distinct Machine, State, and Analysis regions while preserving the existing machine and inspection behavior.
+- Centralized Web data-view typography and panel styling so CPU state, Nearby, Trace, Memory, and Breakpoints share consistent visual rules without component-local typography overrides.
+- Extended `WebMachineLifecycle` to own Web breakpoint pause reasons and to coordinate breakpoint resume behavior without moving debugger policy into Core or Inspection.
+
+### Fixed
+
+- Fixed Continue from a breakpoint on retryable instructions such as vblank-gated `DRW`: breakpoint suppression now remains active while execution stays at the stopped address and re-arms after execution leaves it.
+
+### Documentation
+
+- Reconciled current Web, architecture, and tracing documentation with the implemented Web-local debugger and passive memory inspector while preserving the passive Inspection boundary and the deliberately deferred reusable debugger abstraction.
+
 ## [0.11.0] - 2026-09-19 - SUPER-CHIP Modern
 
 ### Added

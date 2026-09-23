@@ -302,9 +302,9 @@ Inspection tools
 Host presentation or policy
 ```
 
-Inspection remains passive. It does not currently provide breakpoints, watchpoints, pause conditions, step-over behavior, step-out behavior, or other debugger execution-control semantics.
+Inspection remains passive. It does not provide breakpoint policy, watchpoints, pause conditions, step-over behavior, step-out behavior, or other debugger execution-control semantics. The current Web host now implements one bounded debugger policy locally: address breakpoints layered on Core's scheduled CPU execution gate. That host-local policy does not change the Inspection package boundary.
 
-See [Tracing architecture](./tracing.md) for the detailed trace data model, failure semantics, retry behavior, formatting boundaries, bounded history, testing strategy, and deliberately deferred debugger features.
+See [Tracing architecture](./tracing.md) for the detailed trace data model, failure semantics, retry behavior, formatting boundaries, bounded history, testing strategy, and the boundary between passive tracing and host-owned debugger control.
 
 ## Machine initialization
 
@@ -371,7 +371,7 @@ Pausing suspends scheduled progression without accumulating execution debt. Manu
 
 `Chip8Runtime` therefore provides generic execution-control mechanisms such as `pause()`, `resume()`, `step()`, and paused-state inspection. Core does not decide _why_ execution should pause or resume.
 
-Policies such as stopping at a breakpoint, pausing when a watch condition becomes true, or implementing step-over / step-out behavior would belong to a future reusable debugger layer if those needs are demonstrated. Such a layer would use Core runtime mechanisms rather than move debugger policy into `Chip8Runtime`.
+The current Web host demonstrates one application-local control policy: it uses the scheduled CPU execution gate to stop before configured address breakpoints and records the resulting pause reason in `WebMachineLifecycle`. More general policies such as watch conditions or step-over / step-out behavior still belong outside `Chip8Runtime`; a reusable debugger layer should appear only if multiple concrete consumers demonstrate stable shared semantics.
 
 See [Runtime and timing architecture](./runtime-and-timing.md) for deadline representation, catch-up, equal-deadline policy, pause/resume rebasing, timed machine state, and single-step semantics.
 
@@ -544,9 +544,9 @@ Current applications illustrate different composition needs:
 
 - the Terminal host composes Core with selected Inspection formatting tools for optional trace output;
 - the disassembler application composes Core decoding and memory semantics with Inspection disassembly and instruction formatting;
-- the Web host composes Core execution and CPU observation with Inspection disassembly, bounded trace history, and profile-appropriate formatting to provide live CPU state, nearby instructions, and recent instruction-attempt presentation. It currently allows the user to choose between Classic CHIP-8, CHIP-48 2.25, SUPER-CHIP 1.1, and SUPER-CHIP Modern.
+- the Web host composes Core execution and CPU observation with Inspection disassembly, bounded trace history, and profile-appropriate formatting to provide live CPU state, nearby instructions, recent instruction-attempt presentation, passive memory inspection, and Web-local address breakpoints. It currently allows the user to choose between Classic CHIP-8, CHIP-48 2.25, SUPER-CHIP 1.1, and SUPER-CHIP Modern.
 
-The Web host remains responsible for the policy around that composition. It chooses the active machine profile, corresponding instruction formatter, nearby-disassembly window, trace-history capacity, refresh cadence, DOM presentation, and lifecycle behavior without moving those concerns into either reusable package.
+The Web host remains responsible for the policy around that composition. It chooses the active machine profile, corresponding instruction formatter, nearby-disassembly window, trace-history capacity, breakpoint configuration and pause reasons, memory-view navigation, refresh cadence, DOM presentation, and lifecycle behavior without moving those concerns into either reusable package.
 
 Changing the selected profile while a ROM is loaded creates a fresh Web machine session from the retained ROM image. The new session receives the selected profile consistently across initialization, instruction-set semantics, shared quirks, display behavior, runtime timing, font composition, and inspection formatting. Whether the previous session was running or paused is preserved as host lifecycle policy.
 
@@ -566,7 +566,7 @@ Inspection may depend only on Core's public API. Reaching into `packages/core/sr
 
 Core must remain usable without any inspection, formatting, disassembly, trace-history, or host-presentation tooling.
 
-A future reusable debugger layer, if demonstrated by real execution-control needs, would depend inward on Core. Its exact relationship with Inspection should be determined by actual shared behavior rather than imposed in advance.
+The current Web address-breakpoint implementation remains host-local. A future reusable debugger layer, if additional consumers demonstrate stable shared execution-control semantics, would depend inward on Core. Its exact relationship with Inspection should be determined by actual shared behavior rather than imposed in advance.
 
 See:
 

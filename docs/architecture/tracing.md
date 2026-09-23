@@ -124,7 +124,7 @@ Cpu
 
 Instruction observation is therefore available independently of normal scheduled execution. Manual runtime stepping and any future direct CPU consumers observe the same CPU-attempt boundary.
 
-Neither the observer contract nor its Inspection consumers decide whether execution should continue, pause, retry, or stop. Those decisions remain execution or future debugger policy.
+Neither the observer contract nor its Inspection consumers decide whether execution should continue, pause, retry, or stop. Those decisions remain execution or debugger policy. The current Web host supplies one such policy locally through address breakpoints; tracing itself remains unaware of it.
 
 ## Optional Observation
 
@@ -1348,7 +1348,7 @@ Web UI reads snapshot()
 render recent attempts
 ```
 
-The Web host currently retains a bounded history of 32 CPU attempts and renders that history as its Recent Instructions view.
+The Web host currently retains a bounded history of 32 CPU attempts and renders that history in its Trace panel.
 
 The buffer remains reusable because nothing in that flow makes it aware of the browser, presentation layout, or debugger policy.
 
@@ -1471,9 +1471,10 @@ Tracing deliberately stops at passive observation. It does not currently define 
 Deferred concerns include:
 
 ```text
-breakpoints and watch conditions
+reusable breakpoint / watch-condition infrastructure
+conditional breakpoints and watchpoints
 step-over / step-out policy
-pause reasons and debugger-session state
+reusable debugger-session state
 trace filtering
 multiple-observer fan-out
 timestamps or global sequence numbers
@@ -1486,17 +1487,21 @@ deterministic replay
 
 These items are not missing pieces of the current tracing contract. Each introduces a different responsibility and should be modeled only when a concrete consumer demonstrates the need.
 
-For example, a future breakpoint facility would add **control policy** on top of existing runtime mechanisms:
+The current Web address-breakpoint facility demonstrates that separation using Core runtime mechanisms without involving tracing:
 
 ```text
-observation
-    ↓
-reusable breakpoint policy
-    ↓
-application/runtime control
+current program counter
+        ↓
+Web AddressBreakpoints
+        ↓
+scheduled CPU execution gate
+        ↓
+WebMachineLifecycle pause reason
+        ↓
+application controls
 ```
 
-That policy should remain outside Core machine semantics. Likewise, if future tooling needs memory mutations, display changes, or scheduler events, the first design question should be which component authoritatively owns the event rather than automatically enlarging `InstructionTrace`.
+That policy remains outside Core machine semantics and outside Inspection. Likewise, if future tooling needs watch conditions, memory mutations, display changes, or scheduler events, the first design question should be which component authoritatively owns the capability rather than automatically enlarging `InstructionTrace`.
 
 The same rule applies to storage. `InstructionTraceBuffer` is intentionally an in-memory bounded history. File formats, persistence, export, replay, and long-term compatibility belong to a different feature boundary if they are ever required.
 
@@ -1568,4 +1573,4 @@ Web
       and nearby disassembly
 ```
 
-That is enough evidence for the present design. Breakpoints, watchpoints, replay, persistent recording, richer machine observation, and other debugger features remain deliberately deferred until their own consumers and ownership rules become concrete.
+That is enough evidence for the present design. The Web host now has bounded address breakpoints, but reusable debugger infrastructure, watchpoints, richer stepping policy, replay, persistent recording, richer machine observation, and other debugger features remain deliberately deferred until their own consumers and ownership rules become concrete.

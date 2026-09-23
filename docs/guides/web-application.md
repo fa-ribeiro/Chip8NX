@@ -1,6 +1,6 @@
 # Web Application
 
-The Web application is Chip8NX's browser-based play and inspection host.
+The Web application is Chip8NX's browser-based play, inspection, and bounded debugger host.
 
 It composes the reusable `@chip8nx/core` and `@chip8nx/inspection` packages with browser-specific display, input, audio, execution-control, inspection-presentation, and appearance concerns.
 
@@ -22,10 +22,11 @@ apps/web
     browser adapters
     host lifecycle
     inspection policy
+    address-breakpoint policy
     presentation
 ```
 
-Core determines what the CHIP-8 machine does. Inspection provides passive, host-independent ways to inspect what Core exposes. The Web application decides how those capabilities are composed and presented in a browser.
+Core determines what the CHIP-8 machine does. Inspection provides passive, host-independent ways to inspect what Core exposes. The Web application decides how those capabilities are composed and presented in a browser, and owns its bounded debugger policy without moving that policy into Core or Inspection.
 
 ## In this document
 
@@ -37,7 +38,7 @@ Core determines what the CHIP-8 machine does. Inspection provides passive, host-
 - [Display](#display)
 - [Sound](#sound)
 - [Runtime and host loop](#runtime-and-host-loop)
-- [Execution controls](#execution-controls)
+- [Execution controls and breakpoints](#execution-controls-and-breakpoints)
 - [Machine profile selection](#machine-profile-selection)
 - [Loading another ROM](#loading-another-rom)
 - [Status and machine configuration](#status-and-machine-configuration)
@@ -66,6 +67,8 @@ The Web host currently provides:
 - live CPU-state inspection;
 - bounded best-effort disassembly around the current program counter;
 - bounded recent CPU instruction-attempt history;
+- Web-local address breakpoints with enable/disable/remove controls and nearby-gutter toggles;
+- passive memory inspection with exact-address paging and quick PC/I navigation;
 - responsive desktop and narrow-screen layouts;
 - persistent Retro Green, Retro Amber, Dark, and LCD Calculator appearance themes;
 - theme-aware framebuffer and favicon presentation;
@@ -75,7 +78,7 @@ Loading a valid ROM creates and initializes a fresh Web session using the curren
 
 ## Architecture
 
-The Web application combines machine execution, passive inspection, and browser presentation without moving host-specific policy into Core or Inspection.
+The Web application combines machine execution, passive inspection, bounded host-local debugger control, and browser presentation without moving host-specific policy into Core or Inspection.
 
 ```mermaid
 flowchart TB
@@ -86,6 +89,8 @@ flowchart TB
 
     subgraph Web["Web host"]
         Session["WebMachineSession"]
+        Lifecycle["WebMachineLifecycle"]
+        Breakpoints["AddressBreakpoints"]
 
         Physical["BrowserKeyboard"]
         Virtual["VirtualKeypad"]
@@ -93,8 +98,9 @@ flowchart TB
 
         Canvas["CanvasDisplay"]
         Audio["WebAudioBeeper"]
-
         Inspector["WebInspectionRenderer"]
+        MemoryPanel["WebMemoryPanel"]
+        BreakpointPanel["WebBreakpointPanel"]
         Theme["Web theme"]
     end
 
@@ -115,13 +121,13 @@ flowchart TB
 
     ROM --> Session
     Profile --> Session
-    Controls --> Session
-    Loop --> Runtime
+    Session --> Lifecycle
+    Controls --> Lifecycle
+    Loop --> Lifecycle
+    Lifecycle --> Runtime
 
-    Session --> Runtime
-    Session --> Cpu
-    Session --> DisplayBuffer
-    Session --> Sound
+    Breakpoints -->|"scheduled CPU gate"| Runtime
+    Breakpoints --> BreakpointPanel
 
     Physical --> Hub
     Virtual --> Hub
@@ -131,9 +137,13 @@ flowchart TB
     Memory --> Disassembler
 
     TraceBuffer --> Inspector
+    TraceFormatter --> Inspector
     Disassembler --> Inspector
     Cpu --> Inspector
 
+    Memory --> MemoryPanel
+    Session --> DisplayBuffer
+    Session --> Sound
     DisplayBuffer --> Canvas
     Sound --> Audio
 
@@ -143,10 +153,12 @@ flowchart TB
 
 The diagram shows three different responsibility directions.
 
-Machine execution stays in Core:
+Machine execution stays in Core while Web owns host lifecycle policy:
 
 ```text
 controls / host loop
+        ↓
+WebMachineLifecycle
         ↓
 Chip8Runtime
         ↓
@@ -165,15 +177,28 @@ Web inspection view model
 WebInspectionRenderer
 ```
 
+Web-local breakpoint control is a separate policy path:
+
+```text
+current PC
+    ↓
+AddressBreakpoints
+    ↓
+scheduled CPU execution gate
+    ↓
+WebMachineLifecycle pause reason
+```
+
 Browser presentation observes the resulting state:
 
 ```text
 DisplayBuffer → CanvasDisplay
 Sound Timer   → WebAudioBeeper
 inspection    → DOM
+Memory        → WebMemoryPanel
 ```
 
-The Web host may present those values whenever convenient. Browser rendering cadence, DOM updates, appearance themes, and inspection layout do not become CHIP-8 machine semantics.
+The Web host may present those values whenever convenient. Browser rendering cadence, DOM updates, appearance themes, memory-view navigation, and debugger policy do not become CHIP-8 machine semantics.
 
 See [Architecture overview](../architecture/overview.md).
 
@@ -187,52 +212,37 @@ interface WebMachineSession {
   readonly program: MemoryImage;
   readonly profile: Chip8Profile;
 
-  readonly context: ExecutionContext;
-  readonly initializer: MachineInitializer;
-
-  readonly cpu: Cpu;
-  readonly runtime: Chip8Runtime;
-
-  readonly traceHistory: InstructionTraceBuffer;
+  readonly lifecycle: WebMachineLifecycle;
   readonly snapshotInspection: () => WebInspectionViewModel;
 
+  readonly memory: Memory;
   readonly displayBuffer: DisplayBuffer;
   readonly soundTimer: Timer;
-
-  readonly browserKeyboard: BrowserKeyboard;
-  readonly virtualKeypad: VirtualKeypad;
 }
 ```
 
 This is Web application state, not a generic Core `Chip8Machine` abstraction.
 
-The browser retains only the collaborators it actually needs for application behavior:
+The browser retains only the collaborators it needs after composition:
 
 ```text
-ROM/profile lifecycle
+ROM/profile replacement
     → program
     → profile
-    → context
-    → initializer
 
-execution
-    → cpu
-    → runtime
+host execution lifecycle
+    → WebMachineLifecycle
 
 inspection
-    → traceHistory
     → snapshotInspection()
+    → memory
 
 presentation
     → displayBuffer
     → soundTimer
-
-input lifecycle
-    → browserKeyboard
-    → virtualKeypad
 ```
 
-The session therefore remains an application-local composition boundary. Neither Core nor Inspection needs to know that the browser groups these references together.
+The lower-level CPU, runtime, scheduler, input adapters, initializer, disassembler, trace buffer, and formatters remain captured by the session's lifecycle or inspection closures rather than becoming public fields of the aggregate. The session therefore remains an application-local composition boundary. Neither Core nor Inspection needs to know that the browser groups these capabilities together.
 
 For explicit Core construction, see [Embedding the Core](./embedding-the-core.md).
 
@@ -313,13 +323,32 @@ For example:
 
 An undecodable neighboring value therefore does not discard the rest of the inspection window.
 
-The Web host also calculates neighboring addresses relative to the **actual** program counter. It does not silently force the address onto an even boundary.
+The Web host also calculates neighboring addresses relative to the **actual** program counter. It does not silently force the address onto an even boundary. Each nearby row also carries the current Web-local breakpoint state (`none`, `enabled`, or `disabled`) so the gutter can present breakpoint configuration without teaching the reusable disassembler about debugger policy.
 
 Nearby disassembly answers:
 
 > What do the bytes around the machine's current PC decode as?
 
 It does not claim that every displayed row is executable code. No code/data classification or control-flow analysis is performed.
+
+### Memory inspection
+
+`WebMemoryPanel` provides a passive live view over the active machine memory. It does not mutate memory or influence execution.
+
+The panel reads at most 64 bytes beginning at the **exact** requested address and presents eight bytes per row. The start address is intentionally not aligned, so entering `0x203` starts the view at `0x203`. Near the end of memory, the final page truncates naturally instead of reading past the address space.
+
+Navigation is Web presentation policy:
+
+- Previous / Next move by one bounded page while clamping to valid memory;
+- direct address entry accepts the same hexadecimal notation used elsewhere in the debugger;
+- PC and I shortcuts use the current CPU snapshot as reference addresses;
+- a reference outside the active memory range is shown as unavailable rather than coerced.
+
+Memory inspection therefore answers:
+
+> What bytes are currently stored around this address?
+
+It does not provide editing, searching, watchpoints, or mutation-triggered pause behavior.
 
 ### Recent instruction attempts
 
@@ -617,13 +646,17 @@ The Web host uses `requestAnimationFrame` as its browser service and presentatio
 
 ```ts
 const frame = (): void => {
-  session.runtime.tick();
+  const lifecycleState = session.lifecycle.tick();
 
-  beeper.setActive(session.soundTimer.getValue() > 0);
+  beeper.setActive(
+    lifecycleState.kind === "running" && session.soundTimer.getValue() > 0,
+  );
 
   renderMachine(session);
 
-  animationFrameId = requestAnimationFrame(frame);
+  if (lifecycleState.kind === "running") {
+    animationFrameId = requestAnimationFrame(frame);
+  }
 };
 ```
 
@@ -632,7 +665,15 @@ const frame = (): void => {
 ```ts
 function renderMachine(session: WebMachineSession): void {
   display.render(session.displayBuffer);
-  inspection.render(session.snapshotInspection());
+
+  const inspectionViewModel = session.snapshotInspection();
+
+  inspection.render(inspectionViewModel);
+  memoryPanel.setReferenceAddresses({
+    programCounter: inspectionViewModel.cpu.programCounterAddress,
+    indexRegister: inspectionViewModel.cpu.indexRegisterAddress,
+  });
+  memoryPanel.render();
 }
 ```
 
@@ -660,21 +701,21 @@ See [Runtime and timing architecture](../architecture/runtime-and-timing.md).
 
 ### SUPER-CHIP interpreter exit
 
-SUPER-CHIP interpreter-exit conditions mark Core's `ExitState` as exited. Both supported SUPER-CHIP profiles provide explicit `00FD`. Historical SUPER-CHIP 1.1 additionally exits for the targeted `00C0` interpretation and for `Fx1E` overflow when its shared-instruction quirk selects interpreter exit; Modern SUPER-CHIP treats `00C0` as a zero-row scroll and selects continued `Fx1E` execution. They do **not** automatically pause `Chip8Runtime` or stop the browser host loop.
+SUPER-CHIP interpreter-exit conditions mark Core's `ExitState` as exited. Both supported SUPER-CHIP profiles provide explicit `00FD`. Historical SUPER-CHIP 1.1 additionally exits for the targeted `00C0` interpretation and for `Fx1E` overflow when its shared-instruction quirk selects interpreter exit; Modern SUPER-CHIP treats `00C0` as a zero-row scroll and selects continued `Fx1E` execution.
 
-Subsequent scheduled CPU attempts become no-ops because `Cpu.step()` checks `ExitState` before fetching another opcode. Timers, host-loop servicing, rendering, and browser lifecycle remain separate concerns.
+Core does not turn interpreter exit into browser lifecycle policy. After each runtime operation, `WebMachineLifecycle` observes `ExitState`; when exit is detected it pauses scheduled runtime work, stops browser inputs, clears transient breakpoint execution state, and enters its explicit `exited` host state. The browser host loop then stops scheduling frames.
 
-This preserves the distinction between:
+This preserves the distinction between the Core exit signal and the Web response to it:
 
 ```text
-interpreter exited
-    machine execution state
-
-runtime paused
-    host/runtime lifecycle state
+Core ExitState
+    authoritative interpreter state
+        ↓
+WebMachineLifecycle
+    host response: pause + stop inputs + exited state
 ```
 
-Reset reinitializes `ExitState`, allowing CPU execution to resume from the program start.
+Reset reinitializes `ExitState`, restarts input when recovering from exit, and returns the Web lifecycle to an active paused state at program start.
 
 ### Stale-frame protection
 
@@ -688,7 +729,7 @@ captured session
 currently active Web session
 ```
 
-and that the captured runtime is still running.
+and that the captured lifecycle is still in its running state.
 
 This protects the application from an already-scheduled animation frame belonging to a ROM that has since been paused or replaced.
 
@@ -696,14 +737,12 @@ This protects the application from an already-scheduled animation frame belongin
 
 Continuous execution is wrapped at the host-loop boundary.
 
-If `runtime.tick()` fails, the Web host:
+If `WebMachineLifecycle.tick()` propagates an execution failure, the lifecycle has already paused the runtime, stopped physical and virtual input, cleared transient breakpoint execution state, and entered its `failed` state. The host loop then:
 
 1. stops scheduling that host loop;
-2. pauses the runtime;
-3. stops physical and virtual input;
-4. silences browser audio;
-5. renders the resulting framebuffer and inspection state;
-6. presents the failure through the application status area.
+2. silences browser audio;
+3. renders the resulting framebuffer and inspection state;
+4. presents the failure through the application status area.
 
 Rendering before reporting the failure is intentional.
 
@@ -711,13 +750,13 @@ The machine may have changed before an instruction attempt failed, and the CPU o
 
 The host handles this lifecycle consequence; Core remains responsible for the actual execution semantics and failure.
 
-## Execution controls
+## Execution controls and breakpoints
 
 The toolbar exposes one Start/Pause control together with Step and Reset.
 
-The enabled state and meaning of those controls are derived from the current `WebMachineSession` and `Chip8Runtime.isPaused`.
+The enabled state and meaning of those controls are derived from the current `WebMachineSession` and `WebMachineLifecycle.state`.
 
-The application does not maintain a second independent `running` flag.
+The application does not maintain a second independent `running` flag. The lifecycle state also distinguishes ordinary user pauses from breakpoint pauses and represents interpreter exit or execution failure explicitly.
 
 Conceptually:
 
@@ -738,7 +777,7 @@ machine paused
     Reset enabled
 ```
 
-The same runtime state drives the compact machine-state indicator:
+The same lifecycle state drives the compact machine-state indicator:
 
 ```text
 no session  → No ROM
@@ -746,22 +785,23 @@ running     → Running
 paused      → Paused
 ```
 
-This keeps execution state authoritative in the runtime rather than duplicating it in presentation state.
+This keeps Web execution state authoritative in `WebMachineLifecycle`, which in turn coordinates the underlying runtime rather than duplicating a separate presentation-only running flag.
 
 ### Start / Pause
 
-The unified control changes behavior according to `runtime.isPaused`.
+The unified control changes behavior according to `WebMachineLifecycle.state`.
 
 When paused, Start:
 
 1. requests Web Audio unlock from the user interaction;
-2. resumes `Chip8Runtime`;
-3. updates the application status and controls;
-4. starts the browser host loop.
+2. asks `WebMachineLifecycle` to start scheduled execution;
+3. when resuming from a breakpoint, suppresses that stop address until execution actually leaves it;
+4. updates the application status and controls;
+5. starts the browser host loop.
 
 When running, Pause:
 
-1. pauses `Chip8Runtime`;
+1. asks `WebMachineLifecycle` to pause scheduled execution and clear transient breakpoint execution state;
 2. cancels the browser host loop;
 3. silences the Web Audio presentation;
 4. renders the current framebuffer and inspection state;
@@ -771,15 +811,15 @@ Pausing does not reinitialize the machine or clear recent instruction history.
 
 ### Step
 
-Step is available only while the runtime is paused.
+Step is available only while the Web lifecycle is paused.
 
 The host calls:
 
 ```ts
-machine.runtime.step();
+machine.lifecycle.step();
 ```
 
-once and then presents the resulting machine state.
+once and then presents the resulting machine state. `WebMachineLifecycle` delegates to `Chip8Runtime.step()` and converts a successful manual step into an ordinary user pause.
 
 One call performs one CPU **attempt**, not necessarily one completed logical instruction.
 
@@ -789,27 +829,58 @@ Manual stepping does not:
 
 - start continuous execution;
 - resume the normal browser host loop;
-- advance scheduled timer or display time.
+- advance scheduled timer or display time;
+- consult the scheduled CPU breakpoint gate.
+
+That final point is intentional: when stopped on a breakpoint, Step executes the stopped instruction directly. If the instruction itself retries and restores the same program counter, another Step performs the next CPU attempt.
 
 If the CPU attempt throws, the Web host still renders the resulting machine and inspection state before reporting the error.
 
 That means a failed trace and any post-failure CPU state remain inspectable.
 
+### Address breakpoints
+
+The current debugger supports address breakpoints as **Web-local execution policy**. `AddressBreakpoints` owns configured breakpoint addresses plus transient hit/suppression state; it is not part of Core or `@chip8nx/inspection`.
+
+During machine composition, the Web host supplies `Chip8Runtime` with a scheduled CPU execution gate:
+
+```ts
+(() => breakpoints.shouldExecute(context.programCounter.getValue()));
+```
+
+For scheduled execution the flow is:
+
+```text
+CPU deadline
+    ↓
+read current PC
+    ↓
+AddressBreakpoints.shouldExecute(PC)
+    ↓
+allowed  → CPU attempt runs
+denied   → runtime pauses before CPU execution
+           + pending breakpoint hit
+    ↓
+WebMachineLifecycle.tick()
+    ↓
+paused(reason = breakpoint address)
+```
+
+The breakpoint therefore stops **before** the instruction executes. The Nearby gutter and Breakpoints panel both edit the same `AddressBreakpoints` model; enabled/disabled state is presentation-independent.
+
+Continue from a breakpoint must account for retryable instructions. Vblank-gated `DRW` and waiting `Fx0A`, for example, may legitimately perform several CPU attempts while keeping the same program counter. Resume suppression therefore remains active **while execution stays at the stopped address** and expires only after a different address is observed. If execution later returns to the original address, its breakpoint is armed again.
+
+Configured breakpoints survive ordinary Reset and profile recomposition because they are Web application state above one machine session. Loading another ROM clears them. Transient hit/suppression state is cleared by pause, reset, exit, failure, and session deactivation.
+
+This is deliberately a bounded debugger feature. Conditional breakpoints, watchpoints, step-over/step-out, state editing, and a reusable debugger-session abstraction remain outside the current scope.
+
 ### Reset
 
 Reset operates on the existing `WebMachineSession`.
 
-The host first:
+The host first stops the browser host loop and silences audio, then asks `WebMachineLifecycle.reset()` to reset the current session. The lifecycle pauses scheduled execution, runs the retained reset callback, clears transient breakpoint execution state, and restarts browser input when recovering from exit or failure.
 
-```text
-pauses runtime
-    ↓
-stops host loop
-    ↓
-silences audio
-```
-
-and then asks the retained `MachineInitializer` to initialize the existing `ExecutionContext` from the retained program image using the session's retained `profile`.
+The reset callback asks the retained `MachineInitializer` to initialize the existing `ExecutionContext` from the retained program image using the session's retained `profile`, then clears trace history.
 
 After successful initialization:
 
@@ -1057,6 +1128,7 @@ The Web host now demonstrates three architectural layers:
     authoritative machine state
     execution semantics
     runtime mechanisms
+    scheduled CPU execution gate
     CPU observation signal
               ↓
 @chip8nx/inspection
@@ -1067,6 +1139,7 @@ The Web host now demonstrates three architectural layers:
 apps/web
     browser lifecycle
     inspection policy
+    address-breakpoint policy
     presentation
     interaction
 ```
@@ -1118,6 +1191,8 @@ The Web host then owns policies such as:
 - how long host-owned RPL storage lives;
 - which browser inputs are active;
 - how execution controls are presented;
+- which addresses are configured as breakpoints and how breakpoint pauses resume;
+- which memory range is currently presented by the passive memory inspector;
 - which appearance theme is selected.
 
 These policies do not need to become reusable abstractions merely because the Web application has them.
@@ -1142,9 +1217,9 @@ explicit component composition
 
 SUPER-CHIP also demonstrated that some host-owned state can intentionally outlive a machine session. The shared `RplFlags` instance is one narrow, evidence-driven example; it does not imply a generic persistent-state registry.
 
-### Passive inspection remains passive
+### Passive inspection and debugger policy remain separate
 
-The Web inspector can answer:
+The passive inspection path can answer:
 
 ```text
 What does the CPU contain now?
@@ -1152,29 +1227,33 @@ What does the CPU contain now?
 What do bytes around the current PC decode as?
 
 What CPU attempts recently occurred?
+
+What bytes are stored in this memory range?
 ```
 
-It does not currently answer:
+The Web debugger adds a separate host-local answer to one control question:
 
 ```text
-When should execution stop?
-
-Which address is a breakpoint?
-
-Should a memory change trigger a pause?
-
-What constitutes step-over or step-out?
+Should scheduled execution stop before this address?
 ```
 
-Those are active debugger concerns.
+`AddressBreakpoints` and `WebMachineLifecycle` own that policy. The disassembler, trace buffer, trace formatters, CPU snapshots, and memory inspector remain passive.
 
-No debugger abstraction is introduced merely because the browser now has an inspection interface.
+The current Web host still does not define reusable semantics for:
+
+```text
+conditional breakpoints or watchpoints
+step-over / step-out
+state editing
+mutation-triggered pauses
+generic debugger sessions shared by multiple hosts
+```
 
 The project continues to follow the same design rule:
 
 > **Abstract demonstrated variation and demonstrated composition pressure, not hypothetical future needs.**
 
-If future Web or desktop work demonstrates reusable execution-control semantics, those requirements can then provide evidence for a debugger layer.
+If future Web, desktop, or other host work demonstrates stable shared execution-control semantics, those requirements can then provide evidence for a reusable debugger layer.
 
 ### Host composition does not need to be identical
 

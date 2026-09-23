@@ -198,6 +198,8 @@ The Web host provides:
 - live CPU-state inspection;
 - best-effort nearby disassembly around the current program counter;
 - bounded recent instruction-attempt history;
+- Web-local address breakpoints with enable/disable/remove controls, nearby-gutter toggles, pause-before-execute behavior, and breakpoint-aware Continue;
+- passive memory inspection with exact-address navigation, 64-byte pages, and quick jumps to PC and I;
 - responsive desktop and narrow-screen layouts;
 - persistent Retro Green, Retro Amber, Dark, and LCD Calculator appearance themes;
 - compact machine/runtime status and configuration presentation.
@@ -495,14 +497,14 @@ The milestone also includes a bounded stabilization pass: Web session lifecycle 
 
 Post-`v0.11.0` development can proceed across areas such as:
 
-- active debugger behavior built on the existing passive inspection foundation, when concrete needs such as breakpoints, watchpoints, or richer stepping semantics are demonstrated;
-- richer memory or static-analysis inspection when concrete workflows justify it;
+- richer debugger behavior beyond the current Web-local address breakpoints, such as conditional breakpoints, watchpoints, step-over/step-out, or state editing, when concrete workflows justify it;
+- richer memory or static-analysis inspection beyond the current passive page view, such as search, watch integration, or editing, when concrete workflows justify it;
 - XO-CHIP remains intentionally outside the project completion scope; its larger architectural extensions should be treated as separate future work rather than a prerequisite for `v1.0.0`;
 - further public reusable-package API and composition refinement when additional consumers create demonstrated pressure for change;
 - desktop hosts;
 - additional SUPER-CHIP historical/conformance evidence where external tests expose meaningful behavior not already represented.
 
-The current CPU-observation boundary deliberately remains observational. Breakpoints, execution-control policy, observer fan-out, timestamps, replay, whole-machine snapshots, persistent trace formats, and richer history-query APIs should be introduced only when concrete debugger or analysis consumers demonstrate the need.
+The current CPU-observation boundary deliberately remains observational. The Web host now layers its own address-breakpoint policy on Core's generic scheduled CPU execution gate, while Inspection remains passive and unaware of execution control. Reusable debugger infrastructure, watchpoints, richer stepping policy, observer fan-out, timestamps, replay, whole-machine snapshots, persistent trace formats, and richer history-query APIs should still be introduced only when concrete debugger or analysis consumers demonstrate the need.
 
 The current disassembler likewise remains a small inspection foundation rather than a full static-analysis system. Features such as control-flow analysis, code/data classification, labels, descriptions, and richer tolerant-disassembly models should be introduced only when concrete consumers justify them.
 
