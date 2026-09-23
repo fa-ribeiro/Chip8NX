@@ -178,13 +178,8 @@ body {
 button,
 input,
 select {
-  font: inherit;
-}
-
-button,
-select,
-input {
   color: inherit;
+  font: inherit;
 }
 
 button:focus-visible,
@@ -282,11 +277,6 @@ select:focus-visible,
   background: var(--color-surface);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-panel);
-}
-
-.standard-panel,
-.workbench-header,
-.app-status {
   box-shadow: var(--shadow-soft);
 }
 
@@ -294,14 +284,10 @@ select:focus-visible,
   overflow: hidden;
 }
 
-.standard-panel-header,
-.standard-panel-chrome {
+.standard-panel-header {
   min-width: 0;
   background: var(--color-surface-raised);
   border-bottom: 1px solid var(--color-border);
-}
-
-.standard-panel-header {
   min-height: var(--panel-header-height);
   display: flex;
   align-items: center;
@@ -346,6 +332,7 @@ select:focus-visible,
 
 .standard-tool-body {
   gap: var(--space-3);
+  align-content: start;
 }
 
 .standard-form {
@@ -759,7 +746,6 @@ select:disabled {
 .workstation-rail .standard-panel {
   display: grid;
   grid-template-rows: auto auto;
-  min-width: 0;
   min-height: var(--panel-min-height);
 }
 
@@ -770,10 +756,6 @@ select:disabled {
 /* -------------------------------------------------------------------------- */
 /* Machine zone                                                               */
 /* -------------------------------------------------------------------------- */
-
-.display-body {
-  padding: var(--space-3);
-}
 
 #chip8-display {
   display: block;
@@ -967,25 +949,15 @@ select:disabled {
 /* Breakpoints                                                                */
 /* -------------------------------------------------------------------------- */
 
-.breakpoint-panel .standard-tool-body {
-  align-content: start;
-}
-
-.breakpoint-panel .standard-form {
-  width: max-content;
-  max-width: 100%;
-}
-
-#breakpoint-form,
-#memory-form {
+.address-form {
   grid-template-columns: max-content max-content;
   align-items: center;
+  width: max-content;
+  max-width: 100%;
   column-gap: var(--space-2);
-  row-gap: 0.35rem;
 }
 
-#breakpoint-form .standard-validation,
-#memory-form .standard-validation {
+.address-form .standard-validation {
   grid-column: 1 / -1;
 }
 
@@ -1007,7 +979,6 @@ select:disabled {
   background: color-mix(in srgb, var(--color-surface-raised), transparent 12%);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-compact);
-  font-size: var(--font-size-code);
 }
 
 .breakpoint-toggle {
@@ -1056,11 +1027,6 @@ select:disabled {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-3);
   align-items: stretch;
-  min-width: 0;
-}
-
-.analysis-top > .standard-panel,
-.analysis-column > .memory-panel {
   min-width: 0;
 }
 
@@ -1157,10 +1123,6 @@ select:disabled {
   grid-column: 4 / -1;
 }
 
-.instruction-history {
-  overflow: visible;
-}
-
 /* Trace is the one deliberately bounded information block: roughly 10–12
  * instruction rows remain visible before its own history starts scrolling. */
 #instruction-history-list {
@@ -1182,10 +1144,6 @@ select:disabled {
 /* Memory                                                                     */
 /* -------------------------------------------------------------------------- */
 
-.memory-tool-body {
-  grid-template-rows: auto auto auto;
-}
-
 .memory-controls {
   display: flex;
   align-items: end;
@@ -1195,8 +1153,6 @@ select:disabled {
 
 .memory-controls .standard-form {
   flex: 0 0 auto;
-  width: max-content;
-  max-width: 100%;
 }
 
 .memory-shortcuts {
@@ -1210,21 +1166,13 @@ select:disabled {
   padding-inline: 0.55rem;
 }
 
-.memory-range {
-  align-self: center;
-  color: var(--color-text-muted);
-  font-size: var(--font-size-small);
-  white-space: nowrap;
-}
-
 .memory-table-wrapper {
   min-width: 0;
-  padding-inline: var(--space-3);
   overflow-x: auto;
 }
 
 .memory-table {
-  min-width: 34rem;
+  min-width: 32rem;
   table-layout: fixed;
 }
 
@@ -1234,10 +1182,6 @@ select:disabled {
 
 .memory-characters-column {
   width: 8.25rem;
-}
-
-.memory-byte-column {
-  width: auto;
 }
 
 .memory-table th,
@@ -1279,11 +1223,6 @@ select:disabled {
   color: transparent;
 }
 
-.memory-table .memory-characters-heading,
-.memory-table .memory-characters {
-  text-align: center;
-}
-
 .memory-characters {
   color: var(--color-text-muted);
   letter-spacing: 0.08em;
@@ -1306,13 +1245,6 @@ select:disabled {
   font-size: 1rem;
   line-height: var(--line-height-tight);
   white-space: nowrap;
-}
-
-@media (max-width: 760px) {
-  .memory-navigation {
-    flex: 1 0 100%;
-    margin-left: 0;
-  }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1487,6 +1419,11 @@ select:disabled {
 
 /* Narrow tablet / phone: dashboard rails become vertical reading flows. */
 @media (max-width: 760px) {
+  .memory-navigation {
+    flex: 1 0 100%;
+    margin-left: 0;
+  }
+
   .app {
     width: calc(100% - 1rem);
     padding-top: 0.5rem;

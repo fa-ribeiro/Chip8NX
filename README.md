@@ -202,9 +202,9 @@ The Web host provides:
 - persistent Retro Green, Retro Amber, Dark, and LCD Calculator appearance themes;
 - compact machine/runtime status and configuration presentation.
 
-![Chip8NX Web Inspection Workbench running the IBM Logo ROM](./docs/images/web-inspection-workbench-ibm-logo.png)
+![Chip8NX Web Inspection Workbench running the Variant Detection ROM](./docs/images/chip8nx-variant-detection-amber.png)
 
-_Chip8NX Web Inspection Workbench running the IBM Logo ROM._
+_Chip8NX Web Inspection Workbench running the Variant Detection ROM._
 
 To verify the production Web build:
 

@@ -14,7 +14,6 @@
       class="icon-sprite"
       focusable="false"
       height="0"
-      style="position: absolute"
       width="0"
       xmlns="http://www.w3.org/2000/svg"
     >
@@ -38,12 +37,6 @@
       <symbol id="icon-display" viewbox="0 0 24 24">
         <rect height="13" rx="2" width="18" x="3" y="4"></rect>
         <path d="M8 21h8M12 17v4"></path>
-      </symbol>
-      <symbol id="icon-command" viewbox="0 0 24 24">
-        <path d="M5 7h14M5 12h14M5 17h14"></path>
-        <circle cx="8" cy="7" r="1.5"></circle>
-        <circle cx="15" cy="12" r="1.5"></circle>
-        <circle cx="11" cy="17" r="1.5"></circle>
       </symbol>
       <symbol id="icon-keypad" viewbox="0 0 24 24">
         <path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"></path>
@@ -155,12 +148,12 @@
               type="file"
             />
           </section>
-          <section aria-label="Machine commands" class="command-bar workstation-command-bar">
+          <section aria-label="Machine commands" class="workstation-command-bar">
             <div class="controls">
               <button data-action="start" disabled="" id="run-toggle-button" type="button">
                 <svg
                   aria-hidden="true"
-                  class="icon run-toggle-icon run-toggle-icon-start"
+                  class="icon run-toggle-icon-start"
                   focusable="false"
                   height="16"
                   width="16"
@@ -169,7 +162,7 @@
                 </svg>
                 <svg
                   aria-hidden="true"
-                  class="icon run-toggle-icon run-toggle-icon-pause"
+                  class="icon run-toggle-icon-pause"
                   focusable="false"
                   height="16"
                   width="16"
@@ -214,9 +207,9 @@
           </section>
         </header>
         <div class="workspace">
-          <section aria-label="CHIP-8 play area" class="play-area machine-zone">
+          <section aria-label="CHIP-8 play area" class="machine-zone">
             <h2 class="visually-hidden">Machine</h2>
-            <section aria-labelledby="display-heading" class="display standard-panel">
+            <section aria-labelledby="display-heading" class="standard-panel">
               <header class="standard-panel-header">
                 <h2 class="standard-panel-title" id="display-heading">
                   <svg aria-hidden="true" class="icon" focusable="false" height="16" width="16">
@@ -227,7 +220,7 @@
                 <span class="standard-panel-indicator code-text" id="display-resolution"
                 >64 × 32</span>
               </header>
-              <div class="standard-panel-body display-body">
+              <div class="standard-panel-body">
                 <canvas
                   aria-label="CHIP-8 framebuffer"
                   height="32"
@@ -236,7 +229,7 @@
                 ></canvas>
               </div>
             </section>
-            <section aria-labelledby="keypad-heading" class="keypad standard-panel">
+            <section aria-labelledby="keypad-heading" class="standard-panel">
               <header class="standard-panel-header">
                 <h2 class="standard-panel-title" id="keypad-heading">
                   <svg aria-hidden="true" class="icon" focusable="false" height="16" width="16">
@@ -296,12 +289,13 @@
             aria-label="Machine controls and inspection"
             class="inspection debugger-workspace"
           >
-            <div aria-label="Machine state and breakpoints" class="workstation-rail state-rail">
+            <div
+              aria-label="Machine state and breakpoints"
+              class="workstation-rail state-rail"
+              role="group"
+            >
               <h2 class="visually-hidden">State</h2>
-              <section
-                aria-labelledby="cpu-state-heading"
-                class="cpu-state debugger-cell debugger-cell-cpu standard-panel"
-              >
+              <section aria-labelledby="cpu-state-heading" class="cpu-state standard-panel">
                 <header class="standard-panel-header">
                   <h2 class="standard-panel-title" id="cpu-state-heading">
                     <svg
@@ -416,7 +410,7 @@
                       <div class="cpu-stack-heading">
                         <h3>Stack</h3>
                         <span aria-label="Stack usage" class="code-text" id="cpu-stack-count"
-                        >0/16</span>
+                        >-/-</span>
                       </div>
                       <div class="cpu-stack-values" id="cpu-stack">—</div>
                     </section>
@@ -425,7 +419,7 @@
               </section>
               <section
                 aria-labelledby="breakpoints-heading"
-                class="breakpoint-panel debugger-cell debugger-cell-breakpoints standard-panel"
+                class="breakpoint-panel standard-panel"
                 id="breakpoint-panel"
               >
                 <header class="standard-panel-header">
@@ -448,7 +442,7 @@
                   >0</span>
                 </header>
                 <div class="standard-panel-body standard-tool-body">
-                  <form class="standard-form" id="breakpoint-form" novalidate="">
+                  <form class="standard-form address-form" id="breakpoint-form" novalidate="">
                     <label for="breakpoint-address">Address</label>
                     <div class="standard-form-entry address-form-entry">
                       <input
@@ -486,10 +480,14 @@
                 </div>
               </section>
             </div>
-            <div aria-label="Execution and memory analysis" class="analysis-column">
+            <div
+              aria-label="Execution and memory analysis"
+              class="analysis-column"
+              role="group"
+            >
               <h2 class="visually-hidden">Execution and analysis</h2>
               <div class="analysis-top">
-                <section aria-labelledby="nearby-heading" class="nearby-panel standard-panel">
+                <section aria-labelledby="nearby-heading" class="standard-panel">
                   <header class="standard-panel-header">
                     <h2 class="standard-panel-title" id="nearby-heading">
                       <svg
@@ -511,7 +509,7 @@
                     <ol class="data-view data-list" id="nearby-instructions-list"></ol>
                   </div>
                 </section>
-                <section aria-labelledby="trace-heading" class="trace-panel standard-panel">
+                <section aria-labelledby="trace-heading" class="standard-panel">
                   <header class="standard-panel-header">
                     <h2 class="standard-panel-title" id="trace-heading">
                       <svg
@@ -526,7 +524,7 @@
                       <span>Trace</span>
                     </h2>
                   </header>
-                  <div class="instruction-history standard-panel-body">
+                  <div class="standard-panel-body">
                     <p class="standard-empty-state" id="instruction-history-empty">
                       No instruction attempts yet.
                     </p>
@@ -536,7 +534,7 @@
               </div>
               <section
                 aria-labelledby="memory-heading"
-                class="memory-panel standard-panel"
+                class="standard-panel"
                 id="memory-panel"
               >
                 <header class="standard-panel-header">
@@ -558,9 +556,9 @@
                     id="memory-range"
                   >—</span>
                 </header>
-                <div class="standard-panel-body standard-tool-body memory-tool-body">
+                <div class="standard-panel-body standard-tool-body">
                   <div class="memory-controls">
-                    <form class="standard-form" id="memory-form" novalidate="">
+                    <form class="standard-form address-form" id="memory-form" novalidate="">
                       <label for="memory-address">Start address</label>
                       <div class="standard-form-entry address-form-entry">
                         <input
@@ -591,7 +589,11 @@
                         role="status"
                       ></p>
                     </form>
-                    <div aria-label="Memory quick navigation" class="memory-shortcuts">
+                    <div
+                      aria-label="Memory quick navigation"
+                      class="memory-shortcuts"
+                      role="group"
+                    >
                       <span>Jump to</span>
                       <button
                         class="standard-action-button memory-shortcut-button"
@@ -610,7 +612,11 @@
                         I
                       </button>
                     </div>
-                    <div aria-label="Memory page navigation" class="memory-navigation">
+                    <div
+                      aria-label="Memory page navigation"
+                      class="memory-navigation"
+                      role="group"
+                    >
                       <button
                         aria-label="Previous memory page"
                         class="standard-action-button memory-page-button"
@@ -645,7 +651,7 @@
                     >
                       <colgroup>
                         <col class="memory-address-column" />
-                        <col class="memory-byte-column" span="8" />
+                        <col span="8" />
                         <col class="memory-characters-column" />
                       </colgroup>
                       <thead>
@@ -659,7 +665,7 @@
                           <th scope="col">+5</th>
                           <th scope="col">+6</th>
                           <th scope="col">+7</th>
-                          <th class="memory-characters-heading" scope="col">Characters</th>
+                          <th scope="col">Characters</th>
                         </tr>
                       </thead>
                       <tbody id="memory-table-body"></tbody>

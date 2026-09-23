@@ -93,7 +93,7 @@ export class WebInspectionRenderer {
     this.delayTimer.textContent = "0x00";
     this.soundTimer.textContent = "0x00";
     this.stack.textContent = "—";
-    this.stackCount.textContent = "0/16";
+    this.stackCount.textContent = "-/-";
 
     this.nearbyInstructionsEmpty.hidden = false;
     this.nearbyInstructionsList.replaceChildren();
