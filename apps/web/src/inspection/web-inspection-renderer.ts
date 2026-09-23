@@ -1,17 +1,22 @@
+import type { Address } from "@chip8nx/core";
+
 import type {
   InstructionTraceRowViewModel,
   NearbyInstructionViewModel,
   WebInspectionViewModel,
 } from "./web-inspection-view-model.ts";
 
+export interface WebInspectionRendererOptions {
+  /** Called when the user toggles breakpoint presence from the instruction gutter. */
+  readonly onBreakpointToggle?: (address: Address) => void;
+}
+
 /**
- * Presents read-only CHIP-8 inspection state in the Web host.
+ * Presents CHIP-8 inspection state in the Web host and forwards optional
+ * presentation-level debugger interactions to its owner.
  */
 export class WebInspectionRenderer {
   private readonly document: Document;
-
-  private readonly cpuStateEmpty: HTMLElement;
-  private readonly cpuStateValues: HTMLElement;
 
   private readonly registerValues: ReadonlyMap<string, HTMLElement>;
 
@@ -20,6 +25,7 @@ export class WebInspectionRenderer {
   private readonly delayTimer: HTMLElement;
   private readonly soundTimer: HTMLElement;
   private readonly stack: HTMLElement;
+  private readonly stackCount: HTMLElement;
 
   private readonly nearbyInstructionsEmpty: HTMLElement;
   private readonly nearbyInstructionsList: HTMLOListElement;
@@ -27,12 +33,11 @@ export class WebInspectionRenderer {
   private readonly instructionHistoryEmpty: HTMLElement;
   private readonly instructionHistoryList: HTMLOListElement;
 
-  public constructor(root: HTMLElement) {
+  public constructor(
+    root: HTMLElement,
+    private readonly options: WebInspectionRendererOptions = {},
+  ) {
     this.document = root.ownerDocument;
-
-    this.cpuStateEmpty = requireDescendant(root, "#cpu-state-empty");
-
-    this.cpuStateValues = requireDescendant(root, "#cpu-state-values");
 
     this.registerValues = this.collectRegisterValues(root);
 
@@ -45,6 +50,7 @@ export class WebInspectionRenderer {
     this.soundTimer = requireDescendant(root, "#cpu-sound-timer");
 
     this.stack = requireDescendant(root, "#cpu-stack");
+    this.stackCount = requireDescendant(root, "#cpu-stack-count");
 
     this.nearbyInstructionsEmpty = requireDescendant(root, "#nearby-instructions-empty");
 
@@ -74,8 +80,20 @@ export class WebInspectionRenderer {
   }
 
   private renderNoMachine(): void {
-    this.cpuStateEmpty.hidden = false;
-    this.cpuStateValues.hidden = true;
+    /*
+     * Keep the CPU shape visible even before a machine session exists. This is
+     * a neutral presentation baseline, not a fabricated execution snapshot.
+     */
+    for (const element of this.registerValues.values()) {
+      element.textContent = "0x00";
+    }
+
+    this.indexRegister.textContent = "0x000";
+    this.programCounter.textContent = "0x000";
+    this.delayTimer.textContent = "0x00";
+    this.soundTimer.textContent = "0x00";
+    this.stack.textContent = "—";
+    this.stackCount.textContent = "0/16";
 
     this.nearbyInstructionsEmpty.hidden = false;
     this.nearbyInstructionsList.replaceChildren();
@@ -85,9 +103,6 @@ export class WebInspectionRenderer {
   }
 
   private renderCpuState(viewModel: WebInspectionViewModel): void {
-    this.cpuStateEmpty.hidden = true;
-    this.cpuStateValues.hidden = false;
-
     for (const register of viewModel.cpu.registers) {
       const element = this.registerValues.get(register.name);
 
@@ -104,9 +119,12 @@ export class WebInspectionRenderer {
     this.delayTimer.textContent = viewModel.cpu.delayTimer;
     this.soundTimer.textContent = viewModel.cpu.soundTimer;
 
-    this.stack.textContent = viewModel.cpu.stack.length === 0
-      ? "—"
-      : viewModel.cpu.stack.join(" → ");
+    this.renderStack(viewModel.cpu.stack, viewModel.cpu.stackCapacity);
+  }
+
+  private renderStack(stack: readonly string[], capacity: number): void {
+    this.stackCount.textContent = `${stack.length}/${capacity}`;
+    this.stack.textContent = stack.length === 0 ? "—" : stack.join(" · ");
   }
 
   private renderNearbyInstructions(instructions: readonly NearbyInstructionViewModel[]): void {
@@ -133,19 +151,22 @@ export class WebInspectionRenderer {
         item.setAttribute("aria-current", "true");
       }
 
-      const breakpointMarker = this.document.createElement("span");
+      const breakpointMarker = this.document.createElement("button");
+      breakpointMarker.type = "button";
       breakpointMarker.className = "nearby-instruction-breakpoint-marker";
       breakpointMarker.dataset.breakpoint = instruction.breakpoint;
 
-      if (instruction.breakpoint === "none") {
-        breakpointMarker.setAttribute("aria-hidden", "true");
-      } else {
-        breakpointMarker.setAttribute("role", "img");
-        breakpointMarker.setAttribute(
-          "aria-label",
-          `${instruction.breakpoint === "enabled" ? "Enabled" : "Disabled"} breakpoint`,
-        );
-      }
+      const hasBreakpoint = instruction.breakpoint !== "none";
+      const breakpointAction = hasBreakpoint ? "Remove" : "Add";
+      const breakpointLabel = `${breakpointAction} breakpoint at ${instruction.address}`;
+
+      breakpointMarker.setAttribute("aria-label", breakpointLabel);
+      breakpointMarker.title = breakpointLabel;
+      breakpointMarker.disabled = this.options.onBreakpointToggle === undefined;
+
+      breakpointMarker.addEventListener("click", () => {
+        this.options.onBreakpointToggle?.(instruction.addressValue);
+      });
 
       const currentMarker = this.document.createElement("span");
       currentMarker.className = "nearby-instruction-current-marker";

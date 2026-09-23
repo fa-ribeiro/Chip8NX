@@ -1,121 +1,104 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Chip8NX CHIP-8 web emulator" />
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <meta content="Chip8NX CHIP-8 web emulator" name="description" />
     <link id="favicon" rel="icon" type="image/svg+xml" />
-
     <title>Chip8NX Web</title>
   </head>
 
   <body>
     <svg
-      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
       class="icon-sprite"
-      width="0"
+      focusable="false"
       height="0"
       style="position: absolute"
-      aria-hidden="true"
-      focusable="false"
+      width="0"
+      xmlns="http://www.w3.org/2000/svg"
     >
-      <symbol id="icon-folder-open" viewBox="0 0 24 24">
-        <path d="M3 17 2 6 h7 l2 2 h8" />
-        <path d="M4 19 h15 l2 -9 H6 z" />
+      <symbol id="icon-folder-open" viewbox="0 0 24 24">
+        <path d="M3 17 2 6 h7 l2 2 h8"></path>
+        <path d="M4 19 h15 l2 -9 H6 z"></path>
       </symbol>
-
-      <symbol id="icon-play" viewBox="0 0 24 24">
-        <path d="m8 5 11 7-11 7z" />
+      <symbol id="icon-play" viewbox="0 0 24 24">
+        <path d="m8 5 11 7-11 7z"></path>
       </symbol>
-
-      <symbol id="icon-pause" viewBox="0 0 24 24">
-        <path d="M9 5v14M15 5v14" />
+      <symbol id="icon-pause" viewbox="0 0 24 24">
+        <path d="M9 5v14M15 5v14"></path>
       </symbol>
-
-      <symbol id="icon-step" viewBox="0 0 24 24">
-        <path d="m5 5 9 7-9 7zM18 5v14" />
+      <symbol id="icon-step" viewbox="0 0 24 24">
+        <path d="m5 5 9 7-9 7zM18 5v14"></path>
       </symbol>
-
-      <symbol id="icon-reset" viewBox="0 0 24 24">
-        <path d="M20 11a8 8 0 1 0-2.34 5.66" />
-        <path d="M20 4v7h-7" />
+      <symbol id="icon-reset" viewbox="0 0 24 24">
+        <path d="M20 11a8 8 0 1 0-2.34 5.66"></path>
+        <path d="M20 4v7h-7"></path>
       </symbol>
-
-      <symbol id="icon-display" viewBox="0 0 24 24">
-        <rect x="3" y="4" width="18" height="13" rx="2" />
-        <path d="M8 21h8M12 17v4" />
+      <symbol id="icon-display" viewbox="0 0 24 24">
+        <rect height="13" rx="2" width="18" x="3" y="4"></rect>
+        <path d="M8 21h8M12 17v4"></path>
       </symbol>
-
-      <symbol id="icon-command" viewBox="0 0 24 24">
-        <path d="M5 7h14M5 12h14M5 17h14" />
-        <circle cx="8" cy="7" r="1.5" />
-        <circle cx="15" cy="12" r="1.5" />
-        <circle cx="11" cy="17" r="1.5" />
+      <symbol id="icon-command" viewbox="0 0 24 24">
+        <path d="M5 7h14M5 12h14M5 17h14"></path>
+        <circle cx="8" cy="7" r="1.5"></circle>
+        <circle cx="15" cy="12" r="1.5"></circle>
+        <circle cx="11" cy="17" r="1.5"></circle>
       </symbol>
-
-      <symbol id="icon-keypad" viewBox="0 0 24 24">
-        <path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z" />
+      <symbol id="icon-keypad" viewbox="0 0 24 24">
+        <path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"></path>
       </symbol>
-
-      <symbol id="icon-breakpoint" viewBox="0 0 24 24">
-        <circle cx="12" cy="12" r="7" />
-        <circle cx="12" cy="12" r="2" />
+      <symbol id="icon-breakpoint" viewbox="0 0 24 24">
+        <circle cx="12" cy="12" r="7"></circle>
+        <circle cx="12" cy="12" r="2"></circle>
       </symbol>
-      <symbol id="icon-cpu" viewBox="0 0 24 24">
-        <rect x="7" y="7" width="10" height="10" rx="2" />
-        <path d="M9 2v3M15 2v3M9 19v3M15 19v3" />
-        <path d="M2 9h3M2 15h3M19 9h3M19 15h3" />
+      <symbol id="icon-cpu" viewbox="0 0 24 24">
+        <rect height="10" rx="2" width="10" x="7" y="7"></rect>
+        <path d="M9 2v3M15 2v3M9 19v3M15 19v3"></path>
+        <path d="M2 9h3M2 15h3M19 9h3M19 15h3"></path>
       </symbol>
-
-      <symbol id="icon-memory" viewBox="0 0 24 24">
-        <rect x="5" y="6" width="14" height="12" rx="2" />
-        <path d="M8 9h8M8 12h8M8 15h5" />
-        <path d="M8 3v3M12 3v3M16 3v3M8 18v3M12 18v3M16 18v3" />
+      <symbol id="icon-memory" viewbox="0 0 24 24">
+        <rect height="12" rx="2" width="14" x="5" y="6"></rect>
+        <path d="M8 9h8M8 12h8M8 15h5"></path>
+        <path d="M8 3v3M12 3v3M16 3v3M8 18v3M12 18v3M16 18v3"></path>
       </symbol>
-
-      <symbol id="icon-nearby" viewBox="0 0 24 24">
-        <circle cx="5" cy="6" r="1" />
-        <circle cx="5" cy="12" r="1" />
-        <circle cx="5" cy="18" r="1" />
-        <path d="M9 6h11M9 12h11M9 18h11" />
+      <symbol id="icon-nearby" viewbox="0 0 24 24">
+        <circle cx="5" cy="6" r="1"></circle>
+        <circle cx="5" cy="12" r="1"></circle>
+        <circle cx="5" cy="18" r="1"></circle>
+        <path d="M9 6h11M9 12h11M9 18h11"></path>
       </symbol>
-
-      <symbol id="icon-history" viewBox="0 0 24 24">
-        <path d="M4 5v5h5" />
-        <path d="M5.5 16.5A8 8 0 1 0 4 10" />
-        <path d="M12 8v5l3 2" />
+      <symbol id="icon-history" viewbox="0 0 24 24">
+        <path d="M4 5v5h5"></path>
+        <path d="M5.5 16.5A8 8 0 1 0 4 10"></path>
+        <path d="M12 8v5l3 2"></path>
       </symbol>
-
-      <symbol id="icon-profile" viewBox="0 0 24 24">
-        <path d="m12 3 8 4-8 4-8-4z" />
-        <path d="m4 12 8 4 8-4" />
-        <path d="m4 17 8 4 8-4" />
+      <symbol id="icon-profile" viewbox="0 0 24 24">
+        <path d="m12 3 8 4-8 4-8-4z"></path>
+        <path d="m4 12 8 4 8-4"></path>
+        <path d="m4 17 8 4 8-4"></path>
       </symbol>
-
-      <symbol id="icon-timer" viewBox="0 0 24 24">
-        <circle cx="12" cy="13" r="8" />
-        <path d="M12 9v5l3 2M9 2h6M12 5V2" />
+      <symbol id="icon-timer" viewbox="0 0 24 24">
+        <circle cx="12" cy="13" r="8"></circle>
+        <path d="M12 9v5l3 2M9 2h6M12 5V2"></path>
       </symbol>
-
-      <symbol id="icon-refresh" viewBox="0 0 24 24">
-        <path d="M20 7v5h-5" />
-        <path d="M4 17v-5h5" />
-        <path d="M6.1 8a7 7 0 0 1 11.7-1L20 12" />
-        <path d="M17.9 16a7 7 0 0 1-11.7 1L4 12" />
+      <symbol id="icon-refresh" viewbox="0 0 24 24">
+        <path d="M20 7v5h-5"></path>
+        <path d="M4 17v-5h5"></path>
+        <path d="M6.1 8a7 7 0 0 1 11.7-1L20 12"></path>
+        <path d="M17.9 16a7 7 0 0 1-11.7 1L4 12"></path>
       </symbol>
-
-      <symbol id="icon-version" viewBox="0 0 24 24">
-        <path d="M20 13 13 20 4 11V4h7z" />
-        <circle cx="8.5" cy="8.5" r="1.5" />
+      <symbol id="icon-version" viewbox="0 0 24 24">
+        <path d="M20 13 13 20 4 11V4h7z"></path>
+        <circle cx="8.5" cy="8.5" r="1.5"></circle>
       </symbol>
     </svg>
-
     <main class="app">
       <header class="app-header">
         <div class="app-header-start">
           <div class="app-branding">
-            <span class="app-brand-mark" aria-hidden="true">
-              <svg viewBox="0 0 11 8" shape-rendering="crispEdges" focusable="false">
+            <span aria-hidden="true" class="app-brand-mark">
+              <svg focusable="false" shape-rendering="crispEdges" viewbox="0 0 11 8">
                 <path
                   d="
               M2 0h1v1H2z M8 0h1v1H8z
@@ -127,25 +110,21 @@
               M0 6h1v1H0z M2 6h1v1H2z M8 6h1v1H8z M10 6h1v1h-1z
               M3 7h2v1H3z M6 7h2v1H6z
             "
-                />
+                ></path>
               </svg>
             </span>
-
             <div class="app-brand-copy">
               <h1 class="app-brand-name">
                 <span>CHIP8</span><span class="app-brand-name-accent">NX</span>
               </h1>
-
               <p>CHIP-8 emulator in your browser</p>
             </div>
           </div>
         </div>
-
         <div class="app-header-end">
           <!-- Future project navigation and actions belong before the theme selector. -->
           <label class="option-picker app-theme-picker" for="theme-select">
             <span>Style</span>
-
             <select id="theme-select">
               <option value="retro-green">Retro Green</option>
               <option value="retro-amber">Retro Amber</option>
@@ -155,31 +134,74 @@
           </label>
         </div>
       </header>
-
-      <section class="workbench" aria-label="CHIP-8 workbench">
+      <section aria-label="CHIP-8 workbench" class="workbench">
         <!-- Full-width workbench header. -->
         <header class="workbench-header">
-          <section class="rom-loader" aria-label="ROM loader">
+          <section aria-label="ROM loader" class="rom-loader">
             <span class="rom-loader-label">ROM</span>
-
             <button id="rom-load-button" type="button">
-              <svg class="icon" width="16" height="16" aria-hidden="true" focusable="false">
+              <svg aria-hidden="true" class="icon" focusable="false" height="16" width="16">
                 <use href="#icon-folder-open"></use>
               </svg>
-
               <span>Load ROM</span>
             </button>
-
-            <span class="workbench-header-divider" aria-hidden="true"></span>
-
-            <span id="rom-file-name" class="rom-file-name">No ROM loaded</span>
-
-            <span id="rom-file-size" class="rom-file-size" aria-label="ROM size"> — bytes</span>
-
-            <input id="rom-input" type="file" accept=".ch8,application/octet-stream" hidden />
+            <span aria-hidden="true" class="workbench-header-divider"></span>
+            <span class="rom-file-name" id="rom-file-name">No ROM loaded</span>
+            <span aria-label="ROM size" class="rom-file-size" id="rom-file-size"> — bytes</span>
+            <input
+              accept=".ch8,application/octet-stream"
+              hidden=""
+              id="rom-input"
+              type="file"
+            />
           </section>
-
-          <section class="workbench-options" aria-label="Machine options">
+          <section aria-label="Machine commands" class="command-bar workstation-command-bar">
+            <div class="controls">
+              <button data-action="start" disabled="" id="run-toggle-button" type="button">
+                <svg
+                  aria-hidden="true"
+                  class="icon run-toggle-icon run-toggle-icon-start"
+                  focusable="false"
+                  height="16"
+                  width="16"
+                >
+                  <use href="#icon-play"></use>
+                </svg>
+                <svg
+                  aria-hidden="true"
+                  class="icon run-toggle-icon run-toggle-icon-pause"
+                  focusable="false"
+                  height="16"
+                  width="16"
+                >
+                  <use href="#icon-pause"></use>
+                </svg>
+                <span id="run-toggle-label">Start</span>
+              </button>
+              <button disabled="" id="step-button" type="button">
+                <svg aria-hidden="true" class="icon" focusable="false" height="16" width="16">
+                  <use href="#icon-step"></use>
+                </svg>
+                <span>Step</span>
+              </button>
+              <button disabled="" id="reset-button" type="button">
+                <svg aria-hidden="true" class="icon" focusable="false" height="16" width="16">
+                  <use href="#icon-reset"></use>
+                </svg>
+                <span>Reset</span>
+              </button>
+            </div>
+            <div
+              aria-label="Machine state"
+              class="machine-state standard-panel-indicator"
+              data-state="empty"
+              id="machine-state"
+            >
+              <span aria-hidden="true" class="machine-state-indicator"></span>
+              <span id="machine-state-label">No ROM</span>
+            </div>
+          </section>
+          <section aria-label="Machine options" class="workbench-options">
             <label class="option-picker" for="profile-select">
               <span>Profile</span>
               <select id="profile-select">
@@ -191,89 +213,75 @@
             </label>
           </section>
         </header>
-
         <div class="workspace">
-          <section class="play-area" aria-label="CHIP-8 play area">
-            <section class="display standard-panel" aria-labelledby="display-heading">
+          <section aria-label="CHIP-8 play area" class="play-area machine-zone">
+            <h2 class="visually-hidden">Machine</h2>
+            <section aria-labelledby="display-heading" class="display standard-panel">
               <header class="standard-panel-header">
-                <h2 id="display-heading" class="standard-panel-title">
-                  <svg class="icon" width="16" height="16" aria-hidden="true" focusable="false">
+                <h2 class="standard-panel-title" id="display-heading">
+                  <svg aria-hidden="true" class="icon" focusable="false" height="16" width="16">
                     <use href="#icon-display"></use>
                   </svg>
-
                   <span>CHIP-8 Display</span>
                 </h2>
-
-                <span id="display-resolution" class="standard-panel-indicator code-text"
+                <span class="standard-panel-indicator code-text" id="display-resolution"
                 >64 × 32</span>
               </header>
-
               <div class="standard-panel-body display-body">
                 <canvas
+                  aria-label="CHIP-8 framebuffer"
+                  height="32"
                   id="chip8-display"
                   width="64"
-                  height="32"
-                  aria-label="CHIP-8 framebuffer"
                 ></canvas>
               </div>
             </section>
-
-            <section class="keypad standard-panel" aria-labelledby="keypad-heading">
+            <section aria-labelledby="keypad-heading" class="keypad standard-panel">
               <header class="standard-panel-header">
-                <h2 id="keypad-heading" class="standard-panel-title">
-                  <svg class="icon" width="16" height="16" aria-hidden="true" focusable="false">
+                <h2 class="standard-panel-title" id="keypad-heading">
+                  <svg aria-hidden="true" class="icon" focusable="false" height="16" width="16">
                     <use href="#icon-keypad"></use>
                   </svg>
-
                   <span>Keypad</span>
                 </h2>
               </header>
-
               <div class="standard-panel-body">
                 <div class="keypad-content">
-                  <div id="virtual-keypad" class="virtual-keypad">
-                    <button type="button" data-chip8-key="1" disabled>1</button>
-                    <button type="button" data-chip8-key="2" disabled>2</button>
-                    <button type="button" data-chip8-key="3" disabled>3</button>
-                    <button type="button" data-chip8-key="C" disabled>C</button>
-
-                    <button type="button" data-chip8-key="4" disabled>4</button>
-                    <button type="button" data-chip8-key="5" disabled>5</button>
-                    <button type="button" data-chip8-key="6" disabled>6</button>
-                    <button type="button" data-chip8-key="D" disabled>D</button>
-
-                    <button type="button" data-chip8-key="7" disabled>7</button>
-                    <button type="button" data-chip8-key="8" disabled>8</button>
-                    <button type="button" data-chip8-key="9" disabled>9</button>
-                    <button type="button" data-chip8-key="E" disabled>E</button>
-
-                    <button type="button" data-chip8-key="A" disabled>A</button>
-                    <button type="button" data-chip8-key="0" disabled>0</button>
-                    <button type="button" data-chip8-key="B" disabled>B</button>
-                    <button type="button" data-chip8-key="F" disabled>F</button>
+                  <div class="virtual-keypad" id="virtual-keypad">
+                    <button data-chip8-key="1" disabled="" type="button">1</button>
+                    <button data-chip8-key="2" disabled="" type="button">2</button>
+                    <button data-chip8-key="3" disabled="" type="button">3</button>
+                    <button data-chip8-key="C" disabled="" type="button">C</button>
+                    <button data-chip8-key="4" disabled="" type="button">4</button>
+                    <button data-chip8-key="5" disabled="" type="button">5</button>
+                    <button data-chip8-key="6" disabled="" type="button">6</button>
+                    <button data-chip8-key="D" disabled="" type="button">D</button>
+                    <button data-chip8-key="7" disabled="" type="button">7</button>
+                    <button data-chip8-key="8" disabled="" type="button">8</button>
+                    <button data-chip8-key="9" disabled="" type="button">9</button>
+                    <button data-chip8-key="E" disabled="" type="button">E</button>
+                    <button data-chip8-key="A" disabled="" type="button">A</button>
+                    <button data-chip8-key="0" disabled="" type="button">0</button>
+                    <button data-chip8-key="B" disabled="" type="button">B</button>
+                    <button data-chip8-key="F" disabled="" type="button">F</button>
                   </div>
-
-                  <aside class="keypad-mapping" aria-label="Keyboard mapping">
+                  <aside aria-label="Keyboard mapping" class="keypad-mapping">
                     <h3>Keyboard mapping</h3>
-
                     <div class="keypad-mapping-row">
                       <kbd>1 2 3 4</kbd>
                       <span aria-hidden="true">→</span>
                       <code>1 2 3 C</code>
                     </div>
-
                     <div class="keypad-mapping-row">
                       <kbd>Q W E R</kbd>
                       <span aria-hidden="true">→</span>
                       <code>4 5 6 D</code>
                     </div>
-
                     <div class="keypad-mapping-row">
                       <kbd>A S D F</kbd>
                       <span aria-hidden="true">→</span>
                       <code>7 8 9 E</code>
                     </div>
-
                     <div class="keypad-mapping-row">
                       <kbd>Z X C V</kbd>
                       <span aria-hidden="true">→</span>
@@ -284,476 +292,445 @@
               </div>
             </section>
           </section>
-
-          <aside class="inspection" aria-label="Machine controls and inspection">
-            <section class="command-bar standard-panel" aria-labelledby="command-bar-heading">
-              <header class="standard-panel-header">
-                <h2 id="command-bar-heading" class="standard-panel-title">
-                  <svg class="icon" width="16" height="16" aria-hidden="true" focusable="false">
-                    <use href="#icon-command"></use>
-                  </svg>
-
-                  <span>Commands</span>
-                </h2>
-
-                <div
-                  id="machine-state"
-                  class="machine-state standard-panel-indicator"
-                  data-state="empty"
-                  aria-label="Machine state"
-                >
-                  <span class="machine-state-indicator" aria-hidden="true"></span>
-                  <span id="machine-state-label">No ROM</span>
-                </div>
-              </header>
-
-              <div class="standard-panel-body command-bar-body">
-                <div class="controls">
-                  <button id="run-toggle-button" type="button" data-action="start" disabled>
-                    <svg
-                      class="icon run-toggle-icon run-toggle-icon-start"
-                      width="16"
-                      height="16"
-                      aria-hidden="true"
-                      focusable="false"
-                    >
-                      <use href="#icon-play"></use>
-                    </svg>
-
-                    <svg
-                      class="icon run-toggle-icon run-toggle-icon-pause"
-                      width="16"
-                      height="16"
-                      aria-hidden="true"
-                      focusable="false"
-                    >
-                      <use href="#icon-pause"></use>
-                    </svg>
-
-                    <span id="run-toggle-label">Start</span>
-                  </button>
-
-                  <button id="step-button" type="button" disabled>
-                    <svg
-                      class="icon"
-                      width="16"
-                      height="16"
-                      aria-hidden="true"
-                      focusable="false"
-                    >
-                      <use href="#icon-step"></use>
-                    </svg>
-
-                    <span>Step</span>
-                  </button>
-
-                  <button id="reset-button" type="button" disabled>
-                    <svg
-                      class="icon"
-                      width="16"
-                      height="16"
-                      aria-hidden="true"
-                      focusable="false"
-                    >
-                      <use href="#icon-reset"></use>
-                    </svg>
-
-                    <span>Reset</span>
-                  </button>
-                </div>
-              </div>
-            </section>
-
-            <section
-              id="breakpoint-panel"
-              class="breakpoint-panel standard-panel"
-              aria-labelledby="breakpoint-heading"
-            >
-              <header class="standard-panel-header">
-                <h2 id="breakpoint-heading" class="standard-panel-title">
-                  <svg class="icon" width="16" height="16" aria-hidden="true" focusable="false">
-                    <use href="#icon-breakpoint"></use>
-                  </svg>
-
-                  <span>Breakpoints</span>
-                </h2>
-
-                <span
-                  id="breakpoint-count"
-                  class="standard-panel-indicator code-text"
-                  aria-label="Configured breakpoints"
-                >0</span>
-              </header>
-
-              <div class="standard-panel-body breakpoint-panel-body">
-                <form id="breakpoint-form" class="breakpoint-form" novalidate>
-                  <label for="breakpoint-address">Address</label>
-
-                  <div class="breakpoint-entry">
-                    <input
-                      id="breakpoint-address"
-                      class="code-text"
-                      type="text"
-                      inputmode="text"
-                      autocomplete="off"
-                      spellcheck="false"
-                      placeholder="0x200"
-                      aria-describedby="breakpoint-validation"
-                      disabled
-                    />
-
-                    <button id="breakpoint-add-button" type="submit" disabled>Add</button>
-                  </div>
-
-                  <p
-                    id="breakpoint-validation"
-                    class="breakpoint-validation"
-                    role="status"
-                    aria-live="polite"
-                    hidden
-                  ></p>
-                </form>
-
-                <p id="breakpoints-empty">Load a ROM to add breakpoints.</p>
-                <ul id="breakpoints-list" aria-label="Configured breakpoints"></ul>
-              </div>
-            </section>
-
-            <section class="cpu-state standard-panel" aria-labelledby="cpu-state-heading">
-              <header class="standard-panel-header">
-                <h2 id="cpu-state-heading" class="standard-panel-title">
-                  <svg class="icon" width="16" height="16" aria-hidden="true" focusable="false">
-                    <use href="#icon-cpu"></use>
-                  </svg>
-
-                  <span>CPU state</span>
-                </h2>
-
-                <div
-                  id="cpu-state-indicator"
-                  class="machine-state standard-panel-indicator"
-                  data-state="empty"
-                  aria-label="CPU activity"
-                  aria-live="polite"
-                >
-                  <span class="machine-state-indicator" aria-hidden="true"></span>
-                  <span id="cpu-state-indicator-label">Idle</span>
-                </div>
-              </header>
-
-              <div class="standard-panel-body">
-                <!-- Retained as an empty renderer hook; CPU availability is shown in the panel header. -->
-                <p id="cpu-state-empty" hidden></p>
-
-                <div id="cpu-state-values" class="cpu-state-layout" hidden>
-                  <dl class="cpu-special-state" aria-label="CPU special registers">
-                    <div>
-                      <dt>PC:</dt>
-                      <dd id="cpu-program-counter">0x000</dd>
-                    </div>
-
-                    <div>
-                      <dt>I:</dt>
-                      <dd id="cpu-index-register">0x000</dd>
-                    </div>
-
-                    <div>
-                      <dt>DT:</dt>
-                      <dd id="cpu-delay-timer">0x00</dd>
-                    </div>
-
-                    <div>
-                      <dt>ST:</dt>
-                      <dd id="cpu-sound-timer">0x00</dd>
-                    </div>
-                  </dl>
-
-                  <dl class="cpu-stack-state" aria-label="CPU stack">
-                    <div>
-                      <dt>Stack:</dt>
-                      <dd id="cpu-stack">—</dd>
-                    </div>
-                  </dl>
-
-                  <dl class="register-grid" aria-label="V registers">
-                    <div>
-                      <dt>V0:</dt>
-                      <dd data-register="V0">0x00</dd>
-                    </div>
-                    <div>
-                      <dt>V1:</dt>
-                      <dd data-register="V1">0x00</dd>
-                    </div>
-                    <div>
-                      <dt>V2:</dt>
-                      <dd data-register="V2">0x00</dd>
-                    </div>
-                    <div>
-                      <dt>V3:</dt>
-                      <dd data-register="V3">0x00</dd>
-                    </div>
-
-                    <div>
-                      <dt>V4:</dt>
-                      <dd data-register="V4">0x00</dd>
-                    </div>
-                    <div>
-                      <dt>V5:</dt>
-                      <dd data-register="V5">0x00</dd>
-                    </div>
-                    <div>
-                      <dt>V6:</dt>
-                      <dd data-register="V6">0x00</dd>
-                    </div>
-                    <div>
-                      <dt>V7:</dt>
-                      <dd data-register="V7">0x00</dd>
-                    </div>
-
-                    <div>
-                      <dt>V8:</dt>
-                      <dd data-register="V8">0x00</dd>
-                    </div>
-                    <div>
-                      <dt>V9:</dt>
-                      <dd data-register="V9">0x00</dd>
-                    </div>
-                    <div>
-                      <dt>VA:</dt>
-                      <dd data-register="VA">0x00</dd>
-                    </div>
-                    <div>
-                      <dt>VB:</dt>
-                      <dd data-register="VB">0x00</dd>
-                    </div>
-
-                    <div>
-                      <dt>VC:</dt>
-                      <dd data-register="VC">0x00</dd>
-                    </div>
-                    <div>
-                      <dt>VD:</dt>
-                      <dd data-register="VD">0x00</dd>
-                    </div>
-                    <div>
-                      <dt>VE:</dt>
-                      <dd data-register="VE">0x00</dd>
-                    </div>
-                    <div>
-                      <dt>VF:</dt>
-                      <dd data-register="VF">0x00</dd>
-                    </div>
-                  </dl>
-                </div>
-              </div>
-            </section>
-
-            <section
-              id="memory-panel"
-              class="memory-panel standard-panel"
-              aria-labelledby="memory-heading"
-            >
-              <header class="standard-panel-header">
-                <h2 id="memory-heading" class="standard-panel-title">
-                  <svg class="icon" width="16" height="16" aria-hidden="true" focusable="false">
-                    <use href="#icon-memory"></use>
-                  </svg>
-
-                  <span>Memory</span>
-                </h2>
-
-                <span
-                  id="memory-range"
-                  class="standard-panel-indicator code-text"
-                  aria-label="Visible memory range"
-                >—</span>
-              </header>
-
-              <div class="standard-panel-body memory-panel-body">
-                <form id="memory-form" class="memory-form" novalidate>
-                  <label for="memory-address">Start address</label>
-
-                  <div class="memory-entry">
-                    <input
-                      id="memory-address"
-                      class="code-text"
-                      type="text"
-                      inputmode="text"
-                      autocomplete="off"
-                      spellcheck="false"
-                      placeholder="0x200"
-                      aria-describedby="memory-validation"
-                      disabled
-                    />
-
-                    <button id="memory-go-button" type="submit" disabled>Go</button>
-                  </div>
-
-                  <p
-                    id="memory-validation"
-                    class="memory-validation"
-                    role="status"
-                    aria-live="polite"
-                    hidden
-                  ></p>
-                </form>
-
-                <p id="memory-empty">Load a ROM to inspect memory.</p>
-
-                <div class="memory-table-wrapper">
-                  <table
-                    id="memory-table"
-                    class="memory-table"
-                    aria-label="Memory bytes"
-                    hidden
-                  >
-                    <thead>
-                      <tr>
-                        <th scope="col">Address</th>
-                        <th scope="col">+0</th>
-                        <th scope="col">+1</th>
-                        <th scope="col">+2</th>
-                        <th scope="col">+3</th>
-                        <th scope="col">+4</th>
-                        <th scope="col">+5</th>
-                        <th scope="col">+6</th>
-                        <th scope="col">+7</th>
-                      </tr>
-                    </thead>
-                    <tbody id="memory-table-body"></tbody>
-                  </table>
-                </div>
-
-                <div class="memory-navigation" aria-label="Memory page navigation">
-                  <button id="memory-previous-button" type="button" disabled>Previous</button>
-                  <button id="memory-next-button" type="button" disabled>Next</button>
-                </div>
-              </div>
-            </section>
-
-            <div class="instruction-panels">
+          <aside
+            aria-label="Machine controls and inspection"
+            class="inspection debugger-workspace"
+          >
+            <div aria-label="Machine state and breakpoints" class="workstation-rail state-rail">
+              <h2 class="visually-hidden">State</h2>
               <section
-                class="nearby-instructions standard-panel"
-                aria-labelledby="nearby-instructions-heading"
+                aria-labelledby="cpu-state-heading"
+                class="cpu-state debugger-cell debugger-cell-cpu standard-panel"
               >
                 <header class="standard-panel-header">
-                  <h2 id="nearby-instructions-heading" class="standard-panel-title">
+                  <h2 class="standard-panel-title" id="cpu-state-heading">
                     <svg
-                      class="icon"
-                      width="16"
-                      height="16"
                       aria-hidden="true"
+                      class="icon"
                       focusable="false"
+                      height="16"
+                      width="16"
                     >
-                      <use href="#icon-nearby"></use>
+                      <use href="#icon-cpu"></use>
                     </svg>
-
-                    <span>Nearby instructions</span>
+                    <span>CPU state</span>
                   </h2>
+                  <div
+                    aria-label="CPU activity"
+                    aria-live="polite"
+                    class="machine-state standard-panel-indicator"
+                    data-state="empty"
+                    id="cpu-state-indicator"
+                  >
+                    <span aria-hidden="true" class="machine-state-indicator"></span>
+                    <span id="cpu-state-indicator-label">Idle</span>
+                  </div>
                 </header>
-
                 <div class="standard-panel-body">
-                  <p id="nearby-instructions-empty">No machine loaded.</p>
-                  <ol id="nearby-instructions-list"></ol>
+                  <div class="cpu-state-layout" id="cpu-state-values">
+                    <dl aria-label="CPU special registers" class="cpu-special-state">
+                      <div>
+                        <dt>PC:</dt>
+                        <dd id="cpu-program-counter">0x000</dd>
+                      </div>
+                      <div>
+                        <dt>I:</dt>
+                        <dd id="cpu-index-register">0x000</dd>
+                      </div>
+                      <div>
+                        <dt>DT:</dt>
+                        <dd id="cpu-delay-timer">0x00</dd>
+                      </div>
+                      <div>
+                        <dt>ST:</dt>
+                        <dd id="cpu-sound-timer">0x00</dd>
+                      </div>
+                    </dl>
+                    <dl aria-label="V registers" class="register-grid">
+                      <div>
+                        <dt>V0:</dt>
+                        <dd data-register="V0">0x00</dd>
+                      </div>
+                      <div>
+                        <dt>V1:</dt>
+                        <dd data-register="V1">0x00</dd>
+                      </div>
+                      <div>
+                        <dt>V2:</dt>
+                        <dd data-register="V2">0x00</dd>
+                      </div>
+                      <div>
+                        <dt>V3:</dt>
+                        <dd data-register="V3">0x00</dd>
+                      </div>
+                      <div>
+                        <dt>V4:</dt>
+                        <dd data-register="V4">0x00</dd>
+                      </div>
+                      <div>
+                        <dt>V5:</dt>
+                        <dd data-register="V5">0x00</dd>
+                      </div>
+                      <div>
+                        <dt>V6:</dt>
+                        <dd data-register="V6">0x00</dd>
+                      </div>
+                      <div>
+                        <dt>V7:</dt>
+                        <dd data-register="V7">0x00</dd>
+                      </div>
+                      <div>
+                        <dt>V8:</dt>
+                        <dd data-register="V8">0x00</dd>
+                      </div>
+                      <div>
+                        <dt>V9:</dt>
+                        <dd data-register="V9">0x00</dd>
+                      </div>
+                      <div>
+                        <dt>VA:</dt>
+                        <dd data-register="VA">0x00</dd>
+                      </div>
+                      <div>
+                        <dt>VB:</dt>
+                        <dd data-register="VB">0x00</dd>
+                      </div>
+                      <div>
+                        <dt>VC:</dt>
+                        <dd data-register="VC">0x00</dd>
+                      </div>
+                      <div>
+                        <dt>VD:</dt>
+                        <dd data-register="VD">0x00</dd>
+                      </div>
+                      <div>
+                        <dt>VE:</dt>
+                        <dd data-register="VE">0x00</dd>
+                      </div>
+                      <div>
+                        <dt>VF:</dt>
+                        <dd data-register="VF">0x00</dd>
+                      </div>
+                    </dl>
+                    <section aria-label="CPU stack" class="cpu-stack-state">
+                      <div class="cpu-stack-heading">
+                        <h3>Stack</h3>
+                        <span aria-label="Stack usage" class="code-text" id="cpu-stack-count"
+                        >0/16</span>
+                      </div>
+                      <div class="cpu-stack-values" id="cpu-stack">—</div>
+                    </section>
+                  </div>
                 </div>
               </section>
-
               <section
-                class="instruction-history standard-panel"
-                aria-labelledby="instruction-history-heading"
+                aria-labelledby="breakpoints-heading"
+                class="breakpoint-panel debugger-cell debugger-cell-breakpoints standard-panel"
+                id="breakpoint-panel"
               >
                 <header class="standard-panel-header">
-                  <h2 id="instruction-history-heading" class="standard-panel-title">
+                  <h2 class="standard-panel-title" id="breakpoints-heading">
                     <svg
-                      class="icon"
-                      width="16"
-                      height="16"
                       aria-hidden="true"
+                      class="icon"
                       focusable="false"
+                      height="16"
+                      width="16"
                     >
-                      <use href="#icon-history"></use>
+                      <use href="#icon-breakpoint"></use>
                     </svg>
-
-                    <span>Recent instructions</span>
+                    <span>Breakpoints</span>
                   </h2>
+                  <span
+                    aria-label="Configured breakpoints"
+                    class="standard-panel-indicator code-text"
+                    id="breakpoint-count"
+                  >0</span>
                 </header>
-
-                <div class="standard-panel-body">
-                  <p id="instruction-history-empty">No instruction attempts yet.</p>
-                  <ol id="instruction-history-list"></ol>
+                <div class="standard-panel-body standard-tool-body">
+                  <form class="standard-form" id="breakpoint-form" novalidate="">
+                    <label for="breakpoint-address">Address</label>
+                    <div class="standard-form-entry address-form-entry">
+                      <input
+                        aria-describedby="breakpoint-validation"
+                        autocomplete="off"
+                        class="code-text standard-input address-input"
+                        disabled=""
+                        id="breakpoint-address"
+                        inputmode="text"
+                        placeholder="0x200"
+                        spellcheck="false"
+                        type="text"
+                      />
+                      <button
+                        class="standard-action-button"
+                        disabled=""
+                        id="breakpoint-add-button"
+                        type="submit"
+                      >
+                        Add
+                      </button>
+                    </div>
+                    <p
+                      aria-live="polite"
+                      class="standard-validation"
+                      hidden=""
+                      id="breakpoint-validation"
+                      role="status"
+                    ></p>
+                  </form>
+                  <p class="standard-empty-state" id="breakpoints-empty">
+                    Load a ROM to add breakpoints.
+                  </p>
+                  <ul aria-label="Configured breakpoints" id="breakpoints-list"></ul>
+                </div>
+              </section>
+            </div>
+            <div aria-label="Execution and memory analysis" class="analysis-column">
+              <h2 class="visually-hidden">Execution and analysis</h2>
+              <div class="analysis-top">
+                <section aria-labelledby="nearby-heading" class="nearby-panel standard-panel">
+                  <header class="standard-panel-header">
+                    <h2 class="standard-panel-title" id="nearby-heading">
+                      <svg
+                        aria-hidden="true"
+                        class="icon"
+                        focusable="false"
+                        height="16"
+                        width="16"
+                      >
+                        <use href="#icon-nearby"></use>
+                      </svg>
+                      <span>Nearby</span>
+                    </h2>
+                  </header>
+                  <div class="standard-panel-body">
+                    <p class="standard-empty-state" id="nearby-instructions-empty">
+                      No machine loaded.
+                    </p>
+                    <ol class="data-view data-list" id="nearby-instructions-list"></ol>
+                  </div>
+                </section>
+                <section aria-labelledby="trace-heading" class="trace-panel standard-panel">
+                  <header class="standard-panel-header">
+                    <h2 class="standard-panel-title" id="trace-heading">
+                      <svg
+                        aria-hidden="true"
+                        class="icon"
+                        focusable="false"
+                        height="16"
+                        width="16"
+                      >
+                        <use href="#icon-history"></use>
+                      </svg>
+                      <span>Trace</span>
+                    </h2>
+                  </header>
+                  <div class="instruction-history standard-panel-body">
+                    <p class="standard-empty-state" id="instruction-history-empty">
+                      No instruction attempts yet.
+                    </p>
+                    <ol class="data-view data-list" id="instruction-history-list"></ol>
+                  </div>
+                </section>
+              </div>
+              <section
+                aria-labelledby="memory-heading"
+                class="memory-panel standard-panel"
+                id="memory-panel"
+              >
+                <header class="standard-panel-header">
+                  <h2 class="standard-panel-title" id="memory-heading">
+                    <svg
+                      aria-hidden="true"
+                      class="icon"
+                      focusable="false"
+                      height="16"
+                      width="16"
+                    >
+                      <use href="#icon-memory"></use>
+                    </svg>
+                    <span>Memory</span>
+                  </h2>
+                  <span
+                    aria-label="Visible memory range"
+                    class="standard-panel-indicator code-text"
+                    id="memory-range"
+                  >—</span>
+                </header>
+                <div class="standard-panel-body standard-tool-body memory-tool-body">
+                  <div class="memory-controls">
+                    <form class="standard-form" id="memory-form" novalidate="">
+                      <label for="memory-address">Start address</label>
+                      <div class="standard-form-entry address-form-entry">
+                        <input
+                          aria-describedby="memory-validation"
+                          autocomplete="off"
+                          class="code-text standard-input address-input"
+                          disabled=""
+                          id="memory-address"
+                          inputmode="text"
+                          placeholder="0x200"
+                          spellcheck="false"
+                          type="text"
+                        />
+                        <button
+                          class="standard-action-button"
+                          disabled=""
+                          id="memory-go-button"
+                          type="submit"
+                        >
+                          Go
+                        </button>
+                      </div>
+                      <p
+                        aria-live="polite"
+                        class="standard-validation"
+                        hidden=""
+                        id="memory-validation"
+                        role="status"
+                      ></p>
+                    </form>
+                    <div aria-label="Memory quick navigation" class="memory-shortcuts">
+                      <span>Jump to</span>
+                      <button
+                        class="standard-action-button memory-shortcut-button"
+                        disabled=""
+                        id="memory-program-counter-button"
+                        type="button"
+                      >
+                        PC
+                      </button>
+                      <button
+                        class="standard-action-button memory-shortcut-button"
+                        disabled=""
+                        id="memory-index-register-button"
+                        type="button"
+                      >
+                        I
+                      </button>
+                    </div>
+                    <div aria-label="Memory page navigation" class="memory-navigation">
+                      <button
+                        aria-label="Previous memory page"
+                        class="standard-action-button memory-page-button"
+                        disabled=""
+                        id="memory-previous-button"
+                        title="Previous memory page"
+                        type="button"
+                      >
+                        &laquo;
+                      </button>
+                      <button
+                        aria-label="Next memory page"
+                        class="standard-action-button memory-page-button"
+                        disabled=""
+                        id="memory-next-button"
+                        title="Next memory page"
+                        type="button"
+                      >
+                        &raquo;
+                      </button>
+                    </div>
+                  </div>
+                  <p class="standard-empty-state" id="memory-empty">
+                    Load a ROM to inspect memory.
+                  </p>
+                  <div class="memory-table-wrapper">
+                    <table
+                      aria-label="Memory bytes"
+                      class="data-view data-table memory-table"
+                      hidden=""
+                      id="memory-table"
+                    >
+                      <colgroup>
+                        <col class="memory-address-column" />
+                        <col class="memory-byte-column" span="8" />
+                        <col class="memory-characters-column" />
+                      </colgroup>
+                      <thead>
+                        <tr>
+                          <th scope="col">Address</th>
+                          <th scope="col">+0</th>
+                          <th scope="col">+1</th>
+                          <th scope="col">+2</th>
+                          <th scope="col">+3</th>
+                          <th scope="col">+4</th>
+                          <th scope="col">+5</th>
+                          <th scope="col">+6</th>
+                          <th scope="col">+7</th>
+                          <th class="memory-characters-heading" scope="col">Characters</th>
+                        </tr>
+                      </thead>
+                      <tbody id="memory-table-body"></tbody>
+                    </table>
+                  </div>
                 </div>
               </section>
             </div>
           </aside>
         </div>
-
         <footer class="app-status">
           <p id="status" role="status">
             TIP: Choose a CHIP-8 ROM and press start. Use your keyboard or the virtual keypad.
           </p>
-
-          <dl class="status-details" aria-label="Machine configuration">
+          <dl aria-label="Machine configuration" class="status-details">
             <div class="status-detail">
               <dt class="status-detail-label" data-tooltip="Machine profile" tabindex="0">
-                <svg class="icon" width="15" height="15" aria-hidden="true" focusable="false">
+                <svg aria-hidden="true" class="icon" focusable="false" height="15" width="15">
                   <use href="#icon-profile"></use>
                 </svg>
                 <span class="visually-hidden">Machine profile</span>
               </dt>
               <dd id="status-profile">Classic CHIP-8</dd>
             </div>
-
             <div class="status-detail">
               <dt class="status-detail-label" data-tooltip="CPU frequency" tabindex="0">
-                <svg class="icon" width="15" height="15" aria-hidden="true" focusable="false">
+                <svg aria-hidden="true" class="icon" focusable="false" height="15" width="15">
                   <use href="#icon-cpu"></use>
                 </svg>
                 <span class="visually-hidden">CPU frequency</span>
               </dt>
               <dd id="status-cpu-frequency">500 Hz</dd>
             </div>
-
             <div class="status-detail">
               <dt class="status-detail-label" data-tooltip="Timer frequency" tabindex="0">
-                <svg class="icon" width="15" height="15" aria-hidden="true" focusable="false">
+                <svg aria-hidden="true" class="icon" focusable="false" height="15" width="15">
                   <use href="#icon-timer"></use>
                 </svg>
                 <span class="visually-hidden">Timer frequency</span>
               </dt>
               <dd id="status-timer-frequency">60 Hz</dd>
             </div>
-
             <div class="status-detail">
               <dt
                 class="status-detail-label"
                 data-tooltip="Display refresh frequency"
                 tabindex="0"
               >
-                <svg class="icon" width="15" height="15" aria-hidden="true" focusable="false">
+                <svg aria-hidden="true" class="icon" focusable="false" height="15" width="15">
                   <use href="#icon-refresh"></use>
                 </svg>
                 <span class="visually-hidden">Display refresh frequency</span>
               </dt>
               <dd id="status-refresh-frequency">60 Hz</dd>
             </div>
-
             <div class="status-detail">
               <dt
                 class="status-detail-label"
                 data-tooltip="Display resolution and mode"
                 tabindex="0"
               >
-                <svg class="icon" width="15" height="15" aria-hidden="true" focusable="false">
+                <svg aria-hidden="true" class="icon" focusable="false" height="15" width="15">
                   <use href="#icon-display"></use>
                 </svg>
                 <span class="visually-hidden">Display resolution and mode</span>
               </dt>
               <dd id="status-display">64 × 32</dd>
             </div>
-
             <div class="status-detail">
               <dt class="status-detail-label" data-tooltip="Chip8NX version" tabindex="0">
-                <svg class="icon" width="15" height="15" aria-hidden="true" focusable="false">
+                <svg aria-hidden="true" class="icon" focusable="false" height="15" width="15">
                   <use href="#icon-version"></use>
                 </svg>
                 <span class="visually-hidden">Chip8NX version</span>
@@ -764,7 +741,6 @@
         </footer>
       </section>
     </main>
-
-    <script type="module" src="/src/main.ts"></script>
+    <script src="/src/main.ts" type="module"></script>
   </body>
 </html>

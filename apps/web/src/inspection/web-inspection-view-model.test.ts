@@ -51,7 +51,7 @@ Deno.test("creates display-ready CPU state", () => {
     },
   };
 
-  const viewModel = createWebInspectionViewModel(state, [], [], unusedFormatter);
+  const viewModel = createWebInspectionViewModel(state, 16, [], [], unusedFormatter);
 
   assertEquals(viewModel.cpu, {
     registers: [
@@ -73,10 +73,14 @@ Deno.test("creates display-ready CPU state", () => {
       { name: "VF", value: "0xFF" },
     ],
 
+    indexRegisterAddress: address(0x2af),
+    programCounterAddress: address(0x020),
+
     indexRegister: "0x2AF",
     programCounter: "0x020",
 
     stack: ["0x200", "0xABC"],
+    stackCapacity: 16,
 
     delayTimer: "0x05",
     soundTimer: "0x0F",
@@ -120,7 +124,7 @@ Deno.test("preserves trace order and delegates trace text formatting", () => {
     },
   };
 
-  const viewModel = createWebInspectionViewModel(state, [], [success, failure], formatter);
+  const viewModel = createWebInspectionViewModel(state, 16, [], [success, failure], formatter);
 
   assertEquals(viewModel.traces, [
     {
@@ -174,6 +178,7 @@ Deno.test("creates nearby instruction views preserving current and breakpoint ma
 
   assertEquals(viewModels, [
     {
+      addressValue: address(0x25e),
       address: "0x25E",
       current: false,
       breakpoint: "enabled",
@@ -184,6 +189,7 @@ Deno.test("creates nearby instruction views preserving current and breakpoint ma
       },
     },
     {
+      addressValue: address(0x260),
       address: "0x260",
       current: true,
       breakpoint: "disabled",
@@ -213,6 +219,7 @@ Deno.test("creates an unavailable nearby instruction view without losing its add
 
   assertEquals(viewModels, [
     {
+      addressValue: address(0x25e),
       address: "0x25E",
       current: false,
       breakpoint: "none",
@@ -272,6 +279,7 @@ Deno.test("includes nearby instructions in the Web inspection view", () => {
 
   const viewModel = createWebInspectionViewModel(
     state,
+    16,
     nearbyInstructions,
     [],
     unusedFormatter,
@@ -279,6 +287,7 @@ Deno.test("includes nearby instructions in the Web inspection view", () => {
 
   assertEquals(viewModel.nearbyInstructions, [
     {
+      addressValue: address(0x200),
       address: "0x200",
       current: false,
       breakpoint: "none",
@@ -289,6 +298,7 @@ Deno.test("includes nearby instructions in the Web inspection view", () => {
       },
     },
     {
+      addressValue: address(0x202),
       address: "0x202",
       current: true,
       breakpoint: "none",

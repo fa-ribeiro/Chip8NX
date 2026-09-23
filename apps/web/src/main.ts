@@ -126,8 +126,6 @@ updateWebFavicon();
 const display = new CanvasDisplay(canvas, readCanvasDisplayPalette());
 
 const inspectionElement = requireElement<HTMLElement>(".inspection");
-const inspection = new WebInspectionRenderer(inspectionElement);
-
 const breakpointPanelElement = requireElement<HTMLElement>("#breakpoint-panel");
 const memoryPanelElement = requireElement<HTMLElement>("#memory-panel");
 
@@ -142,6 +140,22 @@ const breakpointPanel = new WebBreakpointPanel(breakpointPanelElement, breakpoin
   if (machine !== undefined) {
     renderMachine(machine);
   }
+});
+
+const inspection = new WebInspectionRenderer(inspectionElement, {
+  onBreakpointToggle: (targetAddress) => {
+    if (breakpoints.get(targetAddress) === undefined) {
+      breakpoints.add(targetAddress);
+    } else {
+      breakpoints.remove(targetAddress);
+    }
+
+    breakpointPanel.render();
+
+    if (machine !== undefined) {
+      renderMachine(machine);
+    }
+  },
 });
 
 const memoryPanel = new WebMemoryPanel(memoryPanelElement);
@@ -384,6 +398,7 @@ function createMachine(
 
     return createWebInspectionViewModel(
       cpuState,
+      profile.stackCapacity,
       nearbyInstructions,
       traceHistory.snapshot(),
       traceFormatter,
@@ -747,7 +762,14 @@ function renderMachine(session: WebMachineSession): void {
   displayResolution.textContent =
     `${session.displayBuffer.width} × ${session.displayBuffer.height}`;
   updateStatusDetails(session);
-  inspection.render(session.snapshotInspection());
+
+  const inspectionViewModel = session.snapshotInspection();
+
+  inspection.render(inspectionViewModel);
+  memoryPanel.setReferenceAddresses({
+    programCounter: inspectionViewModel.cpu.programCounterAddress,
+    indexRegister: inspectionViewModel.cpu.indexRegisterAddress,
+  });
   memoryPanel.render();
 }
 

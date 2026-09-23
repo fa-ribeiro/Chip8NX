@@ -24,6 +24,33 @@ export interface MemoryInspectionPage {
   readonly rows: readonly MemoryInspectionRow[];
 }
 
+export interface MemoryReferenceAddresses {
+  readonly programCounter: Address;
+  readonly indexRegister: Address;
+}
+
+/**
+ * Formats one memory row as printable ASCII, replacing non-printable bytes
+ * with a dot and padding partial rows to the normal eight-byte width.
+ */
+export function formatMemoryCharacters(bytes: readonly Byte[]): string {
+  let result = "";
+
+  for (let column = 0; column < MEMORY_ROW_SIZE; column++) {
+    const value = bytes[column];
+
+    if (value === undefined) {
+      result += " ";
+
+      continue;
+    }
+
+    result += value >= 0x20 && value <= 0x7e ? String.fromCharCode(value) : ".";
+  }
+
+  return result;
+}
+
 /**
  * Parses one hexadecimal address for the Web memory inspector.
  *
@@ -161,8 +188,11 @@ export class WebMemoryPanel {
   private readonly tableBody: HTMLTableSectionElement;
   private readonly previousButton: HTMLButtonElement;
   private readonly nextButton: HTMLButtonElement;
+  private readonly programCounterButton: HTMLButtonElement;
+  private readonly indexRegisterButton: HTMLButtonElement;
 
   private memory: Memory | undefined;
+  private references: MemoryReferenceAddresses | undefined;
   private startAddress: Address = address(0);
 
   public constructor(root: HTMLElement) {
@@ -178,6 +208,14 @@ export class WebMemoryPanel {
     this.tableBody = requireDescendant<HTMLTableSectionElement>(root, "#memory-table-body");
     this.previousButton = requireDescendant<HTMLButtonElement>(root, "#memory-previous-button");
     this.nextButton = requireDescendant<HTMLButtonElement>(root, "#memory-next-button");
+    this.programCounterButton = requireDescendant<HTMLButtonElement>(
+      root,
+      "#memory-program-counter-button",
+    );
+    this.indexRegisterButton = requireDescendant<HTMLButtonElement>(
+      root,
+      "#memory-index-register-button",
+    );
 
     this.form.addEventListener("submit", (event) => {
       event.preventDefault();
@@ -204,6 +242,22 @@ export class WebMemoryPanel {
       }
     });
 
+    this.programCounterButton.addEventListener("click", () => {
+      const target = this.references?.programCounter;
+
+      if (target !== undefined && this.canShowAddress(target)) {
+        this.showAddress(target);
+      }
+    });
+
+    this.indexRegisterButton.addEventListener("click", () => {
+      const target = this.references?.indexRegister;
+
+      if (target !== undefined && this.canShowAddress(target)) {
+        this.showAddress(target);
+      }
+    });
+
     this.render();
   }
 
@@ -218,6 +272,7 @@ export class WebMemoryPanel {
     this.memory = memory;
 
     if (memory === undefined) {
+      this.references = undefined;
       this.startAddress = address(0);
       this.addressInput.value = "";
       this.clearValidation();
@@ -242,6 +297,18 @@ export class WebMemoryPanel {
     this.syncAddressInput();
     this.clearValidation();
     this.render();
+  }
+
+  /**
+   * Updates the CPU-derived addresses offered as quick navigation targets.
+   *
+   * References may be outside the active memory range (for example SCHIP-
+   * MODERN can let I advance beyond memory); such targets remain visible in
+   * their tooltip but are disabled rather than coerced.
+   */
+  public setReferenceAddresses(references: MemoryReferenceAddresses | undefined): void {
+    this.references = references;
+    this.renderReferenceButtons();
   }
 
   /**
@@ -274,6 +341,7 @@ export class WebMemoryPanel {
 
     this.addressInput.disabled = !hasMemory;
     this.goButton.disabled = !hasMemory;
+    this.renderReferenceButtons();
 
     if (memory === undefined) {
       this.range.textContent = "—";
@@ -290,7 +358,9 @@ export class WebMemoryPanel {
     const page = inspectMemoryPage(memory, this.startAddress);
 
     this.range.textContent = `${formatAddress(page.startAddress)}–${
-      formatAddress(page.endAddress)
+      formatAddress(
+        page.endAddress,
+      )
     }`;
     this.empty.hidden = true;
     this.table.hidden = false;
@@ -323,6 +393,11 @@ export class WebMemoryPanel {
         tableRow.append(byteCell);
       }
 
+      const charactersCell = this.document.createElement("td");
+      charactersCell.className = "memory-characters code-text";
+      charactersCell.textContent = formatMemoryCharacters(row.bytes);
+      tableRow.append(charactersCell);
+
       fragment.append(tableRow);
     }
 
@@ -331,6 +406,43 @@ export class WebMemoryPanel {
     this.previousButton.disabled = previousMemoryPageStart(this.startAddress) === undefined;
     this.nextButton.disabled =
       nextMemoryPageStart(this.startAddress, memory.size) === undefined;
+  }
+
+  private renderReferenceButtons(): void {
+    this.renderReferenceButton(
+      this.programCounterButton,
+      "PC",
+      this.references?.programCounter,
+    );
+    this.renderReferenceButton(this.indexRegisterButton, "I", this.references?.indexRegister);
+  }
+
+  private renderReferenceButton(
+    button: HTMLButtonElement,
+    label: string,
+    target: Address | undefined,
+  ): void {
+    const hasTarget = target !== undefined;
+    const available = hasTarget && this.canShowAddress(target);
+
+    button.disabled = !available;
+
+    if (!hasTarget) {
+      button.title = `Jump to ${label}`;
+      button.setAttribute("aria-label", `Jump to ${label}`);
+      return;
+    }
+
+    const formatted = formatAddress(target);
+    const suffix = available ? "" : " (outside memory)";
+    const description = `Jump to ${label} ${formatted}${suffix}`;
+
+    button.title = description;
+    button.setAttribute("aria-label", description);
+  }
+
+  private canShowAddress(target: Address): boolean {
+    return this.memory !== undefined && target < this.memory.size;
   }
 
   private goToInputAddress(): void {

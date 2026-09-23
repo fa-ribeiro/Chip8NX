@@ -11,10 +11,15 @@ export interface WebInspectionViewModel {
 export interface CpuInspectionViewModel {
   readonly registers: readonly RegisterViewModel[];
 
+  /** Raw addresses retained for Web debugger navigation actions. */
+  readonly indexRegisterAddress: Address;
+  readonly programCounterAddress: Address;
+
   readonly indexRegister: string;
   readonly programCounter: string;
 
   readonly stack: readonly string[];
+  readonly stackCapacity: number;
 
   readonly delayTimer: string;
   readonly soundTimer: string;
@@ -52,6 +57,8 @@ export interface FailedNearbyInstructionInspectionResult {
 }
 
 export interface NearbyInstructionViewModel {
+  /** Raw address used by Web-only interaction such as breakpoint gutter clicks. */
+  readonly addressValue: Address;
   readonly address: string;
   readonly current: boolean;
   readonly breakpoint: NearbyInstructionBreakpointState;
@@ -77,6 +84,7 @@ export interface UnavailableNearbyInstructionViewModel {
  */
 export function createWebInspectionViewModel(
   cpuState: CpuState,
+  stackCapacity: number,
   nearbyInstructions: readonly NearbyInstructionInspection[],
   traces: readonly InstructionTrace[],
   traceFormatter: InstructionTraceFormatter,
@@ -88,10 +96,14 @@ export function createWebInspectionViewModel(
         value: formatByte(value),
       })),
 
+      indexRegisterAddress: cpuState.index,
+      programCounterAddress: cpuState.programCounter,
+
       indexRegister: formatAddress(cpuState.index),
       programCounter: formatAddress(cpuState.programCounter),
 
       stack: cpuState.stack.map(formatAddress),
+      stackCapacity,
 
       delayTimer: formatByte(cpuState.delayTimer),
       soundTimer: formatByte(cpuState.soundTimer),
@@ -117,6 +129,7 @@ function createNearbyInstructionViewModel(
 ): NearbyInstructionViewModel {
   if (inspection.result.outcome === "failure") {
     return {
+      addressValue: inspection.address,
       address: formatAddress(inspection.address),
       current: inspection.current,
       breakpoint: inspection.breakpoint,
@@ -128,6 +141,7 @@ function createNearbyInstructionViewModel(
   }
 
   return {
+    addressValue: inspection.address,
     address: formatAddress(inspection.address),
     current: inspection.current,
     breakpoint: inspection.breakpoint,

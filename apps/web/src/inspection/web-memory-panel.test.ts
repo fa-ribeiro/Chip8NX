@@ -2,6 +2,7 @@ import { assertEquals } from "@std/assert";
 import { address, byte, Ram } from "@chip8nx/core";
 
 import {
+  formatMemoryCharacters,
   inspectMemoryPage,
   MEMORY_PAGE_SIZE,
   nextMemoryPageStart,
@@ -107,4 +108,40 @@ Deno.test("nextMemoryPageStart clamps to the final full page", () => {
   assertEquals(nextMemoryPageStart(address(0xfa0), 0x1000), address(0xfc0));
   assertEquals(nextMemoryPageStart(address(0xfc0), 0x1000), undefined);
   assertEquals(nextMemoryPageStart(address(0xfff), 0x1000), undefined);
+});
+
+Deno.test("formatMemoryCharacters preserves printable ASCII", () => {
+  assertEquals(
+    formatMemoryCharacters([
+      byte(0x48),
+      byte(0x45),
+      byte(0x4c),
+      byte(0x4c),
+      byte(0x4f),
+      byte(0x21),
+      byte(0x7e),
+      byte(0x20),
+    ]),
+    "HELLO!~ ",
+  );
+});
+
+Deno.test("formatMemoryCharacters replaces non-printable bytes with dots", () => {
+  assertEquals(
+    formatMemoryCharacters([
+      byte(0x00),
+      byte(0x1f),
+      byte(0x20),
+      byte(0x41),
+      byte(0x7e),
+      byte(0x7f),
+      byte(0xff),
+      byte(0x2e),
+    ]),
+    ".. A~...",
+  );
+});
+
+Deno.test("formatMemoryCharacters pads partial rows to eight characters", () => {
+  assertEquals(formatMemoryCharacters([byte(0x41), byte(0x42)]), "AB      ");
 });
