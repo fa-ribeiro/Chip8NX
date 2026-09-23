@@ -75,26 +75,30 @@ Deno.test("AddressBreakpoints allows execution at a disabled breakpoint", () => 
   assertEquals(breakpoints.takeHit(), undefined);
 });
 
-Deno.test("AddressBreakpoints suppresses one matching breakpoint attempt only", () => {
-  const breakpoints = new AddressBreakpoints();
+Deno.test(
+  "AddressBreakpoints keeps a resumed breakpoint suppressed while execution remains at its address",
+  () => {
+    const breakpoints = new AddressBreakpoints();
 
-  breakpoints.add(address(0x204));
-  breakpoints.suppressOnce(address(0x204));
+    breakpoints.add(address(0x204));
+    breakpoints.suppressWhileAt(address(0x204));
 
-  assertEquals(breakpoints.shouldExecute(address(0x204)), true);
-  assertEquals(breakpoints.shouldExecute(address(0x204)), false);
-  assertEquals(breakpoints.takeHit(), address(0x204));
-});
+    assertEquals(breakpoints.shouldExecute(address(0x204)), true);
+    assertEquals(breakpoints.shouldExecute(address(0x204)), true);
+    assertEquals(breakpoints.takeHit(), undefined);
+  },
+);
 
 Deno.test(
-  "AddressBreakpoints expires one-shot suppression when execution reaches a different address",
+  "AddressBreakpoints expires resume suppression when execution reaches a different address",
   () => {
     const breakpoints = new AddressBreakpoints();
 
     breakpoints.add(address(0x204));
     breakpoints.add(address(0x206));
-    breakpoints.suppressOnce(address(0x204));
+    breakpoints.suppressWhileAt(address(0x204));
 
+    assertEquals(breakpoints.shouldExecute(address(0x204)), true);
     assertEquals(breakpoints.shouldExecute(address(0x206)), false);
     assertEquals(breakpoints.takeHit(), address(0x206));
     assertEquals(breakpoints.shouldExecute(address(0x204)), false);
@@ -108,7 +112,7 @@ Deno.test(
 
     breakpoints.add(address(0x204));
     breakpoints.shouldExecute(address(0x204));
-    breakpoints.suppressOnce(address(0x204));
+    breakpoints.suppressWhileAt(address(0x204));
 
     breakpoints.resetExecutionState();
 
@@ -125,7 +129,7 @@ Deno.test(
 
     breakpoints.add(address(0x204));
     breakpoints.shouldExecute(address(0x204));
-    breakpoints.suppressOnce(address(0x204));
+    breakpoints.suppressWhileAt(address(0x204));
 
     breakpoints.clear();
 

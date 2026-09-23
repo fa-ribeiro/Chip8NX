@@ -102,8 +102,9 @@ export class WebMachineLifecycle {
    * Starts scheduled emulation for an active paused session.
    *
    * @remarks
-   * Continuing from a breakpoint suppresses that same address for one
-   * scheduled CPU attempt so execution can progress past the stop point.
+   * Continuing from a breakpoint suppresses that same address until scheduled
+   * execution reaches a different address. Retryable instructions can therefore
+   * remain at the stop point for multiple attempts without re-hitting it.
    */
   public start(): WebMachineLifecycleState {
     if (this.currentState.kind !== "paused") {
@@ -119,7 +120,7 @@ export class WebMachineLifecycle {
     const previousState = this.currentState;
 
     if (previousState.reason.kind === "breakpoint") {
-      this.breakpoints.suppressOnce(previousState.reason.address);
+      this.breakpoints.suppressWhileAt(previousState.reason.address);
     }
 
     try {

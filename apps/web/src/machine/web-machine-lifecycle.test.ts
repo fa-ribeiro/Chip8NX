@@ -86,13 +86,14 @@ Deno.test("WebMachineLifecycle records a breakpoint pause after a denied runtime
 });
 
 Deno.test(
-  "WebMachineLifecycle continue from breakpoint suppresses one matching scheduled attempt",
+  "WebMachineLifecycle continue from breakpoint permits retries until execution leaves the stopped address",
   () => {
     const runtime = new FakeRuntime();
     const exitState = new ExitState();
     const input = new FakeInput();
     const breakpoints = new AddressBreakpoints();
     const breakpointAddress = address(0x204);
+    const nextAddress = address(0x206);
     const lifecycle = new WebMachineLifecycle(
       runtime,
       exitState,
@@ -100,11 +101,12 @@ Deno.test(
       [input],
       breakpoints,
     );
+    let currentAddress = breakpointAddress;
 
     breakpoints.add(breakpointAddress);
 
     runtime.onTick = () => {
-      if (!breakpoints.shouldExecute(breakpointAddress)) {
+      if (!breakpoints.shouldExecute(currentAddress)) {
         runtime.pause();
       }
     };
@@ -117,14 +119,17 @@ Deno.test(
 
     assertEquals(continueState.kind, "running");
 
-    const firstTickState = lifecycle.tick();
-
-    assertEquals(firstTickState.kind, "running");
+    assertEquals(lifecycle.tick().kind, "running");
+    assertEquals(lifecycle.tick().kind, "running");
     assertEquals(runtime.isPaused, false);
 
-    const secondTickState = lifecycle.tick();
+    currentAddress = nextAddress;
 
-    assertEquals(secondTickState, {
+    assertEquals(lifecycle.tick().kind, "running");
+
+    currentAddress = breakpointAddress;
+
+    assertEquals(lifecycle.tick(), {
       kind: "paused",
       reason: {
         kind: "breakpoint",
@@ -460,7 +465,7 @@ Deno.test(
     );
 
     breakpoints.add(breakpointAddress);
-    breakpoints.suppressOnce(breakpointAddress);
+    breakpoints.suppressWhileAt(breakpointAddress);
 
     lifecycle.activate();
     lifecycle.start();

@@ -13,8 +13,8 @@ export interface AddressBreakpoint {
  *
  * @remarks
  * Breakpoint configuration can outlive an individual Web machine composition,
- * while pending hits and one-shot resume suppression belong only to the current
- * execution flow. The host can therefore preserve breakpoints across a profile
+ * while pending hits and resume suppression belong only to the current execution
+ * flow. The host can therefore preserve breakpoints across a profile
  * recomposition without leaking transient execution state into the replacement
  * machine.
  */
@@ -93,18 +93,18 @@ export class AddressBreakpoints {
    *
    * @remarks
    * An enabled breakpoint denies execution and records a pending hit for the
-   * Web lifecycle to consume after the runtime tick returns. A one-shot
-   * suppression permits exactly one matching scheduled attempt, then expires.
+   * Web lifecycle to consume after the runtime tick returns. Resume suppression
+   * permits repeated scheduled attempts at the stopped address and expires only
+   * after execution reaches a different address. This allows retryable
+   * instructions to complete without immediately re-hitting the same breakpoint.
    */
   public shouldExecute(address: Address): boolean {
     if (this.suppressedAddress !== undefined) {
-      const suppressedAddress = this.suppressedAddress;
-
-      this.suppressedAddress = undefined;
-
-      if (suppressedAddress === address) {
+      if (this.suppressedAddress === address) {
         return true;
       }
+
+      this.suppressedAddress = undefined;
     }
 
     if (this.breakpoints.get(address) !== true) {
@@ -117,9 +117,9 @@ export class AddressBreakpoints {
   }
 
   /**
-   * Suppresses the breakpoint at one matching scheduled CPU attempt.
+   * Suppresses the breakpoint while scheduled execution remains at this address.
    */
-  public suppressOnce(address: Address): void {
+  public suppressWhileAt(address: Address): void {
     this.suppressedAddress = address;
   }
 
