@@ -1,4 +1,4 @@
-import { assertEquals } from "@std/assert";
+import { assertEquals, assertRejects } from "@std/assert";
 import { DisplayBuffer, KeyboardState } from "@chip8nx/core";
 import type { TerminalOutput } from "./display/terminal-output.ts";
 import type { TerminalPresentation } from "./display/terminal-presentation.ts";
@@ -89,6 +89,55 @@ Deno.test("StandardTerminalHost exposes input quit state", () => {
   assertEquals(host.quitRequested, true);
 });
 
+Deno.test("StandardTerminalHost restores host state when input start rejects", async () => {
+  const events: string[] = [];
+
+  const host = new StandardTerminalHost(new KeyboardState(), {
+    output: new RecordingTerminalOutput(),
+    createPresentation: () => new RecordingPresentation(events),
+    createInput: () => new RejectingStartInput(events),
+  });
+
+  await assertRejects(() => host.start(), Error, "input start failed");
+
+  assertEquals(events, [
+    "presentation:start",
+    "input:start",
+    "input:stop",
+    "presentation:stop",
+  ]);
+
+  await host.stop();
+
+  assertEquals(events, [
+    "presentation:start",
+    "input:start",
+    "input:stop",
+    "presentation:stop",
+  ]);
+});
+
+Deno.test("StandardTerminalHost restores presentation when input cleanup fails", async () => {
+  const events: string[] = [];
+
+  const host = new StandardTerminalHost(new KeyboardState(), {
+    output: new RecordingTerminalOutput(),
+    createPresentation: () => new RecordingPresentation(events),
+    createInput: () => new FailingStopInput(events),
+  });
+
+  await host.start();
+
+  await assertRejects(() => host.stop(), Error, "input stop failed");
+
+  assertEquals(events, [
+    "presentation:start",
+    "input:start",
+    "input:stop",
+    "presentation:stop",
+  ]);
+});
+
 class RecordingTerminalOutput implements TerminalOutput {
   public readonly writes: string[] = [];
 
@@ -135,5 +184,45 @@ class RecordingInput implements TerminalInputController {
     this.events?.push("input:stop");
 
     return Promise.resolve();
+  }
+}
+
+class RejectingStartInput implements TerminalInputController {
+  public readonly quitRequested = false;
+
+  public constructor(private readonly events: string[]) {}
+
+  public start(): Promise<void> {
+    this.events.push("input:start");
+
+    return Promise.reject(new Error("input start failed"));
+  }
+
+  public tick(): void {}
+
+  public stop(): Promise<void> {
+    this.events.push("input:stop");
+
+    return Promise.resolve();
+  }
+}
+
+class FailingStopInput implements TerminalInputController {
+  public readonly quitRequested = false;
+
+  public constructor(private readonly events: string[]) {}
+
+  public start(): Promise<void> {
+    this.events.push("input:start");
+
+    return Promise.resolve();
+  }
+
+  public tick(): void {}
+
+  public stop(): Promise<void> {
+    this.events.push("input:stop");
+
+    return Promise.reject(new Error("input stop failed"));
   }
 }

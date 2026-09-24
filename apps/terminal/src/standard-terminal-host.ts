@@ -68,6 +68,8 @@ export class StandardTerminalHost {
   private readonly presentation: TerminalPresentation;
   private readonly input: TerminalInputController;
 
+  private started = false;
+
   public constructor(keyboard: KeyboardState, options: StandardTerminalHostOptions = {}) {
     const output = options.output ?? new StdoutTerminalOutput();
 
@@ -98,12 +100,12 @@ export class StandardTerminalHost {
    */
   public start(): Promise<void> {
     this.presentation.start();
+    this.started = true;
 
     try {
-      return this.input.start();
+      return this.input.start().catch((error) => this.handleInputFailure(error));
     } catch (error) {
-      this.presentation.stop();
-      throw error;
+      return this.handleInputFailure(error);
     }
   }
 
@@ -127,10 +129,51 @@ export class StandardTerminalHost {
    * Presentation restoration occurs even if input cleanup fails.
    */
   public async stop(): Promise<void> {
+    if (!this.started) {
+      return;
+    }
+
+    this.started = false;
+
+    const errors: unknown[] = [];
+
     try {
       await this.input.stop();
-    } finally {
-      this.presentation.stop();
+    } catch (error) {
+      errors.push(error);
     }
+
+    try {
+      this.presentation.stop();
+    } catch (error) {
+      errors.push(error);
+    }
+
+    throwCleanupErrors(errors, "Failed to fully restore terminal host state");
   }
+
+  private async handleInputFailure(error: unknown): Promise<never> {
+    try {
+      await this.stop();
+    } catch (cleanupError) {
+      throw new AggregateError(
+        [error, cleanupError],
+        "Terminal input failed and host cleanup also failed",
+      );
+    }
+
+    throw error;
+  }
+}
+
+function throwCleanupErrors(errors: readonly unknown[], message: string): void {
+  if (errors.length === 0) {
+    return;
+  }
+
+  if (errors.length === 1) {
+    throw errors[0];
+  }
+
+  throw new AggregateError(errors, message);
 }

@@ -1,4 +1,4 @@
-import { assertEquals } from "@std/assert";
+import { assertEquals, assertRejects } from "@std/assert";
 import { key, KeyboardState } from "@chip8nx/core";
 import type { TerminalOutput } from "../display/terminal-output.ts";
 import type { TerminalInput } from "./terminal-input.ts";
@@ -68,18 +68,95 @@ Deno.test("TerminalInputSession does nothing when stdin is not a terminal", asyn
   assertEquals(output.writes, []);
 });
 
+Deno.test("TerminalInputSession restores terminal state when startup fails", async () => {
+  const input = new ControlledTerminalInput();
+  const output = new FailOnceTerminalOutput();
+
+  const session = new TerminalInputSession(
+    input,
+    output,
+    new TerminalKeyEventParser(),
+    new TerminalKeyboard(new KeyboardState()),
+  );
+
+  await assertRejects(() => session.start(), Error, "terminal write failed");
+
+  assertEquals(input.rawStates, [true, false]);
+  assertEquals(output.writes, ["\x1b[>10u", "\x1b[<u"]);
+});
+
+Deno.test("TerminalInputSession restores terminal state when reading fails", async () => {
+  const input = new ControlledTerminalInput();
+  const output = new RecordingTerminalOutput();
+
+  const session = new TerminalInputSession(
+    input,
+    output,
+    new TerminalKeyEventParser(),
+    new TerminalKeyboard(new KeyboardState()),
+  );
+
+  const inputTask = session.start();
+
+  input.fail(new Error("read failed"));
+
+  await assertRejects(() => inputTask, Error, "read failed");
+
+  assertEquals(session.quitRequested, true);
+  assertEquals(input.readable.locked, false);
+  assertEquals(output.writes, ["\x1b[>10u", "\x1b[<u"]);
+  assertEquals(input.rawStates, [true, false]);
+});
+
+Deno.test(
+  "TerminalInputSession attempts all cleanup when reader cancellation fails",
+  async () => {
+    const input = new ControlledTerminalInput(true, new Error("cancel failed"));
+    const output = new RecordingTerminalOutput();
+
+    const session = new TerminalInputSession(
+      input,
+      output,
+      new TerminalKeyEventParser(),
+      new TerminalKeyboard(new KeyboardState()),
+    );
+
+    const inputTask = session.start();
+
+    input.enqueue(new Uint8Array([0x03]));
+
+    await inputTask;
+
+    await assertRejects(() => session.stop(), Error, "cancel failed");
+
+    assertEquals(input.readable.locked, false);
+    assertEquals(output.writes, ["\x1b[>10u", "\x1b[<u"]);
+    assertEquals(input.rawStates, [true, false]);
+  },
+);
+
 class ControlledTerminalInput implements TerminalInput {
   public readonly rawStates: boolean[] = [];
 
   private controller: ReadableStreamDefaultController<Uint8Array> | undefined;
 
-  public readonly readable = new ReadableStream<Uint8Array>({
-    start: (controller) => {
-      this.controller = controller;
-    },
-  });
+  public readonly readable: ReadableStream<Uint8Array>;
 
-  public constructor(private readonly terminal = true) {}
+  public constructor(
+    private readonly terminal = true,
+    cancelError?: Error,
+  ) {
+    this.readable = new ReadableStream<Uint8Array>({
+      start: (controller) => {
+        this.controller = controller;
+      },
+      cancel: () => {
+        if (cancelError !== undefined) {
+          throw cancelError;
+        }
+      },
+    });
+  }
 
   public isTerminal(): boolean {
     return this.terminal;
@@ -92,6 +169,10 @@ class ControlledTerminalInput implements TerminalInput {
   public enqueue(bytes: Uint8Array): void {
     this.controller?.enqueue(bytes);
   }
+
+  public fail(error: Error): void {
+    this.controller?.error(error);
+  }
 }
 
 class RecordingTerminalOutput implements TerminalOutput {
@@ -99,6 +180,21 @@ class RecordingTerminalOutput implements TerminalOutput {
 
   public write(text: string): void {
     this.writes.push(text);
+  }
+}
+
+class FailOnceTerminalOutput implements TerminalOutput {
+  public readonly writes: string[] = [];
+
+  private shouldFail = true;
+
+  public write(text: string): void {
+    this.writes.push(text);
+
+    if (this.shouldFail) {
+      this.shouldFail = false;
+      throw new Error("terminal write failed");
+    }
   }
 }
 

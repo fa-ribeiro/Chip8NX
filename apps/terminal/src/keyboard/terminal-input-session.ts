@@ -42,19 +42,37 @@ export class TerminalInputSession {
    * The returned promise resolves when input ends or the user requests exit.
    * It rejects when reading stdin fails.
    */
-  public start(): Promise<void> {
+  public async start(): Promise<void> {
     if (this.started || !this.input.isTerminal()) {
-      return Promise.resolve();
+      return;
     }
 
     this.started = true;
 
-    this.input.setRaw(true);
-    this.output.write(ENABLE_ENHANCED_KEYBOARD);
+    try {
+      this.input.setRaw(true);
+      this.output.write(ENABLE_ENHANCED_KEYBOARD);
 
-    this.reader = this.input.readable.getReader();
+      this.reader = this.input.readable.getReader();
 
-    return this.readLoop();
+      await this.readLoop();
+    } catch (error) {
+      try {
+        /*
+         * readLoop has already stopped when it rejects, so releasing the
+         * reader is sufficient here. Calling cancel() on an errored stream
+         * would only re-surface the same read failure during cleanup.
+         */
+        await this.cleanup(false);
+      } catch (cleanupError) {
+        throw new AggregateError(
+          [error, cleanupError],
+          "Terminal input failed and terminal-state restoration also failed",
+        );
+      }
+
+      throw error;
+    }
   }
 
   /**
@@ -63,25 +81,57 @@ export class TerminalInputSession {
    * Cleanup is idempotent so callers can safely use it from a `finally`
    * block.
    */
-  public async stop(): Promise<void> {
+  public stop(): Promise<void> {
+    return this.cleanup(true);
+  }
+
+  private async cleanup(cancelReader: boolean): Promise<void> {
     if (!this.started) {
       return;
     }
 
     this.started = false;
 
-    this.keyboard.releaseAll();
+    const errors: unknown[] = [];
+
+    try {
+      this.keyboard.releaseAll();
+    } catch (error) {
+      errors.push(error);
+    }
 
     const reader = this.reader;
     this.reader = undefined;
 
     if (reader !== undefined) {
-      await reader.cancel();
-      reader.releaseLock();
+      if (cancelReader) {
+        try {
+          await reader.cancel();
+        } catch (error) {
+          errors.push(error);
+        }
+      }
+
+      try {
+        reader.releaseLock();
+      } catch (error) {
+        errors.push(error);
+      }
     }
 
-    this.output.write(RESTORE_KEYBOARD);
-    this.input.setRaw(false);
+    try {
+      this.output.write(RESTORE_KEYBOARD);
+    } catch (error) {
+      errors.push(error);
+    }
+
+    try {
+      this.input.setRaw(false);
+    } catch (error) {
+      errors.push(error);
+    }
+
+    throwCleanupErrors(errors, "Failed to fully restore terminal input state");
   }
 
   private async readLoop(): Promise<void> {
@@ -148,4 +198,16 @@ function isQuitEvent(event: TerminalKeyEvent): boolean {
     event.character.toLowerCase() === "c" &&
     event.modifiers.ctrl
   );
+}
+
+function throwCleanupErrors(errors: readonly unknown[], message: string): void {
+  if (errors.length === 0) {
+    return;
+  }
+
+  if (errors.length === 1) {
+    throw errors[0];
+  }
+
+  throw new AggregateError(errors, message);
 }
