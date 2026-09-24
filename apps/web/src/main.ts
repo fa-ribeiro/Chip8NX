@@ -42,6 +42,7 @@ import {
   InstructionFormatter,
   InstructionTraceBuffer,
 } from "@chip8nx/inspection";
+import { formatWebAddress } from "./address/web-address.ts";
 import { WebAudioBeeper } from "./audio/web-audio-beeper.ts";
 import { AddressBreakpoints } from "./debugger/address-breakpoints.ts";
 import { WebBreakpointPanel } from "./debugger/web-breakpoint-panel.ts";
@@ -598,7 +599,7 @@ function runHostLoop(session: WebMachineSession): void {
         if (lifecycleState.reason.kind === "breakpoint") {
           setStatus(
             `Paused ${session.romName} — breakpoint at ${
-              formatAddress(
+              formatWebAddress(
                 lifecycleState.reason.address,
               )
             }.`,
@@ -803,10 +804,6 @@ function describeProfile(profile: Chip8Profile): string {
   }
 
   return "Custom";
-}
-
-function formatAddress(value: Address): string {
-  return `0x${value.toString(16).padStart(3, "0").toUpperCase()}`;
 }
 
 function formatFrequency(frequency: Frequency): string {

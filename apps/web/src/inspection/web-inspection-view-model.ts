@@ -1,6 +1,7 @@
 import type { Address, Byte, CpuState, InstructionTrace, Opcode } from "@chip8nx/core";
 
 import type { DisassembledInstruction, InstructionTraceFormatter } from "@chip8nx/inspection";
+import { formatWebAddress } from "../address/web-address.ts";
 
 export interface WebInspectionViewModel {
   readonly cpu: CpuInspectionViewModel;
@@ -99,10 +100,10 @@ export function createWebInspectionViewModel(
       indexRegisterAddress: cpuState.index,
       programCounterAddress: cpuState.programCounter,
 
-      indexRegister: formatAddress(cpuState.index),
-      programCounter: formatAddress(cpuState.programCounter),
+      indexRegister: formatWebAddress(cpuState.index),
+      programCounter: formatWebAddress(cpuState.programCounter),
 
-      stack: cpuState.stack.map(formatAddress),
+      stack: cpuState.stack.map(formatWebAddress),
       stackCapacity,
 
       delayTimer: formatByte(cpuState.delayTimer),
@@ -130,7 +131,7 @@ function createNearbyInstructionViewModel(
   if (inspection.result.outcome === "failure") {
     return {
       addressValue: inspection.address,
-      address: formatAddress(inspection.address),
+      address: formatWebAddress(inspection.address),
       current: inspection.current,
       breakpoint: inspection.breakpoint,
       content: {
@@ -142,7 +143,7 @@ function createNearbyInstructionViewModel(
 
   return {
     addressValue: inspection.address,
-    address: formatAddress(inspection.address),
+    address: formatWebAddress(inspection.address),
     current: inspection.current,
     breakpoint: inspection.breakpoint,
     content: {
@@ -159,10 +160,6 @@ function formatRegisterName(index: number): string {
 
 function formatByte(value: Byte): string {
   return `0x${value.toString(16).toUpperCase().padStart(2, "0")}`;
-}
-
-function formatAddress(value: Address): string {
-  return `0x${value.toString(16).toUpperCase().padStart(3, "0")}`;
 }
 
 function formatOpcode(value: Opcode): string {
