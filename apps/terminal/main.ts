@@ -126,12 +126,18 @@ const terminal = traceEnabled
   })
   : new StandardTerminalHost(keyboardState);
 
-const inputTask = terminal.start();
+const inputState: { failure: { readonly error: unknown } | undefined } = {
+  failure: undefined,
+};
+
+const inputTask = terminal.start().catch((error) => {
+  inputState.failure = { error };
+});
 
 runtime.resume();
 
 try {
-  while (!terminal.quitRequested) {
+  while (!terminal.quitRequested && inputState.failure === undefined) {
     runtime.tick();
 
     terminal.tick();
@@ -145,6 +151,10 @@ try {
 }
 
 await inputTask;
+
+if (inputState.failure !== undefined) {
+  throw inputState.failure.error;
+}
 
 function createConsoleTraceObserver(): InstructionTraceObserver {
   const instructionFormatter = new ClassicInstructionFormatter();

@@ -27,12 +27,18 @@ const machine = await createExampleMachine(romPath);
 
 const terminal = new StandardTerminalHost(machine.keyboard);
 
-const inputTask = terminal.start();
+const inputState: { failure: { readonly error: unknown } | undefined } = {
+  failure: undefined,
+};
+
+const inputTask = terminal.start().catch((error) => {
+  inputState.failure = { error };
+});
 
 machine.runtime.resume();
 
 try {
-  while (!terminal.quitRequested) {
+  while (!terminal.quitRequested && inputState.failure === undefined) {
     machine.runtime.tick();
 
     terminal.tick();
@@ -46,6 +52,10 @@ try {
 }
 
 await inputTask;
+
+if (inputState.failure !== undefined) {
+  throw inputState.failure.error;
+}
 
 function requireRomPath(): string {
   const romPath = Deno.args[0];

@@ -51,12 +51,18 @@ const input = new TerminalInputSession(
 screen.start();
 
 try {
-  const inputTask = input.start();
+  const inputState: { failure: { readonly error: unknown } | undefined } = {
+    failure: undefined,
+  };
+
+  const inputTask = input.start().catch((error) => {
+    inputState.failure = { error };
+  });
 
   machine.runtime.resume();
 
   try {
-    while (!input.quitRequested) {
+    while (!input.quitRequested && inputState.failure === undefined) {
       machine.runtime.tick();
 
       terminalKeyboard.tick();
@@ -70,6 +76,10 @@ try {
   }
 
   await inputTask;
+
+  if (inputState.failure !== undefined) {
+    throw inputState.failure.error;
+  }
 } finally {
   screen.stop();
 }
