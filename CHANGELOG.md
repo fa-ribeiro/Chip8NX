@@ -4,13 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The project follows Semantic Versioning.
 
-During the `0.x` development phase:
+`v1.0.0` establishes the first stable Chip8NX architecture and public API contract.
 
-- **PATCH** releases contain fixes, refactors, documentation improvements, and other changes that do not represent a new emulator capability milestone.
-- **MINOR** releases represent meaningful emulator capabilities and conformance milestones, and may include breaking API changes while the public API remains unstable.
-- **1.0.0** will mark the first stable Classic CHIP-8 implementation with an intentionally supported public API and agreed conformance requirements.
+From `1.0.0` onward:
+
+- **PATCH** releases contain backward-compatible bug fixes and maintenance.
+- **MINOR** releases may add backward-compatible capabilities.
+- **MAJOR** releases are reserved for intentional breaking changes to the stable public contract.
 
 ## [Unreleased]
+
+## [1.0.0] - 2026-09-24 - Stable Architecture and Debugger
 
 ### Added
 
@@ -20,17 +24,24 @@ During the `0.x` development phase:
 
 ### Changed
 
-- Redesigned the Web inspection workbench into distinct Machine, State, and Analysis regions while preserving the existing machine and inspection behavior.
+- Redesigned the Web inspection workbench into distinct Machine, State, and Analysis regions while preserving machine semantics and the passive Inspection boundary.
 - Centralized Web data-view typography and panel styling so CPU state, Nearby, Trace, Memory, and Breakpoints share consistent visual rules without component-local typography overrides.
 - Extended `WebMachineLifecycle` to own Web breakpoint pause reasons and to coordinate breakpoint resume behavior without moving debugger policy into Core or Inspection.
+- Shared hexadecimal Web address parsing, validation, and formatting policy between debugger and memory tooling.
+- Hardened the Core public instruction surface by explicitly exporting the discriminated `Instruction` union instead of wildcard-exporting every instruction-interface declaration.
+- Reviewed the Core and Inspection public API surface for the `1.0.0` stability boundary and added focused public-API JSDoc where the stable contract needed clarification.
 
 ### Fixed
 
 - Fixed Continue from a breakpoint on retryable instructions such as vblank-gated `DRW`: breakpoint suppression now remains active while execution stays at the stopped address and re-arms after execution leaves it.
+- Fixed Web ROM loading so only the latest asynchronous load request may replace or clear the active machine, preventing stale reads or failures from overriding a newer ROM selection.
+- Made Terminal input and host cleanup exception-safe and ensured asynchronous input-start failures terminate application execution loops while preserving the original failure after terminal-state restoration.
 
 ### Documentation
 
-- Reconciled current Web, architecture, and tracing documentation with the implemented Web-local debugger and passive memory inspector while preserving the passive Inspection boundary and the deliberately deferred reusable debugger abstraction.
+- Reconciled current Web, architecture, composition, tracing, guide indexes, and release-checklist documentation with the implemented Web-local debugger and passive memory inspector.
+- Defined the `1.0.0` stability contract around the four supported built-in machine profiles, stable Core/Inspection boundaries, documented host composition, and bounded Web debugger scope.
+- Preserved the accepted `docs:check` baseline policy: existing `missing-jsdoc` diagnostics are tracked as known debt, while new documentation-lint regressions are release-blocking.
 
 ## [0.11.0] - 2026-09-19 - SUPER-CHIP Modern
 

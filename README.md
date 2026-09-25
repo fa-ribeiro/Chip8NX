@@ -10,24 +10,24 @@ The project supports **Classic CHIP-8**, **CHIP-48 2.25**, **SUPER-CHIP 1.1**, a
 
 ## Status
 
-### Current release: `v0.11.0` — SUPER-CHIP Modern
+### Current release: `v1.0.0` — Stable Architecture and Debugger
 
-`v0.11.0` adds **SUPER-CHIP Modern** as a fourth built-in machine target and uses it to validate the profile architecture hardened in `v0.10.0`.
+`v1.0.0` marks the first stable Chip8NX architecture and public API contract.
 
-The built-in profiles are now:
+The stable release supports four built-in machine profiles:
 
 - **Classic CHIP-8** — the original baseline machine;
-- **CHIP-48 2.25** — the first alternate historical profile introduced in `v0.8.0`;
+- **CHIP-48 2.25** — the alternate historical profile introduced in `v0.8.0`;
 - **SUPER-CHIP 1.1** — the historical extended machine introduced in `v0.9.0`;
-- **SUPER-CHIP Modern** — a modern compatibility target with extension semantics kept distinct from historical SUPER-CHIP 1.1.
+- **SUPER-CHIP Modern** — the modern compatibility target introduced in `v0.11.0`.
 
-The Modern target shares the existing SUPER-CHIP display geometry, large decimal font resource, RPL capability, decoder, executor, runtime, initialization, and host composition boundaries, while keeping incompatible extension semantics explicit through its own `superchip-modern` instruction-set discriminant.
+The release preserves the project boundary established during the `0.x` milestones: Core owns reusable machine semantics, Inspection remains passive, and host applications own presentation and debugger policy.
 
-Modern behavior includes framebuffer clearing on `00FE` / `00FF`, logical-pixel scrolling, 16×16 `Dxy0` sprites in both display modes, ordinary boolean collision `VF`, immediate drawing without vertical-blank consumption, continued `Fx1E` overflow, and `00C0` as a zero-row no-op rather than historical interpreter exit.
+The Web host now provides the complete `v1.0.0` interactive workflow: ROM loading, Start/Pause/Continue, Step, Reset, profile selection, physical and virtual keypad input, display and audio presentation, live CPU state, address breakpoints, Nearby disassembly, bounded Trace history, and passive Memory inspection. Breakpoints pause before execution, and Continue remains suppressed across retryable attempts at the stopped address until execution actually leaves it.
 
-External conformance now includes Timendus v4.2 Modern SUPER-CHIP Quirks and low-resolution Scrolling runs alongside the existing legacy SUPER-CHIP coverage. Focused tests distinguish the historical and Modern mode-switch, scrolling, drawing, collision, and overflow semantics.
+The Terminal host remains intentionally Classic CHIP-8-only. XO-CHIP, conditional breakpoints, watchpoints, state editing, and step-over/step-out remain outside the `v1.0.0` completion scope.
 
-The Web host exposes all four profiles and reports `v0.11.0` in its machine/runtime status area. Post-implementation stabilization also centralizes Web machine lifecycle coordination, fixes interpreter-exit and input-recovery behavior, simplifies the branded timing factories, and makes instruction execution compile-time exhaustive.
+External conformance evidence includes the pinned Classic/CHIP-48/SUPER-CHIP coverage documented under `packages/core/tests/conformance/`, including Timendus v4.2 Quirks and Scrolling coverage for the supported SUPER-CHIP profiles.
 
 ## Goals
 
@@ -493,9 +493,19 @@ Timendus v4.2 Quirks and Scrolling conformance runs provide independent Modern-p
 
 The milestone also includes a bounded stabilization pass: Web session lifecycle coordination and input recovery are made explicit, timing type factories become their own branding boundary, instruction execution becomes compile-time exhaustive, and release-facing documentation/tooling is reconciled.
 
+### `v1.0.0` — Stable Architecture and Debugger ✓
+
+Chip8NX reaches its first stable architecture and public API contract.
+
+The four built-in machine profiles—Classic CHIP-8, CHIP-48 2.25, SUPER-CHIP 1.1, and SUPER-CHIP Modern—remain explicit compatibility targets with profile-specific instruction-set semantics and quirks. Core keeps the reusable machine model, Inspection remains passive, and host applications retain ownership of lifecycle and debugger policy.
+
+The Web host completes its bounded debugger/workbench scope with address breakpoints, explicit breakpoint pause reasons, retry-safe Continue behavior, nearby disassembly, bounded trace history, CPU-state inspection, and passive memory navigation. The debugger remains deliberately host-local rather than becoming a reusable Core or Inspection subsystem.
+
+The release also hardens the stable public surface by making instruction exports explicit, sharing Web address parsing/validation policy between debugger and memory tooling, reconciling current architecture and release documentation, and reviewing the public API before the `1.0.0` stability boundary.
+
 ## Future work
 
-Post-`v0.11.0` development can proceed across areas such as:
+Post-`v1.0.0` development can proceed across areas such as:
 
 - richer debugger behavior beyond the current Web-local address breakpoints, such as conditional breakpoints, watchpoints, step-over/step-out, or state editing, when concrete workflows justify it;
 - richer memory or static-analysis inspection beyond the current passive page view, such as search, watch integration, or editing, when concrete workflows justify it;
@@ -525,11 +535,15 @@ Historical behavior is resolved against evidence appropriate to the selected mac
 
 The project follows Semantic Versioning.
 
-During `0.x`:
+`v1.0.0` establishes the first stable Chip8NX architecture and public API contract, with agreed conformance requirements for the supported built-in machine profiles and stabilized host, inspection, and debugger boundaries.
 
-- PATCH releases contain fixes, refactors, documentation improvements, and other changes that do not represent a new emulator capability milestone;
-- MINOR releases represent meaningful capability or conformance milestones and may include breaking API changes;
-- `1.0.0` will mark the first stable Classic CHIP-8 public API and agreed conformance contract.
+From `1.0.0` onward:
+
+- PATCH releases contain backward-compatible bug fixes and maintenance;
+- MINOR releases may add backward-compatible capabilities;
+- MAJOR releases are reserved for intentional breaking changes to the stable public contract.
+
+The `1.0.0` stability contract covers Classic CHIP-8, CHIP-48 2.25, SUPER-CHIP 1.1, and SUPER-CHIP Modern, together with the documented Terminal and Web host boundaries, passive Inspection model, and Web-local debugger workflow. XO-CHIP and IDE-style debugger features such as conditional breakpoints, watchpoints, state editing, and step-over/step-out remain outside that contract.
 
 See [CHANGELOG.md](./CHANGELOG.md) for release history.
 
