@@ -14,7 +14,7 @@ From `1.0.0` onward:
 
 ## [Unreleased]
 
-## [1.0.0] - 2026-09-24 - Stable Architecture and Debugger
+## [1.0.0] - 2026-09-25 - Stable Architecture and Debugger
 
 ### Added
 
