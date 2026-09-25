@@ -1,6 +1,12 @@
 import type { Address } from "../core/types/address.ts";
 import type { Byte } from "../core/types/byte.ts";
 
+/**
+ * CHIP-8 font size requested by a font-address instruction.
+ *
+ * `"small"` identifies the classic hexadecimal glyph set used by `Fx29`;
+ * `"large"` identifies the SUPER-CHIP large glyph set used by `Fx30`.
+ */
 export type FontSize = "small" | "large";
 
 /**

@@ -1,10 +1,4 @@
-import type {
-  Address,
-  Byte,
-  Instruction,
-  RegisterIndex,
-  RegisterOperationInstruction,
-} from "@chip8nx/core";
+import type { Address, Byte, Instruction, RegisterIndex } from "@chip8nx/core";
 
 import type { InstructionFormatter } from "./instruction-formatter.ts";
 
@@ -175,7 +169,9 @@ export class ClassicInstructionFormatter implements InstructionFormatter {
     }
   }
 
-  private formatRegisterOperation(instruction: RegisterOperationInstruction): string {
+  private formatRegisterOperation(
+    instruction: Extract<Instruction, { readonly kind: "register-operation" }>,
+  ): string {
     const x = this.formatRegister(instruction.x);
     const y = this.formatRegister(instruction.y);
     const operation = instruction.operation;

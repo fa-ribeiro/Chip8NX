@@ -241,6 +241,8 @@ The Web application has different composition pressures:
 - live CPU-state presentation;
 - best-effort nearby disassembly through `@chip8nx/inspection`;
 - bounded recent instruction-attempt history through `@chip8nx/inspection`;
+- passive memory inspection and navigation;
+- Web-local address-breakpoint configuration and breakpoint pause/resume policy;
 - a persistent `WebMachineSession` application-state aggregate.
 
 Those responsibilities do not naturally form the same three composition levels used by the Terminal host.
@@ -252,6 +254,7 @@ Instead, the Web host acts directly as its own composition root:
     machine execution
     runtime
     authoritative observation
+    scheduled CPU execution gate
           ↓
 @chip8nx/inspection
     passive disassembly
@@ -261,7 +264,8 @@ Instead, the Web host acts directly as its own composition root:
 apps/web
     profile selection
     lifecycle
-    policy
+    address-breakpoint policy
+    memory-view navigation
     browser presentation
 ```
 
@@ -474,34 +478,29 @@ No global profile lookup or profile-aware singleton is required.
 
 `WebMachineSession` remains a Web application aggregate rather than a missing Core machine abstraction.
 
-It retains the references required by the browser application's demonstrated lifecycle and presentation needs:
+It retains only the references required after composition by the browser application's demonstrated lifecycle, inspection, and presentation needs:
 
 ```text
-ROM lifecycle
+ROM/profile replacement
     romName
     program
     profile
-    context
-    initializer
 
-execution
-    cpu
-    runtime
+host execution lifecycle
+    lifecycle
 
 inspection
-    traceHistory
     snapshotInspection()
+    memory
 
 presentation
     displayBuffer
     soundTimer
-
-browser input
-    browserKeyboard
-    virtualKeypad
 ```
 
-Application-lifetime `RplFlags` is deliberately **not** owned by the session.
+The lower-level CPU, runtime, scheduler, input adapters, initializer, disassembler, trace buffer, and formatters remain captured by the lifecycle or inspection closures rather than becoming public fields of the aggregate.
+
+Application-lifetime `RplFlags` and configured `AddressBreakpoints` are deliberately **not** owned by the session. `RplFlags` outlives session replacement, while the Web host owns breakpoint configuration and transient breakpoint execution policy above one composed machine session.
 
 The addition of profile recomposition strengthens rather than weakens the case for keeping this aggregate host-local.
 
@@ -526,6 +525,7 @@ The host-composition evaluation remains complete enough to answer the original c
 - the Web host is free to use different host-local compositions;
 - the reusable Core boundaries have held across both applications;
 - passive Inspection capabilities can be composed where required without becoming mandatory machine infrastructure;
+- bounded debugger policy such as address breakpoints can remain host-local while Core provides only the generic scheduled CPU execution gate;
 - multiple profiles can be composed through the same Core boundaries without introducing a generic variant manager;
 - profile semantics are now more precisely divided into machine characteristics, instruction-set membership, and shared-instruction quirks;
 - extension-specific semantics can be added without turning resources or quirks into generic support flags;

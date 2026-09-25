@@ -67,17 +67,21 @@ The normal `ci` task intentionally does not run the external ROM conformance sui
 deno task test:conformance
 ```
 
+For the `v1.0.0` release, run the full conformance suite regardless of whether the final release-preparation diff itself changes machine semantics. `v1.0.0` establishes the stable supported-profile conformance contract, so that contract must be verified explicitly on the release candidate.
+
 Treat this as a separate release-quality gate rather than silently assuming it was covered by `deno task ci`.
 
 For releases that change a supported profile or its semantic model, review the relevant conformance targets explicitly. Current SUPER-CHIP coverage includes pinned Timendus v4.2 Quirks runs for legacy and Modern SUPER-CHIP, plus Scrolling runs for Modern low-resolution, legacy low-resolution, and high-resolution behavior documented in [`packages/core/tests/conformance/README.md`](../../packages/core/tests/conformance/README.md).
 
-Public-API documentation diagnostics can be reviewed with:
+Review public-API documentation diagnostics:
 
 ```bash
 deno task docs:check
 ```
 
-`docs:check` should be reviewed as part of release preparation. Historical `missing-jsdoc` diagnostics may still exist in the repository; distinguish those known diagnostics from newly introduced documentation problems rather than treating their mere presence as either a new failure or an automatic success.
+`docs:check` currently reports an accepted baseline of `missing-jsdoc` diagnostics. Release preparation must distinguish those known diagnostics from newly introduced documentation problems.
+
+A release should not introduce new documentation-lint diagnostics relative to the accepted baseline. Existing accepted `missing-jsdoc` diagnostics may remain until they are addressed deliberately in a bounded documentation pass.
 
 Also check for simple textual/mechanical problems:
 
@@ -122,6 +126,11 @@ Then verify the behavior relevant to the release. Typical checks include:
 - [ ] physical and virtual keyboard input still work when relevant;
 - [ ] audio presentation still behaves normally when relevant;
 - [ ] inspection views continue to update without affecting execution;
+- [ ] an enabled address breakpoint pauses **before** the instruction at that address executes;
+- [ ] Continue resumes past the stopped breakpoint, including a retryable instruction such as a vblank-gated `DRW`;
+- [ ] Step from a breakpoint performs one CPU attempt without immediately re-triggering the scheduled breakpoint gate;
+- [ ] configured breakpoints survive ordinary Reset and profile recomposition, while loading another ROM clears them;
+- [ ] Memory inspection remains passive, supports PC/I quick navigation and page navigation, and handles the end of memory without fabricating bytes;
 - [ ] profile changes recompose the machine successfully when profile selection changed;
 - [ ] changing profile while a ROM is loaded preserves the expected running/paused host state;
 - [ ] reset retains the session's selected profile rather than substituting a default profile;

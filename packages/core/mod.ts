@@ -59,7 +59,7 @@ export type { Font, FontSize } from "./src/font/font.ts";
 
 // Instructions
 export { Decoder, InvalidOpcodeError } from "./src/instruction/decoder.ts";
-export * from "./src/instruction/instruction.ts";
+export type { Instruction } from "./src/instruction/instruction.ts";
 
 // CPU observation
 export type { InstructionTraceObserver } from "./src/cpu/observation/instruction-trace-observer.ts";

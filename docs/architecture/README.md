@@ -129,7 +129,7 @@ It explains the built-in Classic CHIP-8, CHIP-48, historical SUPER-CHIP, and Mod
 
 ### Tracing
 
-[Tracing](./tracing.md) owns Core CPU-attempt observation, success/failure records, retry visibility, observer non-interference, Inspection-owned formatting and bounded history, and the deliberately passive boundary between tracing and future debugger/control policy.
+[Tracing](./tracing.md) owns Core CPU-attempt observation, success/failure records, retry visibility, observer non-interference, Inspection-owned formatting and bounded history, and the deliberately passive boundary between tracing and host-owned debugger/control policy.
 
 ### Host composition evaluation
 
@@ -141,7 +141,7 @@ Host-specific behavior belongs with the relevant host documentation rather than 
 
 The Terminal application's Level-1/2/3 composition model is documented in [Terminal composition levels](../guides/terminal-composition-levels.md).
 
-The browser host's selectable Classic, CHIP-48, historical SUPER-CHIP, and Modern SUPER-CHIP profiles, Canvas/audio/input adapters, execution controls, passive Inspection tooling, persistent host-owned RPL state, appearance, and Web lifecycle policy are documented in [Web application](../guides/web-application.md).
+The browser host's selectable Classic, CHIP-48, historical SUPER-CHIP, and Modern SUPER-CHIP profiles, Canvas/audio/input adapters, execution controls, passive Inspection tooling, host-local address breakpoints, passive memory inspection, persistent host-owned RPL state, appearance, and Web lifecycle policy are documented in [Web application](../guides/web-application.md).
 
 For a practical example of assembling the public Core API around a selected profile, see [Embedding the Core](../guides/embedding-the-core.md).
 

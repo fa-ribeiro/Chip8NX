@@ -257,6 +257,14 @@ export interface ExitInterpreterInstruction {
   readonly opcode: Opcode;
 }
 
+/**
+ * Discriminated union of the typed CHIP-8-family instructions understood by Core.
+ *
+ * @remarks
+ * `kind` is the stable discriminator for narrowing instruction semantics. The union
+ * describes decoded instruction identity; profile-specific executability and quirks
+ * are applied later by instruction execution.
+ */
 export type Instruction =
   | ClearScreenInstruction
   | SetDisplayModeInstruction

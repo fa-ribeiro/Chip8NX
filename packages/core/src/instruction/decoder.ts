@@ -2,7 +2,23 @@ import { getN, getN0, getNN, getNNN, getX, getY } from "./opcode-fields.ts";
 import type { Opcode } from "../core/types/opcode.ts";
 import type { Instruction } from "./instruction.ts";
 
+/**
+ * Decodes a CHIP-8 opcode into the host-independent typed instruction model.
+ *
+ * @remarks
+ * Decoding identifies the encoded instruction form only. Whether a decoded
+ * instruction is executable for a selected machine profile is decided later by
+ * instruction execution through the profile's instruction-set semantics.
+ */
 export class Decoder {
+  /**
+   * Decodes one encoded CHIP-8 opcode.
+   *
+   * @param opcode - Encoded 16-bit CHIP-8 opcode.
+   * @returns The corresponding discriminated {@link Instruction}.
+   * @throws {@link InvalidOpcodeError} when the bit pattern is not a recognized
+   * CHIP-8-family encoding.
+   */
   public decode(opcode: Opcode): Instruction {
     switch (getN0(opcode)) {
       case 0x0:
@@ -415,6 +431,10 @@ export class Decoder {
   }
 }
 
+/**
+ * Raised when {@link Decoder} receives an opcode bit pattern that is not a
+ * recognized CHIP-8-family encoding.
+ */
 export class InvalidOpcodeError extends Error {
   public constructor(public readonly opcode: Opcode) {
     super(`Invalid CHIP-8 opcode: 0x${opcode.toString(16).padStart(4, "0")}`);

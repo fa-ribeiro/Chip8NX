@@ -12,6 +12,14 @@ import type { RandomNumberGenerator } from "../random/random-number-generator.ts
 import type { ExitState } from "../machine/exit-state.ts";
 import type { RplFlags } from "../machine/rpl-flags.ts";
 
+/**
+ * Groups the mutable machine state and capabilities required by instruction execution.
+ *
+ * @remarks
+ * The context does not construct, own, or reset its collaborators. Hosts compose the
+ * object graph and {@link MachineInitializer} establishes resettable machine state.
+ * Profile semantics are supplied separately to the instruction executor.
+ */
 export interface ExecutionContext {
   readonly registers: Registers;
   readonly memory: Memory;
